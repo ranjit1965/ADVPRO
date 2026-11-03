@@ -1,0 +1,460 @@
+{
+  "_comment": "Master definitions shared by the frontend (src/config/masters.json) and the backend (backend/app/masters.json). Each master is stored in its own MongoDB collection named master_<key>. Keep both copies identical.",
+  "masters": [
+    {
+      "key": "registrations",
+      "label": "Registration",
+      "description": "Student registrations for courses and batches.",
+      "idPrefix": "REG",
+      "unique": "regNo",
+      "titleField": "studentName",
+      "fields": [
+        {
+          "key": "regNo",
+          "label": "Register No",
+          "type": "text",
+          "required": true
+        },
+        {
+          "key": "regDate",
+          "label": "Registration Date",
+          "type": "date",
+          "required": true
+        },
+        {
+          "key": "studentName",
+          "label": "Student Name",
+          "type": "text",
+          "required": true
+        },
+        {
+          "key": "mobile",
+          "label": "Mobile",
+          "type": "phone",
+          "required": true
+        },
+        {
+          "key": "email",
+          "label": "Email",
+          "type": "email"
+        },
+        {
+          "key": "collegeName",
+          "label": "College",
+          "type": "lookup",
+          "source": "colleges"
+        },
+        {
+          "key": "courseId",
+          "label": "Course",
+          "type": "lookup",
+          "source": "courses",
+          "required": true
+        },
+        {
+          "key": "batchNo",
+          "label": "Batch No",
+          "type": "lookup",
+          "source": "batches"
+        },
+        {
+          "key": "fee",
+          "label": "Course Fee",
+          "type": "number"
+        },
+        {
+          "key": "paid",
+          "label": "Amount Paid",
+          "type": "number"
+        },
+        {
+          "key": "status",
+          "label": "Status",
+          "type": "select",
+          "options": [
+            "Active",
+            "Completed",
+            "Dropped"
+          ],
+          "required": true,
+          "default": "Active"
+        },
+        {
+          "key": "remarks",
+          "label": "Remarks",
+          "type": "textarea",
+          "hideInTable": true
+        }
+      ]
+    },
+    {
+      "key": "batches",
+      "label": "Batch",
+      "description": "Batches, their course, faculty, dates and timing. Imported from the Access BatchMaster table (Master › Batch Import) or added here. Each faculty sees the batches assigned to them in the Class tab.",
+      "idPrefix": "BAT",
+      "unique": "batchNo",
+      "titleField": "batchNo",
+      "fields": [
+        {
+          "key": "batchNo",
+          "label": "Batch No",
+          "type": "text",
+          "required": true
+        },
+        {
+          "key": "courseId",
+          "label": "Course",
+          "type": "lookup",
+          "source": "courses",
+          "required": false
+        },
+        {
+          "key": "facultyCode",
+          "label": "Faculty",
+          "type": "lookup",
+          "source": "employees"
+        },
+        {
+          "key": "facultyShort",
+          "label": "Short Name",
+          "type": "text",
+          "hint": "Faculty short name from the Access file"
+        },
+        {
+          "key": "otherFaculty",
+          "label": "Other Faculty",
+          "type": "text",
+          "hideInTable": true,
+          "hint": "More employee codes for this batch, comma separated"
+        },
+        {
+          "key": "startDate",
+          "label": "Start Date",
+          "type": "date"
+        },
+        {
+          "key": "endDate",
+          "label": "End Date",
+          "type": "date"
+        },
+        {
+          "key": "timing",
+          "label": "Timing",
+          "type": "text"
+        },
+        {
+          "key": "classType",
+          "label": "Class Type",
+          "type": "select",
+          "options": [
+            "WeekDays",
+            "WeekEnd"
+          ]
+        },
+        {
+          "key": "totalHours",
+          "label": "Total Hours",
+          "type": "number",
+          "hideInTable": true
+        },
+        {
+          "key": "courseType",
+          "label": "Course Type",
+          "type": "text",
+          "hideInTable": true
+        },
+        {
+          "key": "mode",
+          "label": "Mode",
+          "type": "select",
+          "options": [
+            "Center",
+            "Online",
+            "Outstation"
+          ],
+          "default": "Center"
+        },
+        {
+          "key": "status",
+          "label": "Status",
+          "type": "select",
+          "options": [
+            "Planned",
+            "Running",
+            "Break",
+            "Completed"
+          ],
+          "required": true,
+          "default": "Planned"
+        }
+      ]
+    },
+    {
+      "key": "attendance",
+      "label": "Attendence",
+      "description": "Daily attendance of employees and faculty: time in, time out and status.",
+      "idPrefix": "ATT",
+      "titleField": "employeeCode",
+      "fields": [
+        {
+          "key": "date",
+          "label": "Date",
+          "type": "date",
+          "required": true
+        },
+        {
+          "key": "employeeCode",
+          "label": "Employee",
+          "type": "lookup",
+          "source": "employees",
+          "required": true
+        },
+        {
+          "key": "status",
+          "label": "Status",
+          "type": "select",
+          "options": [
+            "Present",
+            "Absent",
+            "Leave",
+            "Half Day",
+            "Holiday",
+            "Permission"
+          ],
+          "required": true,
+          "default": "Present"
+        },
+        {
+          "key": "timeIn",
+          "label": "Time In",
+          "type": "time"
+        },
+        {
+          "key": "timeOut",
+          "label": "Time Out",
+          "type": "time"
+        },
+        {
+          "key": "remarks",
+          "label": "Remarks",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "key": "products",
+      "label": "Product",
+      "description": "Products and course packages the company offers.",
+      "idPrefix": "PRD",
+      "unique": "productCode",
+      "titleField": "productName",
+      "fields": [
+        {
+          "key": "productCode",
+          "label": "Product Code",
+          "type": "text",
+          "required": true
+        },
+        {
+          "key": "productName",
+          "label": "Product Name",
+          "type": "text",
+          "required": true
+        },
+        {
+          "key": "category",
+          "label": "Category",
+          "type": "select",
+          "options": [
+            "Course",
+            "Certification",
+            "Hardware",
+            "Software",
+            "Service"
+          ],
+          "required": true
+        },
+        {
+          "key": "price",
+          "label": "Price",
+          "type": "number"
+        },
+        {
+          "key": "description",
+          "label": "Description",
+          "type": "textarea",
+          "hideInTable": true
+        }
+      ]
+    },
+    {
+      "key": "oldRegistrations",
+      "label": "Old Registrations",
+      "description": "Registrations from earlier years, kept for reference.",
+      "idPrefix": "OLD",
+      "unique": "regNo",
+      "titleField": "studentName",
+      "fields": [
+        {
+          "key": "regNo",
+          "label": "Register No",
+          "type": "text",
+          "required": true
+        },
+        {
+          "key": "year",
+          "label": "Year",
+          "type": "number",
+          "required": true
+        },
+        {
+          "key": "studentName",
+          "label": "Student Name",
+          "type": "text",
+          "required": true
+        },
+        {
+          "key": "mobile",
+          "label": "Mobile",
+          "type": "phone"
+        },
+        {
+          "key": "course",
+          "label": "Course",
+          "type": "text"
+        },
+        {
+          "key": "batchNo",
+          "label": "Batch No",
+          "type": "text"
+        },
+        {
+          "key": "remarks",
+          "label": "Remarks",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "key": "vendors",
+      "label": "Vendor",
+      "description": "Suppliers and service vendors. Assets link to a vendor.",
+      "idPrefix": "VEN",
+      "unique": "vendorName",
+      "titleField": "vendorName",
+      "fields": [
+        {
+          "key": "vendorName",
+          "label": "Vendor Name",
+          "type": "text",
+          "required": true
+        },
+        {
+          "key": "category",
+          "label": "Category",
+          "type": "select",
+          "options": [
+            "Hardware",
+            "Software",
+            "Networking",
+            "Stationery",
+            "Services",
+            "Other"
+          ],
+          "required": true
+        },
+        {
+          "key": "contactPerson",
+          "label": "Contact Person",
+          "type": "text"
+        },
+        {
+          "key": "mobile",
+          "label": "Mobile",
+          "type": "phone",
+          "required": true
+        },
+        {
+          "key": "email",
+          "label": "Email",
+          "type": "email"
+        },
+        {
+          "key": "gstNo",
+          "label": "GST No",
+          "type": "text"
+        },
+        {
+          "key": "address",
+          "label": "Address",
+          "type": "textarea",
+          "hideInTable": true
+        }
+      ]
+    },
+    {
+      "key": "assets",
+      "label": "Assest",
+      "description": "Company assets with their Advpro No. Used by the System Fault tab.",
+      "idPrefix": "AST",
+      "unique": "advproNo",
+      "titleField": "advproNo",
+      "fields": [
+        {
+          "key": "advproNo",
+          "label": "Advpro No",
+          "type": "text",
+          "required": true
+        },
+        {
+          "key": "productType",
+          "label": "Asset Type",
+          "type": "lookup",
+          "source": "productTypes",
+          "required": true
+        },
+        {
+          "key": "serialNo",
+          "label": "Serial / Product No",
+          "type": "text"
+        },
+        {
+          "key": "location",
+          "label": "Location",
+          "type": "lookup",
+          "source": "locations",
+          "required": true
+        },
+        {
+          "key": "vendorName",
+          "label": "Vendor",
+          "type": "lookup",
+          "source": "vendors"
+        },
+        {
+          "key": "purchaseDate",
+          "label": "Purchase Date",
+          "type": "date"
+        },
+        {
+          "key": "cost",
+          "label": "Cost",
+          "type": "number"
+        },
+        {
+          "key": "status",
+          "label": "Status",
+          "type": "select",
+          "options": [
+            "In Use",
+            "Spare",
+            "Under Repair",
+            "Disposed"
+          ],
+          "required": true,
+          "default": "In Use"
+        }
+      ]
+    }
+  ]
+}

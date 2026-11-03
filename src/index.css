@@ -1,0 +1,165 @@
+@import 'tailwindcss';
+
+/*
+ * Design tokens for Daily Entry Report.
+ * All pages use these tokens through Tailwind utilities (bg-brand-600, text-ink-500 ...)
+ * so colours, radii and shadows stay consistent across the app.
+ */
+@theme static {
+  --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+
+  /* Brand: Advpro blue */
+  --color-brand-50: #eff5ff;
+  --color-brand-100: #dbe8fe;
+  --color-brand-200: #bfd6fe;
+  --color-brand-300: #93bbfd;
+  --color-brand-400: #6096fa;
+  --color-brand-500: #3b72f6;
+  --color-brand-600: #2554eb;
+  --color-brand-700: #1d41d8;
+  --color-brand-800: #1e36af;
+  --color-brand-900: #1e338a;
+
+  /* Accent: the maroon used for tab captions in the legacy app */
+  --color-accent-50: #fdf2f3;
+  --color-accent-100: #fbe4e6;
+  --color-accent-500: #b4233a;
+  --color-accent-600: #9a1b30;
+  --color-accent-700: #7f1729;
+
+  /* App background: a very light blue wash behind white cards */
+  --color-canvas: #f4f7fc;
+
+  /* Neutral text and surfaces */
+  --color-ink-50: #f7f9fc;
+  --color-ink-100: #eef0f4;
+  --color-ink-200: #dde1e8;
+  --color-ink-300: #c3c9d4;
+  --color-ink-400: #98a1b2;
+  --color-ink-500: #6b7487;
+  --color-ink-600: #4d5567;
+  --color-ink-700: #383f4f;
+  --color-ink-800: #252a36;
+  --color-ink-900: #161a23;
+
+  /* Status */
+  --color-success-50: #ecfdf3;
+  --color-success-600: #079455;
+  --color-success-700: #067647;
+  --color-warning-50: #fffaeb;
+  --color-warning-600: #dc6803;
+  --color-warning-700: #b54708;
+  --color-danger-50: #fef3f2;
+  --color-danger-500: #f04438;
+  --color-danger-600: #d92d20;
+  --color-danger-700: #b42318;
+  --color-info-50: #eff8ff;
+  --color-info-600: #1570ef;
+  --color-info-700: #175cd3;
+
+  --radius-card: 0.875rem;
+  --shadow-card: 0 1px 2px rgb(16 24 40 / 0.04), 0 1px 3px rgb(16 24 40 / 0.06);
+  --shadow-pop: 0 12px 32px -8px rgb(16 24 40 / 0.18), 0 4px 8px -4px rgb(16 24 40 / 0.08);
+}
+
+@layer base {
+  html {
+    -webkit-font-smoothing: antialiased;
+  }
+  body {
+    @apply bg-canvas font-sans text-sm text-ink-800;
+  }
+  :focus-visible {
+    @apply outline-2 outline-offset-2 outline-brand-500;
+  }
+}
+
+@layer components {
+  .card {
+    @apply rounded-card border border-ink-200 bg-white shadow-card;
+  }
+  .field-control {
+    @apply block w-full rounded-lg border border-ink-300 bg-white px-3 py-2 text-sm text-ink-900 shadow-xs transition-colors placeholder:text-ink-400 hover:border-ink-400 focus:border-brand-500 focus:ring-3 focus:ring-brand-100 focus:outline-none disabled:cursor-not-allowed disabled:bg-ink-100 disabled:text-ink-500;
+  }
+  .field-control[readonly] {
+    @apply bg-ink-50;
+  }
+  .field-control[aria-invalid='true'] {
+    @apply border-danger-500 focus:border-danger-500 focus:ring-danger-50;
+  }
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.animate-toast-in {
+  animation: toast-in 0.18s ease-out;
+}
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  body {
+    background: white;
+  }
+  .print-full {
+    margin: 0 !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+    border: none !important;
+  }
+}
+
+/* Monthly report: A4 landscape, colours kept, each part on its own page where marked. */
+@media print {
+  @page {
+    size: A4 landscape;
+    margin: 10mm;
+  }
+  .report {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+    padding: 0 !important;
+  }
+  .report-break {
+    break-before: page;
+  }
+  .report-section > div {
+    break-inside: auto;
+  }
+  .report .recharts-wrapper {
+    break-inside: avoid;
+  }
+}
+@media print {
+  .report .chart-box,
+  .report tr {
+    break-inside: avoid;
+  }
+  .report .print-2col {
+    grid-template-columns: 1fr 1fr;
+  }
+  .report table {
+    min-width: 0 !important;
+  }
+  .report .overflow-x-auto {
+    overflow: visible !important;
+  }
+  .report td.what {
+    min-width: 0;
+    max-width: 260px;
+    font-size: 9px;
+  }
+  .report table th,
+  .report table td {
+    padding: 3px 4px;
+  }
+}

@@ -1,0 +1,126 @@
+{
+  "_comment": "Dropdown option lists written to the MongoDB lookups collection on first start. Edit them in the database afterwards.",
+  "lookups": {
+    "classIn": [
+      "College Lab",
+      "Seminar Hall",
+      "Classroom",
+      "Online"
+    ],
+    "chapterTypes": [
+      "Theory",
+      "Lab",
+      "Theory + Lab",
+      "Assessment",
+      "Revision"
+    ],
+    "sessionTypes": [
+      "Theory",
+      "Lab",
+      "Theory + Lab",
+      "Revision",
+      "Assessment",
+      "Doubt Clearing"
+    ],
+    "colleges": [
+      "Anna University - CEG Campus",
+      "PSG College of Technology",
+      "SRM Institute of Science and Technology",
+      "Sri Sairam Engineering College",
+      "Rajalakshmi Engineering College",
+      "Loyola College",
+      "Velammal Engineering College",
+      "St. Joseph’s College of Engineering"
+    ],
+    "departments": [
+      "CSE",
+      "IT",
+      "ECE",
+      "EEE",
+      "MCA",
+      "BCA",
+      "B.Sc CS",
+      "AI & DS"
+    ],
+    "sections": [
+      "A",
+      "B",
+      "C",
+      "D"
+    ],
+    "yopOptions": [
+      "2025",
+      "2026",
+      "2027",
+      "2028"
+    ],
+    "marketingTypes": [
+      "TC calls",
+      "Mailers",
+      "SMS",
+      "Label Printout",
+      "Councelling",
+      "Registration"
+    ],
+    "enquiryFormNos": [
+      "ENQ-2610-001",
+      "ENQ-2610-002",
+      "ENQ-2610-003",
+      "ENQ-2610-004",
+      "ENQ-2610-005"
+    ],
+    "materialTypes": [
+      "New PPT Preparation",
+      "New Video",
+      "New Whiteboard",
+      "Enhancing the Video",
+      "Enhancing the PPT",
+      "New Mock Question Paper",
+      "Test Paper Preparation",
+      "Menti Q/A",
+      "Course Project Development",
+      "AI Video Generation",
+      "Theory Book",
+      "Lab Manual",
+      "Technical Video Taken / Generation",
+      "Digital Marketing Support"
+    ],
+    "softwareActivities": [
+      "Installation",
+      "Upgrade",
+      "Configuration",
+      "Testing",
+      "Troubleshooting"
+    ],
+    "travelModes": [
+      "Bus",
+      "Train",
+      "Two Wheeler",
+      "Car",
+      "Company Vehicle"
+    ],
+    "othersHeadings": [
+      "Staff Meeting",
+      "Student Counselling",
+      "Lab Inventory",
+      "Internal Audit",
+      "Training Attended"
+    ],
+    "productTypes": [
+      "Desktop",
+      "Laptop",
+      "Projector",
+      "Printer",
+      "Network Switch",
+      "UPS"
+    ],
+    "locations": [
+      "Lab 1",
+      "Lab 2",
+      "Lab 3",
+      "Server Room",
+      "Reception",
+      "Seminar Hall"
+    ]
+  }
+}
