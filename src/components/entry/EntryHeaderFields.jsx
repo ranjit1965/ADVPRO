@@ -5,7 +5,7 @@ import TimeField from '../ui/TimeField';
 import RadioGroup from '../ui/RadioGroup';
 import FormField from '../ui/FormField';
 import { facultyOptions } from './fieldProps';
-import { formatDuration, formatTime, minutesBetween, toISODate } from '../../utils/format';
+import { formatDuration, minutesBetween, toISODate } from '../../utils/format';
 import { cn } from '../../utils/cn';
 import { DAY_START } from '../../utils/constants';
 
@@ -15,7 +15,7 @@ export default function EntryHeaderFields({ header, errors, onChange, lookups, l
   const minutes = minutesBetween(header.timeFrom, header.timeTo);
   const valid = header.timeFrom && header.timeTo && minutes > 0;
   // Shown at once, while choosing, not only on Save.
-  const toWarning = header.timeFrom && header.timeTo && minutes <= 0 ? `Time To must be after Time From (${formatTime(header.timeFrom)})` : '';
+  const toWarning = header.timeFrom && header.timeTo && minutes <= 0 ? `Time To must be after Time From (${header.timeFrom})` : '';
   return (
     <div className="grid grid-cols-2 gap-x-3 gap-y-4 sm:gap-4 lg:grid-cols-12">
       <SearchableSelect id="facultyCode" label="Faculty Name" required className="col-span-2 lg:col-span-8" options={facultyOptions(lookups)} value={header.facultyCode} onChange={set('facultyCode')} error={errors.facultyCode} placeholder="Search faculty" />
@@ -25,7 +25,7 @@ export default function EntryHeaderFields({ header, errors, onChange, lookups, l
         label="Time From"
         required
         className="lg:col-span-3 xl:col-span-2"
-        hint={lastEnd && header.timeFrom === lastEnd ? "Last entry's end time" : !lastEnd && header.timeFrom === DAY_START ? 'Day starts 09:00 AM' : undefined}
+        hint={lastEnd && header.timeFrom === lastEnd ? "Last entry's end time" : !lastEnd && header.timeFrom === DAY_START ? 'Day starts 09:00' : undefined}
         value={header.timeFrom}
         onChange={set('timeFrom')}
         error={errors.timeFrom}
@@ -35,8 +35,6 @@ export default function EntryHeaderFields({ header, errors, onChange, lookups, l
         label="Time To"
         required
         className="lg:col-span-3 xl:col-span-2"
-        after={header.timeFrom || undefined}
-        disabled={!header.timeFrom}
         value={header.timeTo}
         onChange={set('timeTo')}
         error={toWarning || errors.timeTo}

@@ -189,8 +189,3 @@
     padding: 3px 4px;
   }
 }
-
-/* Time boxes with our own clock button: hide the browser's picker icon so only one clock shows. */
-input.time-field::-webkit-calendar-picker-indicator {
-  display: none;
-}
