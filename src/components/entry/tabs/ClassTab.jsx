@@ -3,6 +3,7 @@ import { Mail } from 'lucide-react';
 import Select from '../../ui/Select';
 import Input from '../../ui/Input';
 import RadioGroup from '../../ui/RadioGroup';
+import ShortLabel from '../../ui/ShortLabel';
 import Textarea from '../../ui/Textarea';
 import OutstationFields from '../OutstationFields';
 import { makeField, courseOptions } from '../fieldProps';
@@ -40,11 +41,11 @@ export default function ClassTab({ values, errors, set, setMany, lookups, facult
 
   return (
     <div className="space-y-5">
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-12">
+      <div className="grid grid-cols-2 gap-x-3 gap-y-4 sm:gap-4 lg:grid-cols-12">
         <Select
           searchable
           label="Course ID"
-          className="sm:col-span-2 lg:col-span-5"
+          className="col-span-2 lg:col-span-4"
           options={courseOptions(lookups)}
           {...f('courseId')}
           onChange={onCourse}
@@ -70,15 +71,15 @@ export default function ClassTab({ values, errors, set, setMany, lookups, facult
             onChange={onBatch}
           />
         )}
-        <Select label="Chapter / Session No" className="lg:col-span-2" placeholder={values.courseId ? (courseChapters.length ? 'Select' : 'No chapters in Master') : 'Select a course first'} options={courseChapters.map((c) => ({ value: String(c.no), label: `Chapter ${c.no}` }))} {...f('chapterNo')} onChange={onChapter} />
-        <Select label="Chap / Session Type" className="lg:col-span-2" options={CHAPTER_TYPES} {...f('chapterType')} />
+        <Select label={<ShortLabel full="Chapter / Session No" short="Chapter No" />} className="lg:col-span-3" placeholder={values.courseId ? (courseChapters.length ? 'Select' : 'No chapters in Master') : 'Pick a course'} options={courseChapters.map((c) => ({ value: String(c.no), label: `Chapter ${c.no}` }))} {...f('chapterNo')} onChange={onChapter} />
+        <Select label={<ShortLabel full="Chap / Session Type" short="Chap Type" />} className="lg:col-span-2" options={CHAPTER_TYPES} {...f('chapterType')} />
         <Select label="Day Order" className="lg:col-span-2" placeholder="Select" options={DAY_ORDERS} {...f('dayOrder')} />
         <Input label="No of Students" className="lg:col-span-2" inputMode="numeric" maxLength={4} placeholder="0" {...f('noOfStudents')} />
-        <Select label="Today's Session Type" className="sm:col-span-2 lg:col-span-4" options={lookups.sessionTypes} {...f('todaySessionType')} />
+        <Select label={<ShortLabel full="Today's Session Type" short="Session Type" />} className="lg:col-span-4" options={lookups.sessionTypes} {...f('todaySessionType')} />
         {CLASS_CHECKS.map(([name, label]) => (
-          <RadioGroup key={name} size="sm" className="lg:col-span-2" label={label} name={`class-${name}`} options={['Yes', 'No']} value={values[name] ?? ''} onChange={(v) => set(name, v)} />
+          <RadioGroup key={name} className="lg:col-span-2" label={label} name={`class-${name}`} options={['Yes', 'No']} value={values[name] ?? ''} onChange={(v) => set(name, v)} />
         ))}
-        <Textarea label="Today's Session Detail" className="sm:col-span-2 lg:col-span-12" rows={2} maxLength={500} placeholder="What was covered in today's session" {...f('todaySessionDetail')} />
+        <Textarea label="Today's Session Detail" className="col-span-2 lg:col-span-12" rows={2} maxLength={500} placeholder="What was covered in today's session" {...f('todaySessionDetail')} />
       </div>
       {outstationMode && <OutstationFields values={outstation} errors={outstationErrors} set={setOutstation} lookups={lookups} onAddLookup={onAddLookup} />}
     </div>

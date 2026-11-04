@@ -5,11 +5,15 @@ import { cn } from '../../utils/cn';
 
 export default function Modal({ open, onClose, title, description, children, footer, size = 'md' }) {
   const panelRef = useRef(null);
+  // Keep the latest onClose without re-running the open effect: a parent passing a new function on
+  // every render must not move the focus back to the first field while the user types.
+  const closeRef = useRef(onClose);
+  closeRef.current = onClose;
 
   useEffect(() => {
     if (!open) return undefined;
     const prev = document.activeElement;
-    const onKey = (e) => e.key === 'Escape' && onClose?.();
+    const onKey = (e) => e.key === 'Escape' && closeRef.current?.();
     document.addEventListener('keydown', onKey);
     const t = setTimeout(() => {
       const focusable = panelRef.current?.querySelector('input, select, textarea, button:not([data-close])');
@@ -22,7 +26,7 @@ export default function Modal({ open, onClose, title, description, children, foo
       document.body.style.overflow = '';
       prev?.focus?.();
     };
-  }, [open, onClose]);
+  }, [open]);
 
   if (!open) return null;
   return createPortal(

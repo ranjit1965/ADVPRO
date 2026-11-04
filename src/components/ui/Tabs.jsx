@@ -3,8 +3,8 @@ import { cn } from '../../utils/cn';
 
 /**
  * Accessible tab list. tabs: [{ key, label, icon?, badge? }]
- * Wraps onto several rows like the legacy two-row tab strip, so all nine
- * activity tabs stay visible without horizontal scrolling.
+ * Equal-width tabs that always fill the full row: all tabs on one row on large screens,
+ * two rows on tablets / laptops, two per row on phones. No empty cell is left at the end.
  */
 export default function Tabs({ tabs, value, onChange, idPrefix = 'tab', disabledKeys = [] }) {
   const refs = useRef({});
@@ -19,7 +19,12 @@ export default function Tabs({ tabs, value, onChange, idPrefix = 'tab', disabled
     refs.current[next.key]?.focus();
   };
   return (
-    <div role="tablist" aria-label="Activity type" className="grid grid-cols-2 gap-1.5 sm:grid-cols-3 lg:grid-cols-5 2xl:grid-cols-9">
+    <div
+      role="tablist"
+      aria-label="Activity type"
+      style={{ '--tab-cols': tabs.length, '--tab-half': Math.ceil(tabs.length / 2) }}
+      className="grid grid-cols-2 gap-1.5 sm:grid-cols-[repeat(var(--tab-half),minmax(0,1fr))] xl:grid-cols-[repeat(var(--tab-cols),minmax(0,1fr))]"
+    >
       {tabs.map((t, idx) => {
         const active = t.key === value;
         const disabled = disabledKeys.includes(t.key);
@@ -37,7 +42,7 @@ export default function Tabs({ tabs, value, onChange, idPrefix = 'tab', disabled
             onClick={() => onChange(t.key)}
             onKeyDown={(e) => onKeyDown(e, idx)}
             className={cn(
-              'flex min-h-11 items-center justify-center gap-2 rounded-lg border px-2.5 py-2 text-center text-[13px] leading-tight font-medium transition-colors disabled:opacity-40',
+              'flex min-h-11 min-w-0 items-center justify-center gap-2 rounded-lg border px-2.5 py-2 text-center text-[13px] leading-tight font-medium transition-colors disabled:opacity-40',
               active ? 'border-brand-600 bg-brand-600 text-white shadow-xs' : 'border-ink-200 bg-white text-accent-600 hover:border-ink-300 hover:bg-ink-50',
             )}
           >

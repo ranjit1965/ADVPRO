@@ -35,3 +35,6 @@ export const FAULT_STATUS = ['Open', 'In Progress', 'Resolved'];
 export const NON_PERFORMANCE_TYPES = ['others'];
 
 export const PAGE_SIZE_OPTIONS = [10, 25, 50];
+
+/** Time From of the first entry of a day. */
+export const DAY_START = '09:00';

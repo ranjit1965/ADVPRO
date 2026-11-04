@@ -102,12 +102,16 @@ after a confirmation.
 
 * Header, row 1: **Faculty Name** (type to search) and **Activity Date**. Row 2: **Time From**,
   **Time To**, **Faculty in** (Center / College / OD, to the right of Time To) and **Worked Hours**.
-* **Time From is picked automatically**: a new entry starts at the Time To of the day's last
-  entry (after a save, after Clear, and when the faculty or date changes). Only Time To is
-  chosen by hand; Time From can still be changed if needed.
+* **Time From / Time To** are 12-hour dropdowns in 5-minute steps (type "10", "1030" or "2 pm" to
+  jump). The first entry of a day starts at **09:00 AM**; the next one starts at the Time To of
+  the day's last entry (after a save, after Clear, and when the faculty or date changes).
+  **Time To lists only the times after Time From** (Time From 10:00 AM lists 10:05 AM onwards).
+  If Time From is changed to a later time than Time To, a red warning shows at once under Time To
+  and on Worked Hours, before Save.
 * Eight tabs: **Class, Seminar / Work Shop, Marketing Support, Course Preparation,
   Self Learning / Knowledge Sharing, DataBase Creation/Download, Travelling Time, Others**.
-  Each tab shows a badge with that day's entry count. The Software and System Fault sections
+  Each tab shows a badge with that day's entry count. The tabs share the full row: one row on
+  laptops and larger screens, two rows on tablets, two per row on phones. The Software and System Fault sections
   were removed: new ones cannot be saved, but old ones still show in My Entries, reports and print.
 * **Class**: **Course ID** first (left), then **Batch No** (Center) or **Class in** (College / OD,
   options include **Advantage Pro**), Chapter / Session No, Chap / Session Type (Theory / Lab),
@@ -142,6 +146,8 @@ after a confirmation.
 
 * "Advantage Pro" (Class in) and "LAB Creation" (Today's Session Type) are added to an existing
   database automatically at the next backend start.
+* On phones, short fields sit two per row (Time From / Time To, Chapter / Chap Type, Day Order /
+  No of Students, Daily test / Daily activity post...), with shorter labels so the boxes stay level.
 * Screens fit phones (iPhone 375 to 430 px wide), tablets, laptops, desktops and large monitors
   (content widens to 1680 px on 2K / 4K screens). Date boxes no longer overflow on iPhone Safari.
 

@@ -37,7 +37,7 @@ export default function MarketingTab({ values, errors, set, setMany, lookups, on
           {type === 'TC calls' && (
             <fieldset className="rounded-xl border border-ink-200 p-3 sm:col-span-2 lg:col-span-6">
               <legend className="px-1 text-[13px] font-medium text-ink-700">Call grades</legend>
-              <div className="grid grid-cols-5 gap-2">
+              <div className="grid grid-cols-3 gap-2 sm:grid-cols-5">
                 {MARKETING_GRADE_FIELDS.map(([key, label]) => (
                   <Input key={key} label={label} inputMode="numeric" {...f(key)} />
                 ))}

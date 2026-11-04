@@ -29,7 +29,16 @@ export default function SearchableSelect({ label, required, error, hint, options
     return () => document.removeEventListener('mousedown', close);
   }, []);
 
-  useEffect(() => setActive(0), [query, open]);
+  // On open, highlight the chosen value (or the first match) and keep the highlighted row in view.
+  const listRef = useRef(null);
+  useEffect(() => {
+    const at = !query && value ? filtered.findIndex((o) => o.value === value) : -1;
+    setActive(at > 0 ? at : 0);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [query, open]);
+  useEffect(() => {
+    if (open) listRef.current?.children[active]?.scrollIntoView({ block: 'nearest' });
+  }, [active, open]);
 
   const choose = (opt) => {
     onChange(opt.value);
@@ -86,7 +95,7 @@ export default function SearchableSelect({ label, required, error, hint, options
           <ChevronDown className={cn('pointer-events-none absolute top-1/2 right-3 size-4 -translate-y-1/2 text-ink-400 transition-transform', open && 'rotate-180')} aria-hidden />
         </div>
         {open && (
-          <ul id={listId} role="listbox" className="absolute z-30 mt-1 max-h-64 w-full min-w-[220px] overflow-auto rounded-lg border border-ink-200 bg-white py-1 shadow-pop">
+          <ul ref={listRef} id={listId} role="listbox" className="absolute z-30 mt-1 max-h-64 w-full min-w-[220px] overflow-auto rounded-lg border border-ink-200 bg-white py-1 shadow-pop">
             {filtered.length === 0 && <li className="px-3 py-2 text-ink-500">No matches</li>}
             {filtered.map((o, i) => (
               <li

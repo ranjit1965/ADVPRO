@@ -20,7 +20,7 @@ import { useLookups } from '../context/LookupsContext';
 import { useToast } from '../context/ToastContext';
 import { useConfirm } from '../context/ConfirmContext';
 import * as api from '../services/api';
-import { ACTIVITY_TYPES, ACTIVITY_LABEL } from '../utils/constants';
+import { ACTIVITY_TYPES, ACTIVITY_LABEL, DAY_START } from '../utils/constants';
 import { EMPTY_DETAILS, EMPTY_OUTSTATION, OTHERS_DAILY_LIMIT, buildPayload, emptyHeader, freshDetails, validateEntry } from '../utils/entryForm';
 import { formatDate, formatDuration, minutesBetween, toISODate } from '../utils/format';
 
@@ -86,7 +86,7 @@ export default function DailyEntry() {
       setSelectedId((sel) => (items.some((i) => i.id === sel) ? sel : null));
       // Next entry starts where the last one ended: Time From = latest Time To of that day.
       if (!editingId) {
-        const end = lastEndTime(items);
+        const end = lastEndTime(items) || DAY_START;
         setHeader((h) => {
           if (h.timeFrom && h.timeFrom !== autoFromRef.current) return h;
           autoFromRef.current = end;
@@ -151,7 +151,7 @@ export default function DailyEntry() {
     setEditingId(null);
     setDirty(false);
     if (!keepTimes) {
-      const end = lastEndTime(grid.rows);
+      const end = lastEndTime(grid.rows) || DAY_START;
       autoFromRef.current = end;
       setHeader((h) => ({ ...h, timeFrom: end, timeTo: '' }));
     }
@@ -189,7 +189,7 @@ export default function DailyEntry() {
       }
       resetTab({ keepTimes: true });
       const items = await loadGrid();
-      const nextFrom = lastEndTime(items) || header.timeTo;
+      const nextFrom = lastEndTime(items) || header.timeTo || DAY_START;
       autoFromRef.current = nextFrom;
       setHeader((h) => ({ ...h, timeFrom: nextFrom, timeTo: '' }));
       setSelectedId(null);

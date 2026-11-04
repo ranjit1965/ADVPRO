@@ -37,8 +37,8 @@ export const EMPTY_OUTSTATION = {
 // Optional Yes / No questions of the College / OD section.
 export const OD_CHECKS = [
   ['videosShown', 'Videos shown'],
-  ['guidedExercisePpt', 'Guided exercise PPT shown'],
-  ['mentiQuiz', 'Menti quiz conducted'],
+  ['guidedExercisePpt', 'Guided exercise PPT shown', 'PPT shown'],
+  ['mentiQuiz', 'Menti quiz conducted', 'Menti quiz'],
   ['taskGiven', 'Task given'],
 ];
 
