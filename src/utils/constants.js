@@ -2,17 +2,17 @@
 export const ACTIVITY_TYPES = [
   { key: 'class', label: 'Class' },
   { key: 'seminar', label: 'Seminar / Work Shop' },
-  { key: 'marketing', label: 'Marketing' },
+  { key: 'marketing', label: 'Marketing Support' },
   { key: 'learning', label: 'Course Preparation' },
   { key: 'selfLearning', label: 'Self Learning / Knowledge Sharing' },
   { key: 'database', label: 'DataBase Creation/Download' },
   { key: 'travelling', label: 'Travelling Time' },
-  { key: 'software', label: 'Software' },
   { key: 'others', label: 'Others' },
-  { key: 'systemFault', label: 'System Fault' },
 ];
 
-export const ACTIVITY_LABEL = Object.fromEntries(ACTIVITY_TYPES.map((a) => [a.key, a.label]));
+// Software and System Fault are no longer entered; the labels stay so old entries still show.
+export const RETIRED_ACTIVITY_LABEL = { software: 'Software', systemFault: 'System Fault' };
+export const ACTIVITY_LABEL = { ...Object.fromEntries(ACTIVITY_TYPES.map((a) => [a.key, a.label])), ...RETIRED_ACTIVITY_LABEL };
 
 export const FACULTY_IN = {
   CENTER: 'Center',

@@ -8,7 +8,7 @@ export const REPORT_GROUPS = [
   { key: 'class', label: 'Class', color: '#2b78d6' },
   { key: 'seminar', label: 'Seminar / Work Shop', color: '#e8663d' },
   { key: 'preparation', label: 'Course Preparation / Learning', color: '#e9a20a' },
-  { key: 'marketing', label: 'Marketing', color: '#8a5cd0' },
+  { key: 'marketing', label: 'Marketing Support', color: '#8a5cd0' },
   { key: 'support', label: 'Database, Software & Travel', color: '#1f9d77' },
   { key: 'others', label: 'Others', color: '#8a93a6' },
 ];

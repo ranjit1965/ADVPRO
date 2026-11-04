@@ -11,6 +11,7 @@ from ..security import current_user
 router = APIRouter(prefix="/daily-entries", tags=["daily entries"])
 
 ACTIVITY_TYPES = ("class", "seminar", "marketing", "learning", "selfLearning", "database", "travelling", "software", "others", "systemFault")
+RETIRED_TYPES = {"software": "Software", "systemFault": "System Fault"}  # old entries only; no new ones
 TIME_RE = r"^([01]\d|2[0-3]):[0-5]\d$"
 SORTABLE = {"activityDate", "timeFrom", "facultyName", "activityType", "createdAt", "minutes", "id"}
 
@@ -42,6 +43,13 @@ class EntryIn(BaseModel):
     def not_future(cls, v: date) -> date:
         if v > date.today():
             raise ValueError("Activity date cannot be in the future")
+        return v
+
+    @field_validator("activityType")
+    @classmethod
+    def not_retired(cls, v: str) -> str:
+        if v in RETIRED_TYPES:
+            raise ValueError(f"{RETIRED_TYPES[v]} entries are no longer recorded")
         return v
 
     @model_validator(mode="after")

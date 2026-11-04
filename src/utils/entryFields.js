@@ -1,13 +1,16 @@
 // Display labels for each tab's fields, in screen order (used by Entry Details and Print).
 export const DETAIL_FIELDS = {
   class: [
+    ['courseId', 'Course ID'],
     ['batchNo', 'Batch No'],
     ['classIn', 'Class in'],
-    ['courseId', 'Course ID'],
     ['chapterNo', 'Chapter / Session No'],
     ['chapterType', 'Chap / Session Type'],
     ['dayOrder', 'Day Order'],
+    ['noOfStudents', 'No of Students'],
     ['todaySessionType', "Today's Session Type"],
+    ['dailyTest', 'Daily test'],
+    ['dailyActivityPost', 'Daily activity post'],
     ['todaySessionDetail', "Today's Session Detail", true],
   ],
   seminar: [

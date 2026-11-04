@@ -10,7 +10,10 @@ export const emptyHeader = (facultyCode = '', date = toISODate()) => ({
 });
 
 export const EMPTY_DETAILS = {
-  class: { batchNo: '', classIn: '', courseId: '', chapterNo: '', chapterType: '', dayOrder: '', todaySessionType: '', todaySessionDetail: '' },
+  class: {
+    courseId: '', batchNo: '', classIn: '', chapterNo: '', chapterType: '', dayOrder: '', noOfStudents: '', todaySessionType: '', todaySessionDetail: '',
+    dailyTest: '', dailyActivityPost: '',
+  },
   seminar: { seminarType: '', collegeName: '', dept: '', sec: '', totalStudent: '', yop: '', databaseCollected: '', assistance: '', remarks: '' },
   marketing: {
     marketingType: 'TC calls', collegeName: '', dept: '', sec: '', yop: '', total: '', freshRepeat: '',
@@ -20,14 +23,15 @@ export const EMPTY_DETAILS = {
   selfLearning: { learningType: 'Self Learning', courseId: '', chapterNo: '', chapterDetails: '' },
   database: { databaseName: '', fileName: '', records: '', storedPlace: '' },
   travelling: { fromPlace: '', toPlace: '', mode: '', purpose: '', remarks: '' },
+  // Software and System Fault are no longer entered (tabs removed); kept so old entries still open.
   software: { softwareName: '', softwareActivity: '', location: '', systems: '', remarks: '' },
   others: { heading: '', remarks: '' },
   systemFault: { productType: '', location: '', advproNo: '', productNo: '', faultError: '', faultStatus: '', solution: '', remarks: '' },
 };
 
 export const EMPTY_OUTSTATION = {
-  collegeName: '', dept: '', sec: '', totalStudent: '', totalAbsent: '', yop: '', assistanceFaculty: '',
-  videosShown: '', guidedExercisePpt: '', mentiQuiz: '', dailyTest: '', taskGiven: '',
+  collegeName: '', dept: '', sec: '', totalAbsent: '', yop: '', assistanceFaculty: '',
+  videosShown: '', guidedExercisePpt: '', mentiQuiz: '', taskGiven: '',
 };
 
 // Optional Yes / No questions of the College / OD section.
@@ -35,8 +39,13 @@ export const OD_CHECKS = [
   ['videosShown', 'Videos shown'],
   ['guidedExercisePpt', 'Guided exercise PPT shown'],
   ['mentiQuiz', 'Menti quiz conducted'],
-  ['dailyTest', 'Daily test'],
   ['taskGiven', 'Task given'],
+];
+
+// Optional Yes / No questions of every Class entry (Center and College / OD).
+export const CLASS_CHECKS = [
+  ['dailyTest', 'Daily test'],
+  ['dailyActivityPost', 'Daily activity post'],
 ];
 
 // Day Order of the class (1 to 20), for Center and College / OD.
@@ -62,7 +71,7 @@ export const OTHERS_DAILY_LIMIT = 60;
 export const freshDetails = () => JSON.parse(JSON.stringify(EMPTY_DETAILS));
 
 const REQUIRED = {
-  class: ['courseId', 'chapterNo', 'todaySessionType'],
+  class: ['courseId', 'chapterNo', 'noOfStudents', 'todaySessionType'],
   seminar: ['seminarType', 'collegeName', 'dept', 'totalStudent'],
   marketing: ['marketingType'],
   learning: ['courseId', 'chapterDetails'],
@@ -76,7 +85,7 @@ const REQUIRED = {
 
 export const isRequired = (tab, field) => REQUIRED[tab]?.includes(field);
 
-const NUMERIC = ['totalStudent', 'totalAbsent', 'total', 'records', 'systems', 'pages', 'yop', 'gradeA', 'gradeBPlus', 'gradeBMinus', 'gradeD', 'gradeNR'];
+const NUMERIC = ['noOfStudents', 'totalStudent', 'totalAbsent', 'total', 'records', 'systems', 'pages', 'yop', 'gradeA', 'gradeBPlus', 'gradeBMinus', 'gradeD', 'gradeNR'];
 
 /** Returns { header: {...}, details: {...}, outstation: {...} } error maps. */
 export function validateEntry({ header, tab, details, outstation }) {
@@ -94,10 +103,10 @@ export function validateEntry({ header, tab, details, outstation }) {
   if (tab === 'class') {
     if (header.facultyIn === 'Outstation') {
       if (!details.classIn) errors.details.classIn = 'Required';
-      ['collegeName', 'dept', 'totalStudent'].forEach((f) => {
+      ['collegeName', 'dept'].forEach((f) => {
         if (!String(outstation[f] ?? '').trim()) errors.outstation[f] = 'Required';
       });
-      if (Number(outstation.totalAbsent || 0) > Number(outstation.totalStudent || 0)) errors.outstation.totalAbsent = 'Cannot exceed Total Student';
+      if (Number(outstation.totalAbsent || 0) > Number(details.noOfStudents || 0)) errors.outstation.totalAbsent = 'Cannot exceed No of Students';
     }
   }
   Object.entries(details).forEach(([k, v]) => {
@@ -145,6 +154,7 @@ export function buildPayload({ header, tab, details, outstation }) {
     timeTo: header.timeTo,
     activityType: tab,
     details: d,
-    outstation: tab === 'class' && header.facultyIn === 'Outstation' ? { ...outstation } : null,
+    // College / OD keeps Total Student in its block too (older reports read it from there).
+    outstation: tab === 'class' && header.facultyIn === 'Outstation' ? { ...outstation, totalStudent: d.noOfStudents } : null,
   };
 }

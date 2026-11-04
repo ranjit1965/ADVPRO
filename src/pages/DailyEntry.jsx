@@ -43,7 +43,8 @@ export default function DailyEntry() {
 
   const [prefs] = usePreferences();
   const [header, setHeader] = useState(() => ({ ...emptyHeader(user.code, searchParams.get('date') || toISODate()), facultyIn: prefs.defaultFacultyIn }));
-  const [tab, setTab] = useState(searchParams.get('type') || prefs.defaultTab);
+  const openTab = (t) => (ACTIVITY_TYPES.some((a) => a.key === t) ? t : 'class');
+  const [tab, setTab] = useState(openTab(searchParams.get('type') || prefs.defaultTab));
   const [details, setDetails] = useState(freshDetails);
   const [outstation, setOutstation] = useState(EMPTY_OUTSTATION);
   const [errors, setErrors] = useState(NO_ERRORS);
@@ -65,7 +66,7 @@ export default function DailyEntry() {
   // Menu links such as Faculty › Others open the form on a specific tab.
   const typeParam = searchParams.get('type');
   useEffect(() => {
-    if (typeParam && TAB_COMPONENTS[typeParam]) setTab(typeParam);
+    if (typeParam && TAB_COMPONENTS[typeParam]) setTab(openTab(typeParam));
   }, [typeParam]);
 
   /* ---------- grid: entries of the selected faculty on the activity date ---------- */
@@ -100,7 +101,10 @@ export default function DailyEntry() {
   const loadIntoForm = useCallback((entry) => {
     setHeader({ facultyCode: entry.facultyCode, activityDate: entry.activityDate, facultyIn: entry.facultyIn, timeFrom: entry.timeFrom, timeTo: entry.timeTo });
     setTab(entry.activityType);
-    setDetails((d) => ({ ...d, [entry.activityType]: { ...EMPTY_DETAILS[entry.activityType], ...entry.details } }));
+    const old = entry.outstation || {};
+    // Older College / OD entries kept No of Students and Daily test in the College / OD block.
+    const moved = entry.activityType === 'class' ? { noOfStudents: entry.details?.noOfStudents || old.totalStudent || '', dailyTest: entry.details?.dailyTest || old.dailyTest || '' } : {};
+    setDetails((d) => ({ ...d, [entry.activityType]: { ...EMPTY_DETAILS[entry.activityType], ...entry.details, ...moved } }));
     setOutstation(entry.outstation ? { ...EMPTY_OUTSTATION, ...entry.outstation } : EMPTY_OUTSTATION);
     setEditingId(entry.id);
     setSelectedId(entry.id);

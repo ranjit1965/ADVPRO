@@ -2,6 +2,7 @@
   "_comment": "Dropdown option lists written to the MongoDB lookups collection on first start. Edit them in the database afterwards.",
   "lookups": {
     "classIn": [
+      "Advantage Pro",
       "College Lab",
       "Seminar Hall",
       "Classroom",
@@ -20,7 +21,8 @@
       "Theory + Lab",
       "Revision",
       "Assessment",
-      "Doubt Clearing"
+      "Doubt Clearing",
+      "LAB Creation"
     ],
     "colleges": [
       "Anna University - CEG Campus",

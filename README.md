@@ -100,26 +100,35 @@ after a confirmation.
 
 ### Faculty Daily Activity Entry
 
-* Header: **Faculty Name** (type to search), **Activity Date**, **Faculty in**
-  (Center / College / OD), **Time From**, **Time To**, and **Worked Hours**.
+* Header, row 1: **Faculty Name** (type to search) and **Activity Date**. Row 2: **Time From**,
+  **Time To**, **Faculty in** (Center / College / OD, to the right of Time To) and **Worked Hours**.
 * **Time From is picked automatically**: a new entry starts at the Time To of the day's last
   entry (after a save, after Clear, and when the faculty or date changes). Only Time To is
   chosen by hand; Time From can still be changed if needed.
-* Ten tabs: **Class, Seminar / Work Shop, Marketing, Course Preparation,
-  Self Learning / Knowledge Sharing, DataBase Creation/Download, Travelling Time, Software,
-  Others, System Fault**. Each tab shows a badge with that day's entry count.
-* **Class**: Batch No (Center) or Class in (College / OD), Course ID, Chapter / Session No,
-  Chap / Session Type (Theory / Lab), **Day Order (1 to 20)**, Today's Session Type and Detail.
-  With **College / OD** the College / OD block appears: College Name, Dept, Sec, Total Student,
-  Total Absent, YOP, Assistance Faculty and five optional Yes / No questions: Videos shown,
-  Guided exercise PPT shown, Menti quiz conducted, Daily test, Task given.
-  (The stored value is still `Outstation`, so older entries keep working.)
+* Eight tabs: **Class, Seminar / Work Shop, Marketing Support, Course Preparation,
+  Self Learning / Knowledge Sharing, DataBase Creation/Download, Travelling Time, Others**.
+  Each tab shows a badge with that day's entry count. The Software and System Fault sections
+  were removed: new ones cannot be saved, but old ones still show in My Entries, reports and print.
+* **Class**: **Course ID** first (left), then **Batch No** (Center) or **Class in** (College / OD,
+  options include **Advantage Pro**), Chapter / Session No, Chap / Session Type (Theory / Lab),
+  **Day Order (1 to 20)**, **No of Students**, Today's Session Type (includes **LAB Creation**),
+  **Daily test** and **Daily activity post** (Yes / No, for Center and College / OD), and Detail.
+  With **College / OD** the College / OD block appears: College Name, Dept, Sec, Total Absent,
+  YOP, Assistance Faculty and four optional Yes / No questions: Videos shown, Guided exercise
+  PPT shown, Menti quiz conducted, Task given. (The stored value is still `Outstation`, so older
+  entries keep working; their Total Student and Daily test are shown in the new fields.)
 * **Class › Batch No** lists only the batches assigned to the selected faculty (see Batch import
   below): open batches first, then batches completed in the last 12 months. Picking a batch fills
   Course ID when that course is in the course list. **Request new course** emails the Manager /
   Admin (`COURSE_REQUEST_EMAILS`) to add a missing course.
-* **YOP** (Seminar, Marketing, College / OD) can be picked from the list or typed: any 4-digit
-  year is accepted. The list has the saved YOP options plus the years around the current year.
+* **YOP** (Seminar, Marketing, College / OD) can be picked from the saved YOP options or typed:
+  any 4-digit year is accepted.
+* **Daily Activity Print** uses the same layout as the old software: ADVANTAGE PRO, "NAME (CODE)
+  Daily Activity Report", Date, and the columns JobDate (01/Sep/26), Time From, Time To, Batch No,
+  Paper Name (course name), S.No (chapter), S.Type (L / T), College Name, Dept, YOP, Topic and
+  C.Type, with the code legend below (CL Class, GL Seminar Guest, IV Seminar Industrial Visit,
+  CO Counseling, MK Marketing Support, CP Learn Preparation, SL Learn Self Preparation, DB DataBase,
+  TR Travelling, OT Others; SW Software and SF System Fault for old entries). Times stay in the 12-hour format.
 * **Course Preparation**: Course ID (+ Add course), Material Type, Chapter / Session No,
   No of Pages, Details. **Self Learning / Knowledge Sharing**: Type, Course ID, Chapter /
   Session No, Details. Old "Learning / Preparation" entries are moved to the right tab on the
@@ -129,7 +138,12 @@ after a confirmation.
   list only the values that **start with** the typed letters.
 * Buttons: **Save** (Ctrl + S), **Clear**, **Edit**, **Delete**, **Exit**.
 * Validation: required fields, Time To after Time From, no future dates, numbers only where
-  expected, Total Absent not above Total Student, and no overlapping time slots.
+  expected, Total Absent not above No of Students, and no overlapping time slots.
+
+* "Advantage Pro" (Class in) and "LAB Creation" (Today's Session Type) are added to an existing
+  database automatically at the next backend start.
+* Screens fit phones (iPhone 375 to 430 px wide), tablets, laptops, desktops and large monitors
+  (content widens to 1680 px on 2K / 4K screens). Date boxes no longer overflow on iPhone Safari.
 
 ### Biometric time in / out (Master › Biometric)
 
@@ -197,7 +211,7 @@ after a confirmation.
 
 The screenshots did not show these, so sensible defaults were used and are easy to change:
 
-* Fields of the **Marketing, DataBase Creation/Download, Travelling Time** and **Software**
+* Fields of the **Marketing Support, DataBase Creation/Download** and **Travelling Time**
   tabs (`src/components/entry/tabs/`).
 * Monthly Plan and Students Mark Entry layouts.
 

@@ -87,6 +87,32 @@
   .field-control[aria-invalid='true'] {
     @apply border-danger-500 focus:border-danger-500 focus:ring-danger-50;
   }
+  /* Date and time boxes keep the same width and height as the other fields on every screen. */
+  input.field-control[type='date'],
+  input.field-control[type='time'],
+  input.field-control[type='month'] {
+    min-width: 0;
+    max-width: 100%;
+    min-height: 38px;
+  }
+}
+
+/* iPhone / iPad Safari: date and time inputs ignore width: 100% and grow past the card,
+   and an empty one shows no text. Drop the native box sizing and left-align the value. */
+@supports (-webkit-touch-callout: none) {
+  input.field-control[type='date'],
+  input.field-control[type='time'],
+  input.field-control[type='month'] {
+    -webkit-appearance: none;
+    appearance: none;
+    display: block;
+    width: 100%;
+    line-height: 1.25rem;
+  }
+  input.field-control::-webkit-date-and-time-value {
+    text-align: left;
+    min-height: 1.25rem;
+  }
 }
 
 @keyframes toast-in {

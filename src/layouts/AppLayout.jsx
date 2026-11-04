@@ -33,7 +33,7 @@ export default function AppLayout() {
       <Sidebar collapsed={collapsed} onToggleCollapsed={() => setCollapsed((c) => !c)} mobileOpen={mobileOpen} onCloseMobile={() => setMobileOpen(false)} onLogout={handleLogout} />
       <div className={cn('flex min-h-screen flex-col transition-[padding] duration-200 print:!pl-0', collapsed ? 'lg:pl-[72px]' : 'lg:pl-64')}>
         <Header onOpenMobile={() => setMobileOpen(true)} onLogout={handleLogout} />
-        <main className="print-full mx-auto w-full max-w-[1400px] flex-1 px-4 py-6 sm:px-6 lg:py-8">
+        <main className="print-full mx-auto w-full max-w-[1400px] 2xl:max-w-[1680px] flex-1 px-4 py-6 sm:px-6 lg:py-8">
           <ErrorBoundary resetKey={pathname}>
             <Outlet />
           </ErrorBoundary>

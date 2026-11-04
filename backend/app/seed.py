@@ -53,6 +53,14 @@ def migrate() -> None:
         "2026-10-split-learning",
         lambda: db.entries.update_many({"activityType": "learning", "details.learningType": {"$in": ["Self Learning", "Knowledge Sharing"]}}, {"$set": {"activityType": "selfLearning"}}),
     )
+    # New choices: Class in "Advantage Pro" and Today's Session Type "LAB Creation".
+    once(
+        "2026-11-classin-lab-creation",
+        lambda: (
+            db.lookups.update_one({"_id": "classIn"}, {"$addToSet": {"values": "Advantage Pro"}}, upsert=True),
+            db.lookups.update_one({"_id": "sessionTypes"}, {"$addToSet": {"values": "LAB Creation"}}, upsert=True),
+        ),
+    )
 
 
 if __name__ == "__main__":

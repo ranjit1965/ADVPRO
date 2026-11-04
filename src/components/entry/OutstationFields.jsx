@@ -20,14 +20,13 @@ export default function OutstationFields({ values, errors, set, lookups, onAddLo
         <LookupSelect kind="colleges" label="College Name" className="sm:col-span-2 lg:col-span-5" options={lookups.colleges} onAddLookup={onAddLookup} {...f('collegeName', true)} />
         <LookupSelect kind="departments" label="Dept" className="lg:col-span-3" options={lookups.departments} onAddLookup={onAddLookup} {...f('dept', true)} />
         <Select label="Sec" className="lg:col-span-2" options={lookups.sections} {...f('sec')} />
-        <Input label="Total Student" className="lg:col-span-2" inputMode="numeric" {...f('totalStudent', true)} />
         <Input label="Total Absent" className="lg:col-span-2" inputMode="numeric" {...f('totalAbsent')} />
         <YearInput label="YOP" className="lg:col-span-2" options={lookups.yopOptions} {...f('yop')} />
-        <SearchableSelect label="Assistance Faculty" className="sm:col-span-2 lg:col-span-4" options={facultyOptions(lookups)} {...f('assistanceFaculty')} />
+        <SearchableSelect label="Assistance Faculty" className="sm:col-span-2 lg:col-span-8" options={facultyOptions(lookups)} {...f('assistanceFaculty')} />
       </div>
       <div className="mt-4 border-t border-accent-600/15 pt-3">
         <p className="mb-2 text-[12px] font-medium text-ink-500">In this session (optional)</p>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {OD_CHECKS.map(([name, label]) => (
             <RadioGroup key={name} size="sm" label={label} name={`out-${name}`} options={['Yes', 'No']} value={values[name] ?? ''} onChange={(v) => set(name, v)} />
           ))}

@@ -28,3 +28,90 @@ export function entrySummary(e) {
       return ACTIVITY_LABEL[e.activityType] || '';
   }
 }
+
+/** Activity codes printed in the C.Type column of the Daily Activity Report (same as the old software). */
+export const C_TYPE_LEGEND = [
+  ['CL', 'Class'],
+  ['GL', 'Seminar Guest'],
+  ['IV', 'Seminar Industrial Visit'],
+  ['CO', 'Counseling'],
+  ['MK', 'Marketing Support'],
+  ['CP', 'Learn Preparation'],
+  ['SL', 'Learn Self Preparation'],
+  ['DB', 'DataBase'],
+  ['TR', 'Travelling'],
+  ['SW', 'Software'],
+  ['SF', 'System Fault'],
+  ['OT', 'Others'],
+];
+
+function cType(e) {
+  const d = e.details || {};
+  switch (e.activityType) {
+    case 'class':
+      return 'CL';
+    case 'seminar':
+      return d.seminarType === 'Guest Lecture' ? 'GL' : 'IV';
+    case 'marketing':
+      return d.marketingType === 'Councelling' ? 'CO' : 'MK';
+    case 'learning':
+      return 'CP';
+    case 'selfLearning':
+      return 'SL';
+    case 'database':
+      return 'DB';
+    case 'travelling':
+      return 'TR';
+    case 'software':
+      return 'SW';
+    case 'systemFault':
+      return 'SF';
+    default:
+      return 'OT';
+  }
+}
+
+/**
+ * One row of the Daily Activity Report in the old software's columns:
+ * Batch No, Paper Name, S.No, S.Type, College Name, Dept, YOP, Topic, C.Type.
+ */
+export function reportRow(e, courses = []) {
+  const d = e.details || {};
+  const o = e.outstation || {};
+  const join = (...parts) => parts.filter(Boolean).join(' · ');
+  const paper = d.courseId ? (courses.find((c) => c.id === d.courseId)?.name || d.courseId).toUpperCase() : '';
+  const atCollege = e.activityType === 'class' && e.facultyIn === 'Outstation';
+  const row = {
+    batchNo: e.activityType === 'class' ? d.batchNo || d.classIn || '' : '',
+    paper,
+    sNo: ['class', 'learning', 'selfLearning'].includes(e.activityType) ? d.chapterNo || '' : '',
+    sType: e.activityType === 'class' && d.chapterType ? d.chapterType.charAt(0) : '',
+    college: atCollege ? o.collegeName : d.collegeName || '',
+    dept: atCollege ? o.dept : d.dept || '',
+    yop: atCollege ? o.yop : d.yop || '',
+    cType: cType(e),
+  };
+  switch (e.activityType) {
+    case 'class':
+      row.topic = join(d.todaySessionDetail || d.todaySessionType, d.dayOrder && `Day ${d.dayOrder}`);
+      break;
+    case 'learning':
+      row.topic = join(d.materialType, d.chapterDetails, d.pages && `${d.pages} pages`);
+      break;
+    case 'selfLearning':
+      row.topic = join(d.learningType, d.chapterDetails);
+      break;
+    case 'seminar':
+      row.topic = join(d.seminarType, d.totalStudent && `${d.totalStudent} students`, d.remarks);
+      break;
+    case 'marketing':
+      row.topic = join(d.marketingType, d.total && `${d.total} total`, d.enquiryFormNo, d.registerNo, d.remarks);
+      break;
+    case 'others':
+      row.topic = join(d.heading, d.remarks && d.remarks.toLowerCase() !== String(d.heading || '').toLowerCase() ? d.remarks : '');
+      break;
+    default:
+      row.topic = join(entrySummary(e), d.purpose, d.solution, d.remarks);
+  }
+  return row;
+}
