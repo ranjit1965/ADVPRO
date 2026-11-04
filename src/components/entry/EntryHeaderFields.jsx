@@ -1,7 +1,7 @@
 import { Building2, MapPin, Timer } from 'lucide-react';
 import SearchableSelect from '../ui/SearchableSelect';
 import DatePicker from '../ui/DatePicker';
-import TimeSelect from '../ui/TimeSelect';
+import TimeField from '../ui/TimeField';
 import RadioGroup from '../ui/RadioGroup';
 import FormField from '../ui/FormField';
 import { facultyOptions } from './fieldProps';
@@ -20,24 +20,22 @@ export default function EntryHeaderFields({ header, errors, onChange, lookups, l
     <div className="grid grid-cols-2 gap-x-3 gap-y-4 sm:gap-4 lg:grid-cols-12">
       <SearchableSelect id="facultyCode" label="Faculty Name" required className="col-span-2 lg:col-span-8" options={facultyOptions(lookups)} value={header.facultyCode} onChange={set('facultyCode')} error={errors.facultyCode} placeholder="Search faculty" />
       <DatePicker id="activityDate" label="Activity Date" required className="col-span-2 lg:col-span-4" value={header.activityDate} max={toISODate()} onChange={set('activityDate')} error={errors.activityDate} />
-      <TimeSelect
+      <TimeField
         id="timeFrom"
         label="Time From"
         required
         className="lg:col-span-3 xl:col-span-2"
-        from="06:00"
         hint={lastEnd && header.timeFrom === lastEnd ? "Last entry's end time" : !lastEnd && header.timeFrom === DAY_START ? 'Day starts 09:00 AM' : undefined}
         value={header.timeFrom}
         onChange={set('timeFrom')}
         error={errors.timeFrom}
       />
-      <TimeSelect
+      <TimeField
         id="timeTo"
         label="Time To"
         required
         className="lg:col-span-3 xl:col-span-2"
         after={header.timeFrom || undefined}
-        placeholder={header.timeFrom ? `After ${formatTime(header.timeFrom)}` : 'Pick Time From first'}
         disabled={!header.timeFrom}
         value={header.timeTo}
         onChange={set('timeTo')}

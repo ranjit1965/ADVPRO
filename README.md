@@ -102,12 +102,13 @@ after a confirmation.
 
 * Header, row 1: **Faculty Name** (type to search) and **Activity Date**. Row 2: **Time From**,
   **Time To**, **Faculty in** (Center / College / OD, to the right of Time To) and **Worked Hours**.
-* **Time From / Time To** are 12-hour dropdowns in 5-minute steps (type "10", "1030" or "2 pm" to
-  jump). The first entry of a day starts at **09:00 AM**; the next one starts at the Time To of
-  the day's last entry (after a save, after Clear, and when the faculty or date changes).
-  **Time To lists only the times after Time From** (Time From 10:00 AM lists 10:05 AM onwards).
-  If Time From is changed to a later time than Time To, a red warning shows at once under Time To
-  and on Worked Hours, before Save.
+* **Time From / Time To** are the usual time boxes: type the time (hh:mm AM/PM) or click the
+  clock for the hour, minute and AM / PM columns. The first entry of a day starts at
+  **09:00 AM**; the next one starts at the Time To of the day's last entry (after a save, after
+  Clear, and when the faculty or date changes). **Time To's columns list only the times after
+  Time From** (Time From 10:00 AM lists hours 10 and 11 AM, then PM; minutes from 10:01).
+  If a Time To at or before Time From is typed, or Time From is changed past Time To, a red
+  warning shows at once under Time To and on Worked Hours, before Save.
 * Eight tabs: **Class, Seminar / Work Shop, Marketing Support, Course Preparation,
   Self Learning / Knowledge Sharing, DataBase Creation/Download, Travelling Time, Others**.
   Each tab shows a badge with that day's entry count. The tabs share the full row: one row on
