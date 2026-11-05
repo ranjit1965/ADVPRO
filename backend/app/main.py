@@ -14,9 +14,7 @@ logging.basicConfig(level=logging.INFO)
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     seed.run()
-    stop = batch_import.start_scheduler()  # monthly BatchMaster import
     yield
-    stop.set()
 
 
 app = FastAPI(title="Daily Entry Report API", version="1.0.0", lifespan=lifespan)

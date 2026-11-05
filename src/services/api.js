@@ -264,7 +264,7 @@ export async function getDashboardSummary(facultyCode) {
 
 
 /* ------------------------------------------------------------ Biometric */
-// Master › Biometric: folder of device files, import, and links for unmatched device users.
+// Master › Biometric / Admin › Data Upload: device file upload, tolerance, and links for unmatched device users.
 
 export async function getBiometricSettings() {
   return request('/biometric/settings');
@@ -274,17 +274,12 @@ export async function saveBiometricSettings(body) {
   return request('/biometric/settings', { method: 'PUT', body });
 }
 
-/** Reads every file in the folder; returns the import summary. */
-export async function importBiometric() {
-  return request('/biometric/import', { method: 'POST' });
-}
-
-/** Imports one device export file picked in the browser (for a backend that cannot reach the folder). */
+/** Saves the device export file chosen in the browser (.xlsx, .xls or .csv): read and stored in the database. */
 export async function uploadBiometric(file) {
   return request('/biometric/upload', { method: 'POST', body: file, params: { name: file.name } });
 }
 
-/** Links a device user id / name to an employee code (empty code removes the link), then re-imports. */
+/** Links a device user id / name to an employee code (empty code removes the link) and moves their days. */
 export async function saveBiometricMap(deviceKey, code) {
   return request('/biometric/map', { method: 'PUT', body: { deviceKey, code: code || null } });
 }
@@ -294,27 +289,18 @@ export async function getBiometricRecords(month, code) {
 }
 
 /* --------------------------------------------------------- Batch import */
-// Master › Batch Import: Access file (or Excel / CSV export) of the BatchMaster table.
+// Master › Batch Import / Admin › Data Upload: the BatchMaster Excel file.
 
 export async function getBatchImportSettings() {
   return request('/batch-import/settings');
 }
 
-export async function saveBatchImportSettings(body) {
-  return request('/batch-import/settings', { method: 'PUT', body });
-}
-
-/** Reads the batch table, saves the batches in Master › Batch; returns the import summary. */
-export async function importBatches() {
-  return request('/batch-import/import', { method: 'POST' });
-}
-
-/** Imports a BatchMaster file picked in the browser, for example from the office share (works on Vercel). */
+/** Saves the BatchMaster file chosen in the browser (.xlsx, .xls or .csv): read and stored in the database. */
 export async function uploadBatches(file) {
   return request('/batch-import/upload', { method: 'POST', body: file, params: { name: file.name } });
 }
 
-/** Links a faculty short name from the file to an employee code (empty code removes the link), then re-imports. */
+/** Links a faculty short name from the file to an employee code (empty code removes the link) and assigns its batches. */
 export async function saveBatchFacultyMap(shortName, code) {
   return request('/batch-import/map', { method: 'PUT', body: { shortName, code: code || null } });
 }

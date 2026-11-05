@@ -4,7 +4,7 @@ import { masters } from './masters.json';
 export const MASTER_MENU = [
   { key: 'registrations', label: 'Registration' },
   { key: 'batches', label: 'Batch' },
-  { key: 'batchImport', label: 'Batch Import', to: '/master/batch-import', description: 'Read batches from the Access BatchMaster table and assign each one to its faculty.' },
+  { key: 'batchImport', label: 'Batch Import', to: '/master/batch-import', description: 'Upload the BatchMaster Excel file and assign each batch to its faculty.' },
   { key: 'employees', label: 'Employees', to: '/master/employees', description: 'Add, edit, disable and delete employee and faculty logins.' },
   { key: 'courses', label: 'Course', to: '/master/courses', description: 'Courses and their chapter / session details.' },
   { key: 'attendance', label: 'Attendence' },
@@ -14,7 +14,7 @@ export const MASTER_MENU = [
   { key: 'monthlyStaffReport', label: 'MontlyStaffReport', to: '/faculty/reports/working-hours', description: 'Working hours per faculty for a month.' },
   { key: 'vendors', label: 'Vendor' },
   { key: 'assets', label: 'Assest' },
-  { key: 'biometric', label: 'Biometric', to: '/master/biometric', description: 'Read Time In / Time Out from the biometric device files and compare them with the entries.' },
+  { key: 'biometric', label: 'Biometric', to: '/master/biometric', description: 'Upload the biometric file; Time In / Time Out are compared with the entries.' },
 ].map((m) => {
   const def = masters.find((d) => d.key === m.key);
   return { ...m, to: m.to || `/master/${m.key}`, description: m.description || def?.description };

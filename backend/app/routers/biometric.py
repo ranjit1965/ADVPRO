@@ -1,21 +1,22 @@
-"""Biometric time in / time out.
+"""Biometric time in / time out (Master › Biometric and Admin › Data Upload).
 
-Master (Manager / Admin) sets the folder where the device exports its files. "Import now" reads
-every file there, keeps the first and last punch of each person per day in `biometric_days`,
-and the monthly report compares those times with the person's daily entries.
+Admin / Manager upload the device export (.xlsx, .xls or .csv; .txt / .tsv / .dat logs too).
+"Save" keeps the first and last punch of each person per day in
+`biometric_days`; uploading a day again replaces it. People the system cannot match are kept in
+`biometric_unmatched` until they are linked to an employee. The monthly report compares those
+times with the person's daily entries. There is no folder path.
 """
 import calendar
 import re
-import tempfile
 from datetime import datetime, timezone
-from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel, Field
+from pymongo import UpdateOne
 
 from .. import db
-from ..biometric_files import EXTENSIONS, read_folder
+from ..biometric_files import ReadResult, read_rows, rows_from_upload
 from ..security import current_user, require_roles
 
 router = APIRouter(prefix="/biometric", tags=["biometric"])
@@ -26,7 +27,6 @@ DEFAULT_TOLERANCE = 15  # minutes of difference still counted as matching
 
 
 class SettingsIn(BaseModel):
-    folderPath: str = Field(default="", max_length=500)  # empty when files are uploaded instead
     toleranceMinutes: int = Field(default=DEFAULT_TOLERANCE, ge=0, le=240)
 
 
@@ -36,13 +36,7 @@ class MapIn(BaseModel):
 
 
 def _settings() -> dict:
-    return db.db.settings.find_one({"_id": SETTINGS_ID}) or {"_id": SETTINGS_ID, "folderPath": "", "toleranceMinutes": DEFAULT_TOLERANCE, "idMap": {}}
-
-
-def _public(s: dict) -> dict:
-    out = {k: s.get(k) for k in ("folderPath", "toleranceMinutes", "lastImport", "updatedBy", "updatedAt")}
-    out["idMap"] = s.get("idMap") or {}
-    return out
+    return db.db.settings.find_one({"_id": SETTINGS_ID}) or {"_id": SETTINGS_ID, "toleranceMinutes": DEFAULT_TOLERANCE, "idMap": {}}
 
 
 def _norm(text: str) -> str:
@@ -61,6 +55,34 @@ def _minutes(hhmm: str | None) -> int | None:
     return h * 60 + m
 
 
+def _unmatched() -> list[dict]:
+    """People in uploaded files not linked to an employee yet, with how many days they have."""
+    out: dict[str, dict] = {}
+    for u in db.db.biometric_unmatched.find({}, {"_id": 0, "key": 1, "deviceKey": 1, "deviceId": 1, "name": 1}):
+        item = out.setdefault(u["key"], {"deviceKey": u["deviceKey"], "deviceId": u.get("deviceId", ""), "name": u.get("name", ""), "days": 0})
+        item["days"] += 1
+    return sorted(out.values(), key=lambda v: _norm(v["name"] or v["deviceKey"]))
+
+
+def _public(s: dict) -> dict:
+    out = {k: s.get(k) for k in ("toleranceMinutes", "lastImport", "updatedBy", "updatedAt")}
+    out["toleranceMinutes"] = out["toleranceMinutes"] if out["toleranceMinutes"] is not None else DEFAULT_TOLERANCE
+    out["idMap"] = s.get("idMap") or {}
+    if out["lastImport"]:
+        out["lastImport"] = {**out["lastImport"], "unmatched": _unmatched()}
+    return out
+
+
+def _store_day(code: str, name: str, day: str, times: list[str], files: list[str], now) -> UpdateOne:
+    times = sorted(set(times))
+    return UpdateOne(
+        {"_id": f"{code}|{day}"},
+        {"$set": {"code": code, "name": name, "date": day, "timeIn": times[0], "timeOut": times[-1] if len(times) > 1 else None,
+                  "punches": len(times), "files": sorted(set(files)), "importedAt": now}},
+        upsert=True,
+    )
+
+
 @router.get("/settings")
 def get_settings(_: dict = Depends(view_roles)):
     return _public(_settings())
@@ -68,61 +90,61 @@ def get_settings(_: dict = Depends(view_roles)):
 
 @router.put("/settings")
 def save_settings(body: SettingsIn, me: dict = Depends(master_roles)):
-    folder = body.folderPath.strip()
-    if folder and not Path(folder).is_dir():
-        raise HTTPException(400, f"Folder not found on the server: {folder}")
     db.db.settings.update_one(
         {"_id": SETTINGS_ID},
-        {"$set": {"folderPath": folder, "toleranceMinutes": body.toleranceMinutes, "updatedBy": me["name"], "updatedAt": datetime.now(timezone.utc).isoformat()}},
+        {"$set": {"toleranceMinutes": body.toleranceMinutes, "updatedBy": me["name"], "updatedAt": datetime.now(timezone.utc).isoformat()}},
         upsert=True,
     )
     return _public(_settings())
 
 
+@router.post("/upload")
+async def upload(request: Request, name: str = Query(..., min_length=1, max_length=200), me: dict = Depends(master_roles)):
+    """Admin / Manager upload the file (raw body, .xlsx / .xls / .csv); it is read and saved to the database."""
+    data = await request.body()
+    try:
+        rows = await run_in_threadpool(rows_from_upload, name, data)
+    except Exception as exc:  # wrong type, empty, unreadable
+        raise HTTPException(400, f"Could not read the file: {exc}") from exc
+    if not rows:
+        raise HTTPException(400, "The file has no rows")
+    return await run_in_threadpool(run_import, rows, name)
+
+
 @router.put("/map")
 def save_map(body: MapIn, _: dict = Depends(master_roles)):
-    """Links a device user (id or name the system could not match) to an employee, then re-imports."""
+    """Links a device user (id or name the system could not match) to an employee and moves
+    that person's saved days to the employee."""
     key = _map_key(body.deviceKey)
     if body.code:
-        if not db.users.find_one({"code": body.code}):
+        u = db.users.find_one({"code": body.code}, {"_id": 0, "code": 1, "name": 1})
+        if not u:
             raise HTTPException(400, "Unknown employee")
         db.db.settings.update_one({"_id": SETTINGS_ID}, {"$set": {f"idMap.{key}": body.code}}, upsert=True)
+        now = datetime.now(timezone.utc)
+        ops = []
+        for d in db.db.biometric_unmatched.find({"key": key}):
+            have = db.db.biometric_days.find_one({"_id": f"{u['code']}|{d['date']}"}) or {}
+            times = list(d.get("times") or []) + [t for t in (have.get("timeIn"), have.get("timeOut")) if t]
+            ops.append(_store_day(u["code"], u["name"], d["date"], times, list(d.get("files") or []) + list(have.get("files") or []), now))
+        if ops:
+            db.db.biometric_days.bulk_write(ops, ordered=False)
+        db.db.biometric_unmatched.delete_many({"key": key})
     else:
         db.db.settings.update_one({"_id": SETTINGS_ID}, {"$unset": {f"idMap.{key}": ""}})
-    return run_import(_settings())
+    return _public(_settings())["lastImport"] or {"unmatched": _unmatched()}
 
 
-@router.post("/import")
-def import_now(_: dict = Depends(master_roles)):
-    return run_import(_settings())
-
-
-@router.post("/upload")
-async def upload_and_import(request: Request, name: str = Query(..., min_length=1, max_length=200), _: dict = Depends(master_roles)):
-    """Imports one device export file sent from the browser (raw file body), for a backend that
-    cannot reach the folder, such as on Vercel."""
-    if Path(name).suffix.lower() not in EXTENSIONS:
-        raise HTTPException(400, "Upload a .xlsx, .xls, .csv, .txt, .tsv or .dat export from the biometric device")
-    data = await request.body()
-    if not data:
-        raise HTTPException(400, "The file is empty")
-    if len(data) > 20 * 1024 * 1024:
-        raise HTTPException(400, "The file is larger than 20 MB")
-    with tempfile.TemporaryDirectory() as tmp:
-        (Path(tmp) / Path(name).name).write_bytes(data)
-        return await run_in_threadpool(run_import, _settings(), tmp)
-
-
-def run_import(s: dict, folder: str | None = None) -> dict:
-    uploaded = folder is not None
-    folder = folder or s.get("folderPath")
-    if not folder:
-        raise HTTPException(400, "Set the biometric folder path first, or upload the export file")
-    if not Path(folder).is_dir():
-        raise HTTPException(400, f"Folder not found on the server: {folder}. If the backend runs on Vercel, use Upload file instead.")
-    result = read_folder(folder)
-    if uploaded and result.errors and not result.files:
-        raise HTTPException(400, "Could not read the file: " + "; ".join(result.errors))
+def run_import(rows: list[list], file_name: str) -> dict:
+    result = ReadResult()
+    try:
+        read_rows(rows, file_name, result)
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(400, f"Could not read the file: {exc}") from exc
+    if not result.punches:
+        raise HTTPException(400, "No punches found. The file needs an employee code or name column and a date with time, or In / Out time columns.")
+    result.files.append(file_name)
+    s = _settings()
 
     users = list(db.users.find({}, {"_id": 0, "code": 1, "userId": 1, "name": 1}))
     by_code = {_norm(u["code"]): u for u in users}
@@ -138,27 +160,29 @@ def run_import(s: dict, folder: str | None = None) -> dict:
         return by_code.get(_norm(pid)) or by_user_id.get(_norm(pid)) or by_name.get(_norm(name))
 
     days: dict[tuple[str, str], dict] = {}
-    unmatched: dict[str, dict] = {}
+    unmatched: dict[tuple[str, str], dict] = {}
     for p in result.punches:
         u = match(p.person_id, p.name)
+        hhmm = [t.strftime("%H:%M") for t in p.times]
         if not u:
-            key = p.person_id or p.name
-            item = unmatched.setdefault(_norm(key), {"deviceKey": key, "deviceId": p.person_id, "name": p.name, "days": set()})
-            item["days"].add(p.day.isoformat())
+            dk = p.person_id or p.name
+            item = unmatched.setdefault((_map_key(dk), p.day.isoformat()), {"key": _map_key(dk), "deviceKey": dk, "deviceId": p.person_id, "name": p.name, "date": p.day.isoformat(), "times": [], "files": set()})
+            item["times"] += hhmm
+            item["files"].add(p.file)
             continue
         d = days.setdefault((u["code"], p.day.isoformat()), {"code": u["code"], "name": u["name"], "date": p.day.isoformat(), "times": [], "files": set()})
-        d["times"] += p.times
+        d["times"] += hhmm
         d["files"].add(p.file)
 
     now = datetime.now(timezone.utc)
-    for (code, day), d in days.items():
-        times = sorted(set(d["times"]))
-        t_in, t_out = times[0].strftime("%H:%M"), (times[-1].strftime("%H:%M") if len(times) > 1 else None)
-        db.db.biometric_days.update_one(
-            {"_id": f"{code}|{day}"},
-            {"$set": {"code": code, "name": d["name"], "date": day, "timeIn": t_in, "timeOut": t_out, "punches": len(times), "files": sorted(d["files"]), "importedAt": now}},
-            upsert=True,
-        )
+    # One bulk write per collection: fast even for a month of punches for everyone.
+    if days:
+        db.db.biometric_days.bulk_write([_store_day(code, d["name"], day, d["times"], list(d["files"]), now) for (code, day), d in days.items()], ordered=False)
+    if unmatched:
+        db.db.biometric_unmatched.bulk_write([
+            UpdateOne({"_id": f"{k}|{day}"}, {"$set": {**{x: v for x, v in u.items() if x != "files"}, "times": sorted(set(u["times"])), "files": sorted(u["files"])}}, upsert=True)
+            for (k, day), u in unmatched.items()
+        ], ordered=False)
 
     summary = {
         "at": now.isoformat(),
@@ -167,11 +191,10 @@ def run_import(s: dict, folder: str | None = None) -> dict:
         "skippedRows": result.skipped_rows,
         "daysStored": len(days),
         "people": len({c for c, _ in days}),
-        "unmatched": sorted(({**v, "days": len(v["days"])} for v in unmatched.values()), key=lambda v: _norm(v["name"] or v["deviceKey"])),
         "errors": result.errors,
     }
     db.db.settings.update_one({"_id": SETTINGS_ID}, {"$set": {"lastImport": summary}}, upsert=True)
-    return summary
+    return {**summary, "unmatched": _unmatched()}
 
 
 @router.get("/records")

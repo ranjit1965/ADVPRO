@@ -1,43 +1,30 @@
-r"""Master › Batch Import.
+r"""Master › Batch Import and Admin › Data Upload (Batch Master).
 
-The batch file comes from the path saved on the Batch Import page, or else from BATCH_IMPORT_PATH in
-backend/.env (a folder such as the shared \\192.168.0.129\Test\DAILY_REPORT_SOFTWARE_2026, or one file).
-It is imported automatically once a month (BATCH_IMPORT_DAY / BATCH_IMPORT_HOUR) and whenever
-Manager / Admin click "Import batches". The import reads every batch with its allotted faculty
-short name, matches the short name to an employee code and saves the batch in Master › Batch (master_batches) assigned to that
-employee. The Class tab then offers each faculty the batches assigned to them.
+Admin / Manager upload the BatchMaster Excel file (.xlsx, .xls or .csv, any column order).
+"Save" reads it and stores every batch with its allotted faculty
+short name, matched to an employee code, in Master › Batch (master_batches). The Class tab then
+offers each faculty the batches assigned to them. There is no folder path or automatic import.
 """
-import logging
 import re
-import threading
 from collections import defaultdict
 from datetime import date, datetime, timedelta, timezone
-
-import tempfile
-from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel, Field
+from pymongo import InsertOne, UpdateOne
 
 from .. import db
-from ..batch_files import DEFAULT_TABLE, BatchRow, read_file, resolve_file
+from ..batch_files import BatchRow, read_rows
+from ..biometric_files import rows_from_upload
 from ..config import settings
 from ..security import require_roles
 
-log = logging.getLogger("der.batch_import")
 router = APIRouter(prefix="/batch-import", tags=["batch-import"])
 master_roles = require_roles("MANAGER", "ADMIN")
 SETTINGS_ID = "batchImport"
-AUTO_USER = {"name": "Monthly auto import"}
-CHECK_EVERY_SECONDS = 30 * 60
 CLOSE_AFTER_DAYS = 60  # a batch whose end date is older than this is counted as Completed
 CLASS_TYPES = {"weekdays": "WeekDays", "weekday": "WeekDays", "weekend": "WeekEnd", "weekends": "WeekEnd"}
-
-
-class SettingsIn(BaseModel):
-    filePath: str = Field(default="", max_length=500)  # folder or file; empty = use BATCH_IMPORT_PATH from backend/.env
-    tableName: str = Field(default=DEFAULT_TABLE, max_length=64)
 
 
 class MapIn(BaseModel):
@@ -46,34 +33,11 @@ class MapIn(BaseModel):
 
 
 def _settings() -> dict:
-    return db.db.settings.find_one({"_id": SETTINGS_ID}) or {"_id": SETTINGS_ID, "filePath": "", "tableName": DEFAULT_TABLE, "facultyMap": {}}
-
-
-def _source(s: dict) -> tuple[str, str]:
-    """A path saved on the Batch Import page wins; otherwise BATCH_IMPORT_PATH from backend/.env."""
-    saved = (s.get("filePath") or "").strip()
-    if saved:
-        return saved, s.get("tableName") or DEFAULT_TABLE
-    env_path = settings.batch_import_path.strip().strip('"')
-    return env_path, settings.batch_import_table.strip() or DEFAULT_TABLE
-
-
-def _local_now() -> datetime:
-    return datetime.now(timezone.utc) + timedelta(minutes=settings.utc_offset_minutes)
+    return db.db.settings.find_one({"_id": SETTINGS_ID}) or {"_id": SETTINGS_ID, "facultyMap": {}}
 
 
 def _public(s: dict) -> dict:
-    out = {k: s.get(k) for k in ("lastImport", "lastAutoMonth", "lastAutoError", "updatedBy", "updatedAt")}
-    out["filePath"], out["tableName"] = _source(s)
-    out["envPath"] = settings.batch_import_path.strip().strip('"')
-    out["fromEnv"] = not (s.get("filePath") or "").strip() and bool(out["envPath"])
-    out["autoDay"], out["autoHour"] = settings.batch_import_day, settings.batch_import_hour
-    out["facultyMap"] = s.get("facultyMap") or {}
-    try:
-        out["file"], out["fileError"] = (str(resolve_file(out["filePath"])) if out["filePath"] else None), None
-    except Exception as exc:  # share offline, no permission, empty folder
-        out["file"], out["fileError"] = None, str(exc)
-    return out
+    return {"lastImport": s.get("lastImport"), "facultyMap": s.get("facultyMap") or {}}
 
 
 def _map_key(text: str) -> str:
@@ -85,7 +49,7 @@ def _today() -> date:
 
 
 def batch_status(r: BatchRow, today: date) -> str:
-    """Planned / Running / Break / Completed from the Access Status (C = closed, B = break) and the dates."""
+    """Planned / Running / Break / Completed from the Status column (C = closed, B = break) and the dates."""
     if r.status == "C" or (r.actualEndDate and r.actualEndDate <= today):
         return "Completed"
     if r.endDate and r.endDate < today - timedelta(days=CLOSE_AFTER_DAYS):
@@ -102,90 +66,59 @@ def get_settings(_: dict = Depends(master_roles)):
     return _public(_settings())
 
 
-@router.put("/settings")
-def save_settings(body: SettingsIn, me: dict = Depends(master_roles)):
-    path = body.filePath.strip().strip('"')
-    if path:  # empty clears the saved path, so BATCH_IMPORT_PATH from backend/.env is used again
-        try:
-            resolve_file(path)
-        except Exception as exc:
-            raise HTTPException(400, str(exc)) from exc
-    db.db.settings.update_one(
-        {"_id": SETTINGS_ID},
-        {"$set": {"filePath": path, "tableName": (body.tableName or DEFAULT_TABLE).strip(), "updatedBy": me["name"], "updatedAt": datetime.now(timezone.utc).isoformat()}},
-        upsert=True,
-    )
-    return _public(_settings())
+@router.post("/upload")
+async def upload(request: Request, name: str = Query(..., min_length=1, max_length=200), me: dict = Depends(master_roles)):
+    """Admin / Manager upload the file (raw body, .xlsx / .xls / .csv); it is read and saved to the database."""
+    data = await request.body()
+    try:
+        rows = await run_in_threadpool(rows_from_upload, name, data)
+    except Exception as exc:  # wrong type, empty, unreadable
+        raise HTTPException(400, f"Could not read the file: {exc}") from exc
+    if not rows:
+        raise HTTPException(400, "The file has no rows")
+    return await run_in_threadpool(run_import, rows, name, me)
 
 
 @router.put("/map")
 def save_map(body: MapIn, me: dict = Depends(master_roles)):
-    """Links a faculty short name from the Access file to an employee, then imports again."""
+    """Links a faculty short name from the file to an employee and assigns that short name's batches."""
     key = _map_key(body.shortName)
+    s = _settings()
+    old_code = (s.get("facultyMap") or {}).get(key)
     if body.code:
         if not db.users.find_one({"code": body.code}):
             raise HTTPException(400, "Unknown employee")
         db.db.settings.update_one({"_id": SETTINGS_ID}, {"$set": {f"facultyMap.{key}": body.code}}, upsert=True)
     else:
         db.db.settings.update_one({"_id": SETTINGS_ID}, {"$unset": {f"facultyMap.{key}": ""}})
-    return run_import(_settings(), me)
+
+    col = db.db.master_batches
+    now = datetime.now(timezone.utc).isoformat()
+    ops = []
+    for b in col.find({"facultyShort": {"$regex": rf"(^|, ){re.escape(body.shortName.strip().upper())}(,|$)"}}, {"_id": 0, "id": 1, "facultyCode": 1, "otherFaculty": 1}):
+        codes = [c for c in [b.get("facultyCode") or "", *(b.get("otherFaculty") or "").split(", ")] if c]
+        if old_code in codes:
+            codes.remove(old_code)
+        if body.code and body.code not in codes:
+            codes.append(body.code)
+        ops.append(UpdateOne({"id": b["id"]}, {"$set": {"facultyCode": codes[0] if codes else "", "otherFaculty": ", ".join(codes[1:]), "updatedBy": me["name"], "updatedAt": now}}))
+    if ops:
+        col.bulk_write(ops, ordered=False)
+
+    last = s.get("lastImport") or {}
+    if last and body.code:
+        last["unmatched"] = [u for u in last.get("unmatched") or [] if _map_key(u["shortName"]) != key]
+        last["assigned"] = col.count_documents({"importedAt": last.get("at"), "facultyCode": {"$ne": ""}})
+        db.db.settings.update_one({"_id": SETTINGS_ID}, {"$set": {"lastImport": last}})
+    return {**last, "linked": len(ops)}
 
 
-@router.post("/import")
-def import_now(me: dict = Depends(master_roles)):
-    return run_import(_settings(), me)
-
-
-_import_lock = threading.Lock()  # one import at a time (button and monthly job)
-
-
-UPLOAD_EXTENSIONS = {".xlsx", ".xls", ".csv", ".txt", ".accdb", ".mdb"}
-MAX_UPLOAD_BYTES = 20 * 1024 * 1024
-
-
-@router.post("/upload")
-async def upload_and_import(request: Request, name: str = Query(..., min_length=1, max_length=200), me: dict = Depends(master_roles)):
-    """Imports a BatchMaster file sent from the browser (raw file body). Works where the backend
-    cannot reach the office share, such as on Vercel."""
-    ext = Path(name).suffix.lower()
-    if ext not in UPLOAD_EXTENSIONS:
-        raise HTTPException(400, "Upload the BatchMaster .xlsx, .xls or .csv file (or .accdb / .mdb when the backend runs on Windows)")
-    data = await request.body()
-    if not data:
-        raise HTTPException(400, "The file is empty")
-    if len(data) > MAX_UPLOAD_BYTES:
-        raise HTTPException(400, "The file is larger than 20 MB")
-    s = _settings()
-    with tempfile.TemporaryDirectory() as tmp:
-        path = Path(tmp) / Path(name).name
-        path.write_bytes(data)
-        table = s.get("tableName") or settings.batch_import_table.strip() or DEFAULT_TABLE
-        return await run_in_threadpool(run_import, s, me, "Upload", (path, table, Path(name).name))
-
-
-def run_import(s: dict, me: dict, trigger: str = "Manual", upload: tuple | None = None) -> dict:
-    if not _import_lock.acquire(timeout=0 if trigger in ("Manual", "Upload") else 600):
-        raise HTTPException(409, "A batch import is already running. Try again in a minute.")
+def run_import(rows: list[list], file_name: str, me: dict) -> dict:
     try:
-        return _run_import(s, me, trigger, upload)
-    finally:
-        _import_lock.release()
-
-
-def _run_import(s: dict, me: dict, trigger: str, upload: tuple | None = None) -> dict:
-    if upload:
-        file_path, table, shown_name = upload
-    else:
-        source, table = _source(s)
-        if not source:
-            raise HTTPException(400, "Set BATCH_IMPORT_PATH in backend/.env, or save the file path on this page first")
-    try:
-        if not upload:
-            file_path = resolve_file(source)
-            shown_name = file_path.name
-        result = read_file(str(file_path), table)
-    except Exception as exc:  # share offline, driver missing, wrong table, unreadable file
+        result = read_rows(rows)
+    except Exception as exc:  # no header row, wrong file
         raise HTTPException(400, f"Could not read the batch file: {exc}") from exc
+    s = _settings()
 
     # Faculty short name -> employee: saved links first, then employee code, login ID or name.
     users = list(db.users.find({}, {"_id": 0, "code": 1, "userId": 1, "name": 1}))
@@ -228,6 +161,8 @@ def _run_import(s: dict, me: dict, trigger: str, upload: tuple | None = None) ->
     now = datetime.now(timezone.utc).isoformat()
     unmatched: dict[str, dict] = {}
     created = updated = assigned = 0
+    ops: list = []
+    new_recs: list[dict] = []
     missing_courses: dict[str, int] = defaultdict(int)
     status_count: dict[str, int] = defaultdict(int)
     faculty_codes: set[str] = set()
@@ -267,24 +202,31 @@ def _run_import(s: dict, me: dict, trigger: str, upload: tuple | None = None) ->
             "totalHours": first.totalHours if first.totalHours is not None else "",
             "courseType": first.courseType,
             "status": status,
-            "source": "Access",
+            "source": "Upload",
             "importedAt": now,
         }
         old = existing.get(no.upper())
         if old:
-            col.update_one({"id": old["id"]}, {"$set": {**rec, "batchNo": old["batchNo"] if old["batchNo"].upper() == no.upper() else no, "updatedBy": me["name"], "updatedAt": now}})
+            ops.append(UpdateOne({"id": old["id"]}, {"$set": {**rec, "batchNo": old["batchNo"] if old["batchNo"].upper() == no.upper() else no, "updatedBy": me["name"], "updatedAt": now}}))
             updated += 1
         else:
-            rec.update(id=f"BAT-{db.next_seq('master_batches'):04d}", mode="Center", createdBy=me["name"], createdAt=now)
-            col.insert_one(rec)
+            rec.update(mode="Center", createdBy=me["name"], createdAt=now)
+            new_recs.append(rec)
             existing[no.upper()] = rec
             created += 1
 
+    # One round trip for all the new ids and one bulk write: fast even with thousands of batches.
+    if new_recs:
+        last_seq = db.counters.find_one_and_update({"_id": "master_batches"}, {"$inc": {"seq": len(new_recs)}}, upsert=True, return_document=True)["seq"]
+        for i, rec in enumerate(new_recs):
+            rec["id"] = f"BAT-{last_seq - len(new_recs) + i + 1:04d}"
+            ops.append(InsertOne(rec))
+    if ops:
+        col.bulk_write(ops, ordered=False)
+
     summary = {
         "at": now,
-        "file": shown_name,
-        "path": "Uploaded from the browser" if upload else str(file_path),
-        "trigger": trigger,
+        "file": file_name,
         "by": me["name"],
         "rowsRead": len(result.rows),
         "skippedRows": result.skipped_rows,
@@ -300,49 +242,3 @@ def _run_import(s: dict, me: dict, trigger: str, upload: tuple | None = None) ->
     }
     db.db.settings.update_one({"_id": SETTINGS_ID}, {"$set": {"lastImport": summary}}, upsert=True)
     return summary
-
-
-_auto_lock = threading.Lock()
-
-
-def auto_import_due(s: dict, now: datetime) -> bool:
-    day = settings.batch_import_day
-    return bool(day) and now.day >= day and now.hour >= settings.batch_import_hour and s.get("lastAutoMonth") != now.strftime("%Y-%m")
-
-
-def run_auto_import(force: bool = False) -> dict | None:
-    """The monthly import. Runs once a month, on BATCH_IMPORT_DAY or the first time the backend runs after it."""
-    s, now = _settings(), _local_now()
-    if not force and not auto_import_due(s, now):
-        return None
-    month = now.strftime("%Y-%m")
-    try:
-        with _auto_lock:
-            if not force and not auto_import_due(_settings(), now):  # another check already did it
-                return None
-            summary = run_import(_settings(), AUTO_USER, trigger="Monthly")
-            db.db.settings.update_one({"_id": SETTINGS_ID}, {"$set": {"lastAutoMonth": month, "lastAutoError": None}}, upsert=True)
-    except Exception as exc:  # keep the error for the page; try again at the next check
-        msg = exc.detail if isinstance(exc, HTTPException) else str(exc)
-        db.db.settings.update_one({"_id": SETTINGS_ID}, {"$set": {"lastAutoError": f"{now:%d-%m-%Y %H:%M}: {msg}"}}, upsert=True)
-        log.warning("Monthly batch import failed: %s", msg)
-        return None
-    log.info("Monthly batch import from %s: %s batches (%s new, %s updated, %s assigned)", summary["path"], summary["batches"], summary["created"], summary["updated"], summary["assigned"])
-    return summary
-
-
-def start_scheduler() -> threading.Event:
-    """Background thread that checks every 30 minutes whether this month's import is due."""
-    stop = threading.Event()
-
-    def loop():
-        while not stop.is_set():
-            try:
-                run_auto_import()
-            except Exception:  # never let the thread die
-                log.exception("Monthly batch import check failed")
-            stop.wait(CHECK_EVERY_SECONDS)
-
-    if settings.batch_import_day:
-        threading.Thread(target=loop, name="batch-import", daemon=True).start()
-    return stop

@@ -1,26 +1,15 @@
-"""Reads the batch table (BatchMaster) from the institute's Access database or an export of it.
+"""Reads the batch table (BatchMaster) uploaded by Admin / Manager.
 
-Supported sources:
-  * .accdb / .mdb   Microsoft Access, read with pyodbc and the "Microsoft Access Driver (*.mdb, *.accdb)"
-                    (Windows; install the free Microsoft Access Database Engine if the driver is missing)
-  * .xlsx / .xls    the table exported to Excel (first sheet, header row)
-  * .csv / .txt     the table exported as text (comma, semicolon, tab or | separated)
-
-Columns are found by their header name, so the order does not matter. Only Batch No and
-Faculty are required; the others are stored when present.
+The Excel / CSV file (.xlsx, .xls or .csv) is read into rows; this module finds the columns by their header name, so the order does not matter. Only Batch No and Faculty are
+required; the others are stored when present.
 """
 from __future__ import annotations
 
-import os
 import re
 from dataclasses import dataclass, field
 from datetime import date, datetime, time
-from pathlib import Path
 
-from .biometric_files import _key, parse_date, parse_time, rows_from_file
-
-EXTENSIONS = {".accdb", ".mdb", ".xlsx", ".xls", ".csv", ".txt"}
-DEFAULT_TABLE = "BatchMaster"
+from .biometric_files import _key, parse_date, parse_time
 
 # Header names, compared without spaces, dots, dashes or underscores.
 COLUMNS = {
@@ -95,33 +84,6 @@ def _time(v) -> time | None:
     return parse_time(v)
 
 
-def _rows_from_access(path: Path, table: str) -> list[list]:
-    try:
-        import pyodbc  # noqa: PLC0415
-    except ImportError as exc:
-        raise RuntimeError("Reading .accdb / .mdb needs the pyodbc package: run  pip install pyodbc  in the backend folder") from exc
-    drivers = [d for d in pyodbc.drivers() if "access" in d.lower()]
-    if not drivers:
-        raise RuntimeError(
-            "No Microsoft Access ODBC driver on this computer. Install the Microsoft Access Database Engine "
-            "(same 32 / 64 bit as Python), or export the table to Excel and use the .xlsx file."
-        )
-    if not re.fullmatch(r"[A-Za-z0-9_ ]{1,64}", table):
-        raise RuntimeError("Table name may only have letters, numbers, spaces and _")
-    conn = pyodbc.connect(f"DRIVER={{{drivers[0]}}};DBQ={path};ReadOnly=1;", autocommit=True)
-    try:
-        cur = conn.cursor()
-        tables = [t.table_name for t in cur.tables(tableType="TABLE")]
-        match = next((t for t in tables if t.lower() == table.lower()), None)
-        if not match:
-            raise RuntimeError(f'Table "{table}" not found in the Access file. Tables: {", ".join(tables) or "none"}')
-        cur.execute(f"SELECT * FROM [{match}]")
-        header = [c[0] for c in cur.description]
-        return [header] + [list(r) for r in cur.fetchall()]
-    finally:
-        conn.close()
-
-
 def read_rows(rows: list[list]) -> ReadResult:
     out = ReadResult()
     header_at, cols = None, {}
@@ -167,55 +129,3 @@ def read_rows(rows: list[list]) -> ReadResult:
             breakDate=parse_date(cell(row, "breakDate")),
         ))
     return out
-
-
-def resolve_file(path_text: str) -> Path:
-    """The batch file to read. A file path is used as it is. For a folder (such as the shared network
-    folder set in BATCH_IMPORT_PATH) the newest file named like BatchMaster is used; if there is none,
-    the newest Access database; then the newest Excel / CSV file."""
-    text = str(path_text).strip().strip('"')
-    path = Path(text)
-    try:
-        os.stat(text)  # gives the real Windows reason (access denied, logon failure...) when it fails
-        os_error = None
-    except OSError as exc:
-        os_error = exc
-    if path.is_file():
-        return path
-    if not path.is_dir():
-        reason = f" Reason: {os_error.strerror or os_error} (code {getattr(os_error, 'winerror', None) or os_error.errno})." if os_error else ""
-        if text.startswith(("\\\\", "//")):
-            if os.name != "nt":
-                raise FileNotFoundError(f"Cannot open {text}: a \\\\computer\\share path only works when the backend runs on Windows in the same office network")
-            raise FileNotFoundError(
-                f"The backend cannot open the network folder {text}.{reason} If it opens in File Explorer, the "
-                "backend is probably running as a different Windows user: start it from a normal Command Prompt "
-                "(not 'Run as administrator', not as a service), or copy BatchMaster.xlsx to a local folder and "
-                "save that path here."
-            )
-        raise FileNotFoundError(f"Folder or file not found (or no permission): {text}.{reason}")
-    try:
-        path.iterdir().__next__()
-    except StopIteration:
-        pass
-    except OSError as exc:
-        raise FileNotFoundError(f"The backend can see {text} but cannot list it. Reason: {exc.strerror or exc}") from exc
-    files = [p for p in path.iterdir() if p.is_file() and p.suffix.lower() in EXTENSIONS and not p.name.startswith("~$")]
-    if not files:
-        raise FileNotFoundError(f"No .accdb, .mdb, .xlsx or .csv file in {path}")
-    newest = lambda items: max(items, key=lambda p: p.stat().st_mtime)  # noqa: E731
-    named = [p for p in files if "batchmaster" in _key(p.stem)]
-    access = [p for p in files if p.suffix.lower() in (".accdb", ".mdb")]
-    return newest(named or access or files)
-
-
-def read_file(file_path: str, table: str = DEFAULT_TABLE) -> ReadResult:
-    path = Path(file_path)
-    ext = path.suffix.lower()
-    if ext not in EXTENSIONS:
-        raise RuntimeError(f"Use an .accdb, .mdb, .xlsx, .xls or .csv file (got {ext or 'no extension'})")
-    if ext in (".accdb", ".mdb"):
-        rows = _rows_from_access(path, table or DEFAULT_TABLE)
-    else:
-        rows = rows_from_file(path)
-    return read_rows(rows)

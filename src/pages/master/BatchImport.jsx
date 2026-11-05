@@ -1,14 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Database, RefreshCw, Save, UserX, ArrowRight, CalendarClock, FileCheck2, AlertTriangle } from 'lucide-react';
+import { Database, UserX, ArrowRight } from 'lucide-react';
 import * as api from '../../services/api';
 import PageHeader from '../../components/ui/PageHeader';
 import Card from '../../components/ui/Card';
-import Button from '../../components/ui/Button';
-import Input from '../../components/ui/Input';
 import Select from '../../components/ui/Select';
 import EmptyState from '../../components/ui/EmptyState';
-import UploadButton from '../../components/ui/UploadButton';
+import FileSaveField from '../../components/ui/FileSaveField';
 import ErrorState from '../../components/ui/ErrorState';
 import { useLookups } from '../../context/LookupsContext';
 import { useToast } from '../../context/ToastContext';
@@ -18,9 +16,8 @@ import { formatDate, formatDateTime } from '../../utils/format';
 const STATUS_ORDER = ['Running', 'Planned', 'Break', 'Completed'];
 
 /**
- * Master › Batch Import. The BatchMaster table is read from the path saved here (a folder such as the
- * shared network folder, or one .accdb / .mdb / .xlsx / .csv file); with none saved, from BATCH_IMPORT_PATH
- * in backend/.env. The backend imports it by itself once a month, and "Import batches" imports it now. Each batch is saved in Master › Batch,
+ * Master › Batch Import. Admin / Manager choose the BatchMaster Excel file (.xlsx, .xls or .csv,
+ * any column order) and click Save: the backend reads it and saves each batch in Master › Batch,
  * assigned to the employee whose code matches the faculty short name (FacultyAlloted). Short names
  * that match nobody are listed so they can be linked once; the link is remembered.
  */
@@ -28,52 +25,13 @@ export default function BatchImport() {
   const { lookups, reload: reloadLookups } = useLookups();
   const toast = useToast();
   const settings = useAsync(() => api.getBatchImportSettings(), []);
-  const [form, setForm] = useState({ filePath: '', tableName: 'BatchMaster' });
-  const [errors, setErrors] = useState({});
   const [busy, setBusy] = useState('');
   const [summary, setSummary] = useState(null);
   const people = useMemo(() => (lookups?.employees || []).map((p) => ({ value: p.code, label: `${p.name} (${p.code})` })), [lookups]);
-  const fromEnv = !!settings.data?.fromEnv;
-  const isAccess = !/\.(xlsx|csv|txt)$/i.test(form.filePath.trim());
-  const data = settings.data;
 
   useEffect(() => {
-    if (settings.data) {
-      setForm({ filePath: settings.data.filePath || '', tableName: settings.data.tableName || 'BatchMaster' });
-      setSummary(settings.data.lastImport || null);
-    }
+    if (settings.data) setSummary(settings.data.lastImport || null);
   }, [settings.data]);
-
-  const useEnvPath = async () => {
-    setBusy('reset');
-    try {
-      await api.saveBatchImportSettings({ filePath: '', tableName: 'BatchMaster' });
-      toast.success('Using the path from backend/.env again.');
-      settings.reload();
-    } catch (e) {
-      toast.error(e.message);
-    } finally {
-      setBusy('');
-    }
-  };
-
-  const save = async () => {
-    const errs = {};
-    if (!form.filePath.trim()) errs.filePath = 'Enter the folder or file path';
-    if (isAccess && !/^[A-Za-z0-9_ ]{1,64}$/.test(form.tableName.trim())) errs.tableName = 'Letters, numbers, spaces and _ only';
-    setErrors(errs);
-    if (Object.keys(errs).length) return;
-    setBusy('save');
-    try {
-      await api.saveBatchImportSettings({ filePath: form.filePath.trim().replace(/"/g, ''), tableName: form.tableName.trim() || 'BatchMaster' });
-      toast.success('Batch folder / file saved.');
-      settings.reload();
-    } catch (e) {
-      setErrors({ filePath: e.message });
-    } finally {
-      setBusy('');
-    }
-  };
 
   const done = (s, message) => {
     setSummary(s);
@@ -81,23 +39,15 @@ export default function BatchImport() {
     toast.success(message);
   };
 
-  const runImport = async (file) => {
-    setBusy(file ? 'upload' : 'import');
-    try {
-      const s = file ? await api.uploadBatches(file) : await api.importBatches();
-      done(s, `Imported ${s.batches} batches: ${s.created} new, ${s.updated} updated, ${s.assigned} assigned to an employee.`);
-      settings.reload();
-    } catch (e) {
-      toast.error(e.message, 'Import failed');
-    } finally {
-      setBusy('');
-    }
+  const upload = async (file) => {
+    const s = await api.uploadBatches(file);
+    done(s, `Saved ${s.batches} batches: ${s.created} new, ${s.updated} updated, ${s.assigned} assigned to an employee.`);
   };
 
   const link = async (shortName, code) => {
     setBusy(`map-${shortName}`);
     try {
-      done(await api.saveBatchFacultyMap(shortName, code), `${shortName} linked and batches imported again.`);
+      done(await api.saveBatchFacultyMap(shortName, code), `${shortName} linked and its batches assigned.`);
     } catch (e) {
       toast.error(e.message);
     } finally {
@@ -112,7 +62,7 @@ export default function BatchImport() {
       <PageHeader
         title="Batch Import"
         breadcrumb={[{ label: 'Master', to: '/master' }, { label: 'Batch Import' }]}
-        description="Read the batches from the Access BatchMaster table and assign each batch to its faculty by short name."
+        description="Upload the BatchMaster Excel file and assign each batch to its faculty by short name."
         actions={
           <Link to="/master/batches" className="inline-flex items-center gap-1 text-[13px] font-medium text-brand-700 hover:underline">
             Open Batch master <ArrowRight className="size-3.5" aria-hidden />
@@ -121,79 +71,14 @@ export default function BatchImport() {
       />
 
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-12">
-        <Card className="lg:col-span-7" title="Batch file" description="Folder or file on the network / computer running the backend. For a folder, the newest file named BatchMaster is read.">
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-12">
-            <Input
-              label="Folder or file path"
-              required
-              className="sm:col-span-8"
-              placeholder="e.g. \\192.168.0.129\Test\DAILY_REPORT_SOFTWARE_2026"
-              value={form.filePath}
-              error={errors.filePath}
-              disabled={settings.loading}
-              hint={
-                fromEnv
-                  ? 'From backend/.env (BATCH_IMPORT_PATH). Type another folder or file and click Save path to use it instead.'
-                  : data?.envPath
-                    ? `Saved on this page. The backend/.env path is ${data.envPath}.`
-                    : 'The folder must be reachable from the computer running the backend.'
-              }
-              onChange={(e) => (setForm({ ...form, filePath: e.target.value }), setErrors({}))}
-            />
-            <Input
-              label="Table name"
-              className="sm:col-span-4"
-              value={form.tableName}
-              error={errors.tableName}
-              disabled={settings.loading || !isAccess}
-              hint="Table inside the Access file"
-              onChange={(e) => setForm({ ...form, tableName: e.target.value })}
-            />
-          </div>
-          {data && (data.file || data.fileError) && (
-            <p className={`mt-3 flex items-start gap-1.5 text-[12px] ${data.file ? 'text-ink-600' : 'text-danger-700'}`}>
-              {data.file ? <FileCheck2 className="mt-px size-3.5 shrink-0 text-success-600" aria-hidden /> : <AlertTriangle className="mt-px size-3.5 shrink-0" aria-hidden />}
-              <span className="break-all">{data.file ? `File found: ${data.file}` : data.fileError}</span>
-            </p>
-          )}
-          <div className="mt-4 flex flex-wrap gap-2">
-            <Button icon={Save} variant="secondary" loading={busy === 'save'} disabled={!!busy && busy !== 'save'} onClick={save}>
-              Save path
-            </Button>
-            {!fromEnv && data?.envPath && (
-              <Button variant="ghost" loading={busy === 'reset'} disabled={!!busy && busy !== 'reset'} onClick={useEnvPath}>
-                Use backend/.env path
-              </Button>
-            )}
-            <Button icon={RefreshCw} loading={busy === 'import'} disabled={!data?.filePath || !!busy} onClick={() => runImport()}>
-              Import batches now
-            </Button>
-            <UploadButton accept=".xlsx,.xls,.csv,.txt,.accdb,.mdb" loading={busy === 'upload'} disabled={!!busy && busy !== 'upload'} onFile={runImport}>
-              Upload BatchMaster file
-            </UploadButton>
-          </div>
-          {data && (
-            <div className="mt-4 flex items-start gap-2 rounded-lg bg-ink-50 px-3 py-2.5 text-[12px] text-ink-600">
-              <CalendarClock className="mt-px size-4 shrink-0 text-brand-600" aria-hidden />
-              <div>
-                {data.autoDay ? (
-                  <p>
-                    <span className="font-medium text-ink-800">Automatic import every month</span> on day {data.autoDay} after {String(data.autoHour).padStart(2, '0')}:00
-                    {data.lastAutoMonth ? ` · done for ${data.lastAutoMonth}` : ' · not run yet'}
-                  </p>
-                ) : (
-                  <p>Automatic monthly import is off (BATCH_IMPORT_DAY=0).</p>
-                )}
-                {data.lastAutoError && <p className="mt-1 text-danger-700">Last automatic import failed: {data.lastAutoError}</p>}
-              </div>
-            </div>
-          )}
-          <p className="mt-3 text-[12px] text-ink-500">
-            <span className="font-medium text-ink-700">Upload BatchMaster file</span> picks the file from this computer or the office share and imports it; use it when the backend runs on Vercel or another server outside the office, which cannot open the network folder. Columns used: BatchNo, FacultyAlloted (short name), Course, BatchStartDate, BatchEndDate, ActualEndDate, BatchTimeIn, BatchTimeOut, ClassType, TotalHrs, CourseType and Status. Importing again updates the same batches; nothing is deleted. Reading an .accdb / .mdb file needs the Microsoft Access Database Engine on the backend computer.
+        <Card className="lg:col-span-7" title="Upload BatchMaster file" description="Choose the Excel file from this computer, then click Save. The batches are read and saved for each faculty.">
+          <FileSaveField label="BatchMaster file" onSave={upload} saveLabel="Save batches" disabled={!!busy} />
+          <p className="mt-4 text-[12px] text-ink-500">
+            Columns can be in any order. Used: BatchNo, FacultyAlloted (short name), Course, BatchStartDate, BatchEndDate, ActualEndDate, BatchTimeIn, BatchTimeOut, ClassType, TotalHrs, CourseType and Status. Saving a new file updates the same batches; nothing is deleted. Faculty see their batches in the Class tab of the entry screen.
           </p>
         </Card>
 
-        <Card className="lg:col-span-5" title="Last import" description={summary ? `${summary.file} · ${formatDateTime(summary.at)}${summary.trigger ? ` · ${summary.trigger}` : ''}` : 'Not imported yet'}>
+        <Card className="lg:col-span-5" title="Last upload" description={summary ? `${summary.file} · ${formatDateTime(summary.at)}${summary.by ? ` · ${summary.by}` : ''}` : 'Not uploaded yet'}>
           {summary ? (
             <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-[13px]">
               <dt className="text-ink-500">Rows read</dt>
@@ -220,7 +105,7 @@ export default function BatchImport() {
               )}
             </dl>
           ) : (
-            <EmptyState icon={Database} title="No import yet" message="Click Import batches now, or wait for the monthly automatic import." />
+            <EmptyState icon={Database} title="No upload yet" message="Choose the BatchMaster file and click Save batches." />
           )}
         </Card>
       </div>
@@ -229,7 +114,7 @@ export default function BatchImport() {
         <Card
           className="mt-5"
           title="Faculty short names not matched"
-          description="No employee has this code. Link each short name to an employee once; the link is saved and the batches are imported again."
+          description="No employee has this code. Link each short name to an employee once; the link is saved and those batches are assigned."
         >
           <div className="divide-y divide-ink-100">
             {summary.unmatched.map((u) => (

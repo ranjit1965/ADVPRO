@@ -19,7 +19,7 @@ cd backend
 python -m venv .venv && source .venv/bin/activate   # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 cp .env.example .env        # Windows: copy .env.example .env
-# edit .env: MONGODB_URI, JWT_SECRET, the SMTP_* email settings and BATCH_IMPORT_PATH
+# edit .env: MONGODB_URI, JWT_SECRET and the SMTP_* email settings
 uvicorn app.main:app --reload --port 8000
 ```
 
@@ -179,86 +179,52 @@ Admin and Manager choose **Batch Master** or **Biometric** in the dropdown and u
 file (`.xlsx`, `.xls` or `.csv`; the columns can be in any order). Batch Master saves each batch
 for its employee (matched by name and short name); Biometric saves Time In / Time Out per employee
 per day, which the monthly report compares with the entries. Uploading a month again replaces those
-days. The same uploads stay on Master › Batch Import and Master › Biometric.
+days. Choose the file, then click **Save**: the backend reads it and updates the database. The same Choose file / Save is on Master › Batch Import and Master › Biometric.
 From the day before the last day of the month (and in the first 5 days of the next month if it was
 missed), the Dashboard and this page remind Admin / Manager until each file is uploaded.
 `.xls` files need `xlrd` (in `backend/requirements.txt`).
 
 ### Biometric time in / out (Master › Biometric)
 
-* Manager / Admin enter the **folder path** where the biometric device saves its export
-  files. It must be a folder the **backend server** can read (a local or mapped drive).
-* **Import now** reads every `.csv`, `.txt`, `.tsv`, `.dat`, `.xlsx` and `.xls` file in the folder.
-  Accepted layouts: one row per punch (Emp Code / Name / Date + Time, or one Date Time
-  column), one row per day with In Time / Out Time columns, or a headerless ZKTeco attendance
-  log. The first punch of a day is Time In, the last is Time Out. Results are stored in the
-  `biometric_days` collection.
+* Admin / Manager click **Choose file**, pick the device export from this computer (`.xlsx`,
+  `.xls` or `.csv`; `.txt` / `.tsv` / `.dat` logs also work), and click **Save records**. The
+  backend reads it and saves the records. There is no folder path.
+  Accepted layouts, columns in any order: one row per punch (Emp Code / Name / Date + Time, or
+  one Date Time column), one row per day with In Time / Out Time columns, or a headerless
+  ZKTeco attendance log. The first punch of a day is Time In, the last is Time Out. Results are
+  stored in `biometric_days`; saving a day again replaces it.
 * People are matched by employee code, login ID or name. Anyone not matched is listed with a
-  picker to link the device user to an employee; the link is saved and reused.
+  picker to link the device user to an employee; their saved days move to that employee and the
+  link is reused for every later upload.
 * The **Monthly Report** has a "Biometric time in / out vs entries" section (and a
   Biometric sheet in the Excel download): Bio In vs first entry start, Bio Out vs last entry
   end, biometric hours vs entered hours, and a status per day (Matched, Difference, Missing
   out punch, No entries, No biometric). The tolerance (default 15 minutes) is set on the
   Biometric page.
 
-### Batch import from the Access BatchMaster table (Master › Batch Import)
+### Batch import (Master › Batch Import)
 
-* The batches come from the institute's **BatchMaster** table: the Access database (`.accdb` /
-  `.mdb`) or the table saved as Excel / CSV (`BatchMaster.xlsx`). Columns used: BatchNo,
-  FacultyAlloted (faculty short name), Course, BatchStartDate, BatchEndDate, ActualEndDate,
-  BatchTimeIn, BatchTimeOut, ClassType, TotalHrs, CourseType, Status. Column order does not matter.
-* Where to read it from is set by the developer in `backend/.env`:
-
-  ```bash
-  # Folder (or one file) holding the BatchMaster table
-  BATCH_IMPORT_PATH=\\192.168.0.129\Test\DAILY_REPORT_SOFTWARE_2026
-  # Table name inside an Access file
-  BATCH_IMPORT_TABLE=BatchMaster
-  # Automatic import on this day of every month (0 = off), at or after this hour (local time)
-  BATCH_IMPORT_DAY=1
-  BATCH_IMPORT_HOUR=6
-  ```
-
-  For a folder, the newest file named like *BatchMaster* is read (else the newest Access file,
-  else the newest Excel / CSV). Restart the backend after changing `.env`.
-* **Upload BatchMaster file** (Batch Import) and **Upload file** (Biometric) pick the file in the
-  browser, for example from `\\192.168.0.129\Test\DAILY_REPORT_SOFTWARE_2026` on an office PC, and
-  import it. Use these when the backend runs on **Vercel** or any server outside the office: such a
-  server can never open the office share, and the monthly automatic import does not run there.
-  `.accdb` / `.mdb` uploads still need the Access driver on the backend, so upload the `.xlsx`.
-* **Changing the path without editing .env**: on Master › Batch Import, type another folder or
-  file (for example `D:\Test\DAILY_REPORT_SOFTWARE_2026`) and click **Save path**. The saved path
-  is used instead of `BATCH_IMPORT_PATH` (for the monthly import too). **Use backend/.env path**
-  goes back to the `.env` value. The path is checked when saving.
-* "Cannot open the network folder" means the computer running the backend cannot reach the share:
-  check that 192.168.0.129 is on, the folder is shared, and the Windows user running the backend
-  can open it (Win + R, paste the path, Enter). A `\\computer\share` path only works when the
-  backend runs on Windows in the same office network (not on Vercel or another cloud server).
-  The message also gives the Windows reason. If the folder opens in File Explorer but not in the
-  app, the backend runs as another Windows user (started with "Run as administrator" or as a
-  service): start `uvicorn` from a normal Command Prompt, or copy the file to a local folder.
-* **Automatic monthly import**: the backend checks every 30 minutes and imports once a month
-  (on `BATCH_IMPORT_DAY`, or at the first start after it if the backend was off). Manager /
-  Admin can also click **Import batches now**, or run `python import_batches.py` in `backend`
-  (for example from Windows Task Scheduler).
+* Admin / Manager click **Choose file**, pick the **BatchMaster** Excel file from this computer
+  (`.xlsx`, `.xls` or `.csv`; in Access, export the BatchMaster table to Excel first), and click
+  **Save batches**. The backend reads it and saves the batches in one bulk write, so even a few
+  thousand batches save in seconds. There is no folder path, `.env` path or automatic monthly import.
+* Columns used (any order): BatchNo, FacultyAlloted (faculty short name), Course,
+  BatchStartDate, BatchEndDate, ActualEndDate, BatchTimeIn, BatchTimeOut, ClassType, TotalHrs,
+  CourseType, Status.
 * **Assigning to faculty**: each FacultyAlloted short name is matched to the employee **code**
   (BAL → BALA SHANMUGAM.M (BAL), ARI → ARISH.P (ARI)), then login ID, then name. Give every
-  faculty in **Employee** the same code as their short name in Access and the batches are
-  assigned automatically. Short names that match nobody are listed on the page; link each once
-  to an employee and the link is remembered for every later import. A batch taught by two
-  faculty (same batch number, course and start date) is assigned to both (Faculty + Other
-  Faculty).
-* Batches are saved in **Master › Batch** (`master_batches`), showing Faculty and Short Name.
-  Importing again updates the same batches; nothing is deleted. Status: `C` in Access, an
-  ActualEndDate, or an end date older than 60 days → Completed; `B` → Break; a future start →
-  Planned; otherwise Running. A batch number reused for a different batch is saved with `-2`.
-* The Batch Import page shows the file found, the last import (rows, batches, assigned, status
-  counts), the monthly schedule and any error (share offline, no permission), short names not
-  matched, and course codes not yet in **Master › Course**.
-* Network folder: the Windows account running the backend must be able to open the share.
-  Reading `.accdb` / `.mdb` directly needs `pip install pyodbc` (in `requirements.txt` for
-  Windows) and the free **Microsoft Access Database Engine** (same 32 / 64 bit as Python).
-  Without it, save the table as `BatchMaster.xlsx` in the same folder.
+  faculty in **Employee** the same code as their short name and the batches are assigned
+  automatically. Short names that match nobody are listed on the page; link each once to an
+  employee: that short name's batches are assigned at once and the link is remembered for every
+  later upload. A batch taught by two faculty (same batch number, course and start date) is
+  assigned to both (Faculty + Other Faculty).
+* Batches are saved in **Master › Batch** (`master_batches`), showing Faculty and Short Name, and
+  each faculty sees their batches in the Class tab. Saving a new file updates the same batches;
+  nothing is deleted. Status: `C`, an ActualEndDate, or an end date older than 60 days →
+  Completed; `B` → Break; a future start → Planned; otherwise Running. A batch number reused for a
+  different batch is saved with `-2`.
+* The page shows the last upload (file, who, rows, batches, assigned, status counts), short
+  names not matched, and course codes not yet in **Master › Course**.
 
 ### Assumptions to confirm
 
@@ -327,7 +293,8 @@ Every page reads and writes data only through `src/services/api.js`, which calls
 | `getMonthlyPlans`, `saveMonthlyPlan`, `deleteMonthlyPlan` | `/api/monthly-plans` |
 | `getStudentMarks`, `saveStudentMarks` | `/api/student-marks` |
 | `getNotifications` | `GET /api/notifications` |
-| `getBatchImportSettings`, `saveBatchImportSettings`, `importBatches`, `saveBatchFacultyMap` (manager, admin) | `GET/PUT /api/batch-import/settings`, `POST /api/batch-import/import`, `PUT /api/batch-import/map` |
+| `getBatchImportSettings`, `uploadBatches`, `saveBatchFacultyMap` (manager, admin) | `GET /api/batch-import/settings`, `POST /api/batch-import/upload?name=` (raw file body), `PUT /api/batch-import/map` |
+| `getBiometricSettings`, `saveBiometricSettings`, `uploadBiometric`, `saveBiometricMap`, `getBiometricRecords` | `GET/PUT /api/biometric/settings` (tolerance), `POST /api/biometric/upload?name=` (raw file body), `PUT /api/biometric/map`, `GET /api/biometric/records` |
 | `requestCourse`, `getCourseRequests`, `setCourseRequestStatus` | `POST/GET /api/course-requests`, `PATCH /api/course-requests/{id}` |
 
 Frontend `.env`:

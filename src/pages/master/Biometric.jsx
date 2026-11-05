@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { FolderOpen, RefreshCw, Save, Fingerprint, UserX } from 'lucide-react';
+import { Save, Fingerprint, UserX } from 'lucide-react';
 import * as api from '../../services/api';
 import PageHeader from '../../components/ui/PageHeader';
 import Card from '../../components/ui/Card';
@@ -9,7 +9,7 @@ import Select from '../../components/ui/Select';
 import DataTable from '../../components/ui/DataTable';
 import EmptyState from '../../components/ui/EmptyState';
 import ErrorState from '../../components/ui/ErrorState';
-import UploadButton from '../../components/ui/UploadButton';
+import FileSaveField from '../../components/ui/FileSaveField';
 import { useAuth } from '../../context/AuthContext';
 import { useLookups } from '../../context/LookupsContext';
 import { useToast } from '../../context/ToastContext';
@@ -18,10 +18,9 @@ import { canAccess, MASTER_ROLES } from '../../utils/permissions';
 import { formatDateTime, monthLabel, toISODate } from '../../utils/format';
 
 /**
- * Master › Biometric. Manager / Admin enter the folder where the biometric device saves its
- * export files (a folder the backend server can read). "Import now" reads every file there and
- * stores each person's first punch (Time In) and last punch (Time Out) per day. The monthly
- * report compares those times with the daily entries.
+ * Master › Biometric. Admin / Manager choose the device export file (.xlsx, .xls or .csv, any column
+ * order) and click Save: the backend keeps each person's first punch (Time In) and last punch
+ * (Time Out) per day. The monthly report compares those times with the daily entries.
  */
 export default function Biometric() {
   const { user } = useAuth();
@@ -29,7 +28,7 @@ export default function Biometric() {
   const { lookups } = useLookups();
   const toast = useToast();
   const settings = useAsync(() => api.getBiometricSettings(), []);
-  const [form, setForm] = useState({ folderPath: '', toleranceMinutes: 15 });
+  const [tolerance, setTolerance] = useState('15');
   const [errors, setErrors] = useState({});
   const [busy, setBusy] = useState('');
   const [summary, setSummary] = useState(null);
@@ -40,39 +39,32 @@ export default function Biometric() {
 
   useEffect(() => {
     if (settings.data) {
-      setForm({ folderPath: settings.data.folderPath || '', toleranceMinutes: settings.data.toleranceMinutes ?? 15 });
+      setTolerance(String(settings.data.toleranceMinutes ?? 15));
       setSummary(settings.data.lastImport || null);
     }
   }, [settings.data]);
 
-  const save = async () => {
-    const errs = {};
-    if (!/^\d+$/.test(String(form.toleranceMinutes))) errs.toleranceMinutes = 'Minutes, numbers only';
-    setErrors(errs);
-    if (Object.keys(errs).length) return;
+  const saveTolerance = async () => {
+    if (!/^\d+$/.test(tolerance) || Number(tolerance) > 240) {
+      setErrors({ toleranceMinutes: 'Minutes, 0 to 240' });
+      return;
+    }
+    setErrors({});
     setBusy('save');
     try {
-      await api.saveBiometricSettings({ folderPath: form.folderPath.trim(), toleranceMinutes: Number(form.toleranceMinutes) });
-      toast.success('Biometric folder saved.');
-      settings.reload();
+      await api.saveBiometricSettings({ toleranceMinutes: Number(tolerance) });
+      toast.success('Tolerance saved.');
     } catch (e) {
-      setErrors({ folderPath: e.message });
+      setErrors({ toleranceMinutes: e.message });
     } finally {
       setBusy('');
     }
   };
 
-  const runImport = async (file) => {
-    setBusy(file ? 'upload' : 'import');
-    try {
-      const s = file ? await api.uploadBiometric(file) : await api.importBiometric();
-      setSummary(s);
-      toast.success(`Imported ${s.daysStored} day record(s) for ${s.people} people from ${s.files.length} file(s).`);
-    } catch (e) {
-      toast.error(e.message, 'Import failed');
-    } finally {
-      setBusy('');
-    }
+  const upload = async (file) => {
+    const s = await api.uploadBiometric(file);
+    setSummary(s);
+    toast.success(`Saved ${s.daysStored} day record(s) for ${s.people} people.`);
   };
 
   const link = async (deviceKey, code) => {
@@ -80,7 +72,7 @@ export default function Biometric() {
     try {
       const s = await api.saveBiometricMap(deviceKey, code);
       setSummary(s);
-      toast.success('Linked and re-imported.');
+      toast.success('Linked; that person\'s days are saved.');
     } catch (e) {
       toast.error(e.message);
     } finally {
@@ -104,56 +96,43 @@ export default function Biometric() {
       <PageHeader
         title="Biometric"
         breadcrumb={[{ label: 'Master', to: '/master' }, { label: 'Biometric' }]}
-        description="Read Time In / Time Out from the biometric device files and compare them with the daily entries in the monthly report."
+        description="Upload the biometric device file. Time In / Time Out are compared with the daily entries in the monthly report."
       />
 
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-12">
-        <Card className="lg:col-span-7" title="Device file folder" description="A folder on the server running the backend, where the device saves its CSV, TXT, DAT or XLSX exports.">
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-12">
-            <Input
-              label="Folder path"
-              required
-              className="sm:col-span-9"
-              placeholder="e.g. D:\Biometric\Exports or /srv/biometric"
-              value={form.folderPath}
-              error={errors.folderPath}
-              disabled={!canEdit || settings.loading}
-              onChange={(e) => (setForm({ ...form, folderPath: e.target.value }), setErrors({}))}
-            />
-            <Input
-              label="Tolerance (min)"
-              className="sm:col-span-3"
-              inputMode="numeric"
-              value={form.toleranceMinutes}
-              error={errors.toleranceMinutes}
-              disabled={!canEdit || settings.loading}
-              hint="Counted as matched"
-              onChange={(e) => setForm({ ...form, toleranceMinutes: e.target.value })}
-            />
-          </div>
-          {canEdit && (
-            <div className="mt-4 flex flex-wrap gap-2">
-              <Button icon={Save} variant="secondary" loading={busy === 'save'} onClick={save}>
-                Save folder
-              </Button>
-              <Button icon={RefreshCw} loading={busy === 'import'} disabled={!settings.data?.folderPath || !!busy} onClick={() => runImport()}>
-                Import now
-              </Button>
-              <UploadButton accept=".xlsx,.xls,.csv,.txt,.tsv,.dat" loading={busy === 'upload'} disabled={!!busy && busy !== 'upload'} onFile={runImport}>
-                Upload file
-              </UploadButton>
-            </div>
+        <Card className="lg:col-span-7" title="Upload biometric file" description="Choose the device export (Excel) from this computer, then click Save.">
+          {canEdit ? (
+            <FileSaveField label="Biometric file" accept=".xlsx,.xls,.csv,.txt,.tsv,.dat" onSave={upload} saveLabel="Save records" disabled={!!busy} />
+          ) : (
+            <p className="text-[13px] text-ink-600">Only Admin and Manager can upload the biometric file.</p>
           )}
           <p className="mt-3 text-[12px] text-ink-500">
-            Use Upload file to pick the device export from this computer or the office share (needed when the backend runs on Vercel or another server outside the office). Each file needs an employee code or name column and a date with time, or In / Out time columns. People are matched by employee code, login ID or name; link anyone not matched below.
+            Columns can be in any order: an employee code or name column and a date with time, or In / Out time columns. People are matched by employee code, login ID or name; link anyone not matched below. Saving a month again replaces those days.
           </p>
+          <div className="mt-4 flex flex-wrap items-end gap-2 border-t border-ink-100 pt-4">
+            <Input
+              label="Tolerance (min)"
+              className="w-40"
+              inputMode="numeric"
+              value={tolerance}
+              error={errors.toleranceMinutes}
+              disabled={!canEdit || settings.loading}
+              hint="Difference counted as matched"
+              onChange={(e) => setTolerance(e.target.value)}
+            />
+            {canEdit && (
+              <Button icon={Save} variant="secondary" loading={busy === 'save'} onClick={saveTolerance} className="mb-6">
+                Save tolerance
+              </Button>
+            )}
+          </div>
         </Card>
 
-        <Card className="lg:col-span-5" title="Last import" description={summary ? formatDateTime(summary.at) : 'Not imported yet'}>
+        <Card className="lg:col-span-5" title="Last upload" description={summary ? formatDateTime(summary.at) : 'Not uploaded yet'}>
           {summary ? (
             <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-[13px]">
-              <dt className="text-ink-500">Files read</dt>
-              <dd className="font-medium">{summary.files.length}</dd>
+              <dt className="text-ink-500">File</dt>
+              <dd className="truncate font-medium">{(summary.files || []).join(', ')}</dd>
               <dt className="text-ink-500">Punch rows</dt>
               <dd className="font-medium">{summary.punchRows}</dd>
               <dt className="text-ink-500">Day records stored</dt>
@@ -164,18 +143,18 @@ export default function Biometric() {
               <dd className="font-medium">{summary.skippedRows}</dd>
               <dt className="text-ink-500">Not matched</dt>
               <dd className={summary.unmatched.length ? 'font-medium text-warning-700' : 'font-medium'}>{summary.unmatched.length}</dd>
-              {summary.errors.length > 0 && (
+              {summary.errors?.length > 0 && (
                 <dd className="col-span-2 rounded-md bg-danger-50 px-2 py-1.5 text-[12px] text-danger-700">{summary.errors.join(' · ')}</dd>
               )}
             </dl>
           ) : (
-            <EmptyState icon={FolderOpen} title="No import yet" message="Save the folder, then click Import now." />
+            <EmptyState icon={Fingerprint} title="No upload yet" message="Choose the biometric file and click Save records." />
           )}
         </Card>
       </div>
 
       {summary?.unmatched?.length > 0 && (
-        <Card className="mt-5" title="Device users not matched" description="Link each one to an employee. The link is saved and the files are imported again.">
+        <Card className="mt-5" title="Device users not matched" description="Link each one to an employee. The link is saved and their days are moved to that employee.">
           <div className="divide-y divide-ink-100">
             {summary.unmatched.map((u) => (
               <div key={u.deviceKey} className="flex flex-wrap items-end gap-3 py-2.5">

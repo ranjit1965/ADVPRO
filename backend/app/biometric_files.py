@@ -1,9 +1,8 @@
 """Reads time in / time out files exported by the biometric device.
 
-Supported files in the folder (any mix):
-  * .csv / .txt / .tsv / .dat  with a header row (comma, semicolon, tab or | separated)
-  * .xlsx / .xls                first sheet, with a header row
-  * ZKTeco-style attendance logs without a header ("1  2026-10-01 09:02:11  1 0 ...")
+The file is uploaded by Admin / Manager: .xlsx / .xls (first sheet, header row), .csv / .txt / .tsv /
+.dat (comma, semicolon, tab or | separated), or ZKTeco-style logs without a header
+("1  2026-10-01 09:02:11  1 0 ...").
 
 Two layouts are understood:
   * One row per person per day with In and Out columns
@@ -20,8 +19,6 @@ from dataclasses import dataclass, field
 from datetime import date, datetime, time
 from pathlib import Path
 
-EXTENSIONS = {".csv", ".txt", ".tsv", ".dat", ".xlsx", ".xls"}
-
 # Header names seen in common device exports, compared without spaces, dots, dashes or underscores.
 ID_HEADERS = {"empcode", "employeecode", "code", "empid", "employeeid", "userid", "enrollno", "enrollnumber", "acno", "cardno", "badgenumber", "id", "no", "staffid", "staffcode"}
 NAME_HEADERS = {"name", "empname", "employeename", "username", "staffname", "fullname"}
@@ -33,6 +30,8 @@ OUT_HEADERS = {"outtime", "timeout", "checkout", "lastout", "out", "punchout", "
 
 DATE_FORMATS = ("%Y-%m-%d", "%d-%m-%Y", "%d/%m/%Y", "%Y/%m/%d", "%d.%m.%Y", "%d-%b-%Y", "%d %b %Y", "%d-%b-%y", "%m/%d/%Y")
 TIME_FORMATS = ("%H:%M:%S", "%H:%M", "%I:%M:%S %p", "%I:%M %p", "%I:%M:%S%p", "%I:%M%p")
+
+EXTENSIONS = {".xlsx", ".xls", ".csv", ".txt", ".tsv", ".dat"}
 
 
 @dataclass
@@ -100,7 +99,7 @@ def parse_datetime(text) -> datetime | None:
     return datetime.combine(d, t) if d and t else None
 
 
-def _rows_from_text(raw: str) -> list[list[str]]:
+def rows_from_text(raw: str) -> list[list[str]]:
     lines = [ln for ln in raw.splitlines() if ln.strip()]
     if not lines:
         return []
@@ -160,7 +159,27 @@ def rows_from_file(path: Path) -> list[list]:
         return _rows_from_xls(path)
     raw = path.read_bytes()
     text = raw.decode("utf-16") if raw[:2] in (b"\xff\xfe", b"\xfe\xff") else raw.decode("utf-8-sig", errors="replace")
-    return _rows_from_text(text)
+    return rows_from_text(text)
+
+
+MAX_UPLOAD_BYTES = 20 * 1024 * 1024
+
+
+def rows_from_upload(name: str, data: bytes) -> list[list]:
+    """Rows of a file uploaded from the browser (any column order)."""
+    import tempfile  # noqa: PLC0415
+
+    ext = Path(name).suffix.lower()
+    if ext not in EXTENSIONS:
+        raise ValueError("Upload a .xlsx, .xls or .csv file")
+    if not data:
+        raise ValueError("The file is empty")
+    if len(data) > MAX_UPLOAD_BYTES:
+        raise ValueError("The file is larger than 20 MB")
+    with tempfile.TemporaryDirectory() as tmp:
+        path = Path(tmp) / f"upload{ext}"
+        path.write_bytes(data)
+        return rows_from_file(path)
 
 
 def _find_header(rows: list[list]) -> tuple[int, dict[str, int]] | None:
@@ -226,16 +245,3 @@ def read_rows(rows: list[list], file: str, out: ReadResult) -> None:
             out.skipped_rows += 1
             continue
         out.punches.append(Punch(pid, name, day, times, file))
-
-
-def read_folder(folder: str) -> ReadResult:
-    out = ReadResult()
-    root = Path(folder)
-    for path in sorted(p for p in root.iterdir() if p.is_file() and p.suffix.lower() in EXTENSIONS):
-        try:
-            rows = rows_from_file(path)
-            read_rows(rows, path.name, out)
-            out.files.append(path.name)
-        except Exception as exc:  # one bad file must not stop the rest
-            out.errors.append(f"{path.name}: {exc}")
-    return out

@@ -5,7 +5,7 @@ import * as api from '../../services/api';
 import PageHeader from '../../components/ui/PageHeader';
 import Card from '../../components/ui/Card';
 import Select from '../../components/ui/Select';
-import UploadButton from '../../components/ui/UploadButton';
+import FileSaveField from '../../components/ui/FileSaveField';
 import { useAuth } from '../../context/AuthContext';
 import { useLookups } from '../../context/LookupsContext';
 import { canAccess, MASTER_ROLES } from '../../utils/permissions';
@@ -22,10 +22,10 @@ export const UPLOAD_TYPES = {
     icon: Database,
     to: '/master/batch-import',
     page: 'Master › Batch Import',
-    help: 'The BatchMaster sheet, in any column order. Batches are saved for each employee by name and short name (FacultyAlloted). Uploading again updates the same batches.',
+    help: 'The BatchMaster sheet, in any column order. Batches are saved for each employee by name and short name (FacultyAlloted). Saving a new file updates the same batches.',
     load: () => api.getBatchImportSettings(),
     upload: (file) => api.uploadBatches(file),
-    done: (s) => `Imported ${s.batches} batches: ${s.created} new, ${s.updated} updated, ${s.assigned} assigned to an employee.`,
+    done: (s) => `Saved ${s.batches} batches: ${s.created} new, ${s.updated} updated, ${s.assigned} assigned to an employee.`,
     result: (s) => [
       ['File', s.file],
       ['Batches', s.batches],
@@ -39,10 +39,10 @@ export const UPLOAD_TYPES = {
     icon: Fingerprint,
     to: '/master/biometric',
     page: 'Master › Biometric',
-    help: 'The biometric device export, in any column order: an employee code or name column and a date with time, or In / Out time columns. Time In and Time Out are saved per employee per day and compared with the entries in the monthly report. Uploading a month again replaces those days.',
+    help: 'The biometric device export, in any column order: an employee code or name column and a date with time, or In / Out time columns. Time In and Time Out are saved per employee per day and compared with the entries in the monthly report. Saving a month again replaces those days.',
     load: () => api.getBiometricSettings(),
     upload: (file) => api.uploadBiometric(file),
-    done: (s) => `Imported ${s.daysStored} day record(s) for ${s.people} people.`,
+    done: (s) => `Saved ${s.daysStored} day record(s) for ${s.people} people.`,
     result: (s) => [
       ['File', (s.files || []).join(', ')],
       ['Punch rows', s.punchRows],
@@ -54,8 +54,8 @@ export const UPLOAD_TYPES = {
 };
 
 /**
- * Admin › Data Upload. Admin / Manager pick Batch Master or Biometric and upload the Excel file
- * (.xlsx, .xls or .csv). The same uploads stay on Master › Batch Import and Master › Biometric.
+ * Admin › Data Upload. Admin / Manager pick Batch Master or Biometric, choose the Excel file
+ * (.xlsx, .xls or .csv) and click Save; the backend reads it and updates the database. The same uploads stay on Master › Batch Import and Master › Biometric.
  */
 export default function DataUpload() {
   const { user } = useAuth();
@@ -74,7 +74,6 @@ function DataUploadPage() {
   const toast = useToast();
   const { reload: reloadLookups } = useLookups();
   const [type, setType] = useState('batch');
-  const [busy, setBusy] = useState(false);
   const batch = useAsync(() => UPLOAD_TYPES.batch.load(), []);
   const bio = useAsync(() => UPLOAD_TYPES.biometric.load(), []);
   const last = { batch: batch.data?.lastImport, biometric: bio.data?.lastImport };
@@ -82,17 +81,10 @@ function DataUploadPage() {
   const due = Object.keys(UPLOAD_TYPES).filter((k) => (k === 'batch' ? batch.data : bio.data) && uploadDue(last[k]?.at));
 
   const upload = async (file) => {
-    setBusy(true);
-    try {
-      const s = await t.upload(file);
-      toast.success(t.done(s), `${t.label} uploaded`);
-      (type === 'batch' ? batch : bio).reload();
-      if (type === 'batch') reloadLookups?.();
-    } catch (e) {
-      toast.error(e.message, 'Upload failed');
-    } finally {
-      setBusy(false);
-    }
+    const s = await t.upload(file);
+    toast.success(t.done(s), `${t.label} saved`);
+    (type === 'batch' ? batch : bio).reload();
+    if (type === 'batch') reloadLookups?.();
   };
 
   return (
@@ -108,19 +100,15 @@ function DataUploadPage() {
       )}
       <div className="grid grid-cols-1 gap-5 xl:grid-cols-3">
         <Card title="Upload file" className="xl:col-span-2">
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <Select label="Upload type" value={type} onChange={(e) => setType(e.target.value || 'batch')} options={Object.entries(UPLOAD_TYPES).map(([value, x]) => ({ value, label: x.label }))} />
-            <div className="flex items-end">
-              <UploadButton accept={ACCEPT} loading={busy} onFile={upload} className="w-full sm:w-auto">
-                {`Upload ${t.label} file`}
-              </UploadButton>
-            </div>
+          <Select label="Upload type" className="sm:max-w-xs" value={type} onChange={(e) => setType(e.target.value || 'batch')} options={Object.entries(UPLOAD_TYPES).map(([value, x]) => ({ value, label: x.label }))} />
+          <div className="mt-4">
+            <FileSaveField key={type} label={`${t.label} file`} accept={ACCEPT} onSave={upload} saveLabel="Save" />
           </div>
           <p className="mt-4 flex items-start gap-2 text-[13px] text-ink-600">
             <FileSpreadsheet className="mt-0.5 size-4 shrink-0 text-ink-400" aria-hidden /> {t.help} Files: .xlsx, .xls or .csv.
           </p>
           <p className="mt-3 text-[13px] text-ink-500">
-            Settings and people not matched are on{' '}
+            People not matched are linked on{' '}
             <Link to={t.to} className="inline-flex items-center gap-1 font-medium text-brand-700 hover:underline">
               {t.page} <ArrowRight className="size-3.5" aria-hidden />
             </Link>
