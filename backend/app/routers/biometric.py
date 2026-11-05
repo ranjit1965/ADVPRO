@@ -6,14 +6,16 @@ and the monthly report compares those times with the person's daily entries.
 """
 import calendar
 import re
+import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel, Field
 
 from .. import db
-from ..biometric_files import read_folder
+from ..biometric_files import EXTENSIONS, read_folder
 from ..security import current_user, require_roles
 
 router = APIRouter(prefix="/biometric", tags=["biometric"])
@@ -24,7 +26,7 @@ DEFAULT_TOLERANCE = 15  # minutes of difference still counted as matching
 
 
 class SettingsIn(BaseModel):
-    folderPath: str = Field(min_length=1, max_length=500)
+    folderPath: str = Field(default="", max_length=500)  # empty when files are uploaded instead
     toleranceMinutes: int = Field(default=DEFAULT_TOLERANCE, ge=0, le=240)
 
 
@@ -67,7 +69,7 @@ def get_settings(_: dict = Depends(view_roles)):
 @router.put("/settings")
 def save_settings(body: SettingsIn, me: dict = Depends(master_roles)):
     folder = body.folderPath.strip()
-    if not Path(folder).is_dir():
+    if folder and not Path(folder).is_dir():
         raise HTTPException(400, f"Folder not found on the server: {folder}")
     db.db.settings.update_one(
         {"_id": SETTINGS_ID},
@@ -95,13 +97,32 @@ def import_now(_: dict = Depends(master_roles)):
     return run_import(_settings())
 
 
-def run_import(s: dict) -> dict:
-    folder = s.get("folderPath")
+@router.post("/upload")
+async def upload_and_import(request: Request, name: str = Query(..., min_length=1, max_length=200), _: dict = Depends(master_roles)):
+    """Imports one device export file sent from the browser (raw file body), for a backend that
+    cannot reach the folder, such as on Vercel."""
+    if Path(name).suffix.lower() not in EXTENSIONS:
+        raise HTTPException(400, "Upload a .csv, .txt, .tsv, .dat or .xlsx export from the biometric device")
+    data = await request.body()
+    if not data:
+        raise HTTPException(400, "The file is empty")
+    if len(data) > 20 * 1024 * 1024:
+        raise HTTPException(400, "The file is larger than 20 MB")
+    with tempfile.TemporaryDirectory() as tmp:
+        (Path(tmp) / Path(name).name).write_bytes(data)
+        return await run_in_threadpool(run_import, _settings(), tmp)
+
+
+def run_import(s: dict, folder: str | None = None) -> dict:
+    uploaded = folder is not None
+    folder = folder or s.get("folderPath")
     if not folder:
-        raise HTTPException(400, "Set the biometric folder path first")
+        raise HTTPException(400, "Set the biometric folder path first, or upload the export file")
     if not Path(folder).is_dir():
-        raise HTTPException(400, f"Folder not found on the server: {folder}")
+        raise HTTPException(400, f"Folder not found on the server: {folder}. If the backend runs on Vercel, use Upload file instead.")
     result = read_folder(folder)
+    if uploaded and result.errors and not result.files:
+        raise HTTPException(400, "Could not read the file: " + "; ".join(result.errors))
 
     users = list(db.users.find({}, {"_id": 0, "code": 1, "userId": 1, "name": 1}))
     by_code = {_norm(u["code"]): u for u in users}

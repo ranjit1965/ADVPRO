@@ -189,6 +189,11 @@ after a confirmation.
 
   For a folder, the newest file named like *BatchMaster* is read (else the newest Access file,
   else the newest Excel / CSV). Restart the backend after changing `.env`.
+* **Upload BatchMaster file** (Batch Import) and **Upload file** (Biometric) pick the file in the
+  browser, for example from `\\192.168.0.129\Test\DAILY_REPORT_SOFTWARE_2026` on an office PC, and
+  import it. Use these when the backend runs on **Vercel** or any server outside the office: such a
+  server can never open the office share, and the monthly automatic import does not run there.
+  `.accdb` / `.mdb` uploads still need the Access driver on the backend, so upload the `.xlsx`.
 * **Changing the path without editing .env**: on Master › Batch Import, type another folder or
   file (for example `D:\Test\DAILY_REPORT_SOFTWARE_2026`) and click **Save path**. The saved path
   is used instead of `BATCH_IMPORT_PATH` (for the monthly import too). **Use backend/.env path**
@@ -197,6 +202,9 @@ after a confirmation.
   check that 192.168.0.129 is on, the folder is shared, and the Windows user running the backend
   can open it (Win + R, paste the path, Enter). A `\\computer\share` path only works when the
   backend runs on Windows in the same office network (not on Vercel or another cloud server).
+  The message also gives the Windows reason. If the folder opens in File Explorer but not in the
+  app, the backend runs as another Windows user (started with "Run as administrator" or as a
+  service): start `uvicorn` from a normal Command Prompt, or copy the file to a local folder.
 * **Automatic monthly import**: the backend checks every 30 minutes and imports once a month
   (on `BATCH_IMPORT_DAY`, or at the first start after it if the backend was off). Manager /
   Admin can also click **Import batches now**, or run `python import_batches.py` in `backend`
@@ -227,6 +235,12 @@ The screenshots did not show these, so sensible defaults were used and are easy 
 * Fields of the **Marketing Support, DataBase Creation/Download** and **Travelling Time**
   tabs (`src/components/entry/tabs/`).
 * Monthly Plan and Students Mark Entry layouts.
+
+## Deploying the frontend on Vercel
+
+`vercel.json` sends every page address (for example `/master/batch-import`) to `index.html`, so
+refreshing any page or opening a link to it works instead of showing Vercel's 404 page. Requests to
+`/api/...` and the built `/assets/...` files are not rewritten.
 
 ## Project structure
 

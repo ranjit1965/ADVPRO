@@ -59,13 +59,14 @@ export async function request(path, { method = 'GET', body, params } = {}) {
   const token = tokenStore.get();
   let res;
   try {
+    const raw = typeof Blob !== 'undefined' && body instanceof Blob; // a file sent as it is (uploads)
     res = await fetch(url, {
       method,
       headers: {
-        'Content-Type': 'application/json',
+        'Content-Type': raw ? 'application/octet-stream' : 'application/json',
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
-      body: body ? JSON.stringify(body) : undefined,
+      body: raw ? body : body ? JSON.stringify(body) : undefined,
     });
   } catch {
     throw new ApiError('Cannot reach the server. Check that the backend is running.', 0);

@@ -279,6 +279,11 @@ export async function importBiometric() {
   return request('/biometric/import', { method: 'POST' });
 }
 
+/** Imports one device export file picked in the browser (for a backend that cannot reach the folder). */
+export async function uploadBiometric(file) {
+  return request('/biometric/upload', { method: 'POST', body: file, params: { name: file.name } });
+}
+
 /** Links a device user id / name to an employee code (empty code removes the link), then re-imports. */
 export async function saveBiometricMap(deviceKey, code) {
   return request('/biometric/map', { method: 'PUT', body: { deviceKey, code: code || null } });
@@ -302,6 +307,11 @@ export async function saveBatchImportSettings(body) {
 /** Reads the batch table, saves the batches in Master › Batch; returns the import summary. */
 export async function importBatches() {
   return request('/batch-import/import', { method: 'POST' });
+}
+
+/** Imports a BatchMaster file picked in the browser, for example from the office share (works on Vercel). */
+export async function uploadBatches(file) {
+  return request('/batch-import/upload', { method: 'POST', body: file, params: { name: file.name } });
 }
 
 /** Links a faculty short name from the file to an employee code (empty code removes the link), then re-imports. */

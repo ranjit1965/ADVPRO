@@ -13,7 +13,11 @@ import threading
 from collections import defaultdict
 from datetime import date, datetime, timedelta, timezone
 
-from fastapi import APIRouter, Depends, HTTPException
+import tempfile
+from pathlib import Path
+
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel, Field
 
 from .. import db
@@ -135,21 +139,50 @@ def import_now(me: dict = Depends(master_roles)):
 _import_lock = threading.Lock()  # one import at a time (button and monthly job)
 
 
-def run_import(s: dict, me: dict, trigger: str = "Manual") -> dict:
-    if not _import_lock.acquire(timeout=0 if trigger == "Manual" else 600):
+UPLOAD_EXTENSIONS = {".xlsx", ".csv", ".txt", ".accdb", ".mdb"}
+MAX_UPLOAD_BYTES = 20 * 1024 * 1024
+
+
+@router.post("/upload")
+async def upload_and_import(request: Request, name: str = Query(..., min_length=1, max_length=200), me: dict = Depends(master_roles)):
+    """Imports a BatchMaster file sent from the browser (raw file body). Works where the backend
+    cannot reach the office share, such as on Vercel."""
+    ext = Path(name).suffix.lower()
+    if ext not in UPLOAD_EXTENSIONS:
+        raise HTTPException(400, "Upload the BatchMaster .xlsx or .csv file (or .accdb / .mdb when the backend runs on Windows)")
+    data = await request.body()
+    if not data:
+        raise HTTPException(400, "The file is empty")
+    if len(data) > MAX_UPLOAD_BYTES:
+        raise HTTPException(400, "The file is larger than 20 MB")
+    s = _settings()
+    with tempfile.TemporaryDirectory() as tmp:
+        path = Path(tmp) / Path(name).name
+        path.write_bytes(data)
+        table = s.get("tableName") or settings.batch_import_table.strip() or DEFAULT_TABLE
+        return await run_in_threadpool(run_import, s, me, "Upload", (path, table, Path(name).name))
+
+
+def run_import(s: dict, me: dict, trigger: str = "Manual", upload: tuple | None = None) -> dict:
+    if not _import_lock.acquire(timeout=0 if trigger in ("Manual", "Upload") else 600):
         raise HTTPException(409, "A batch import is already running. Try again in a minute.")
     try:
-        return _run_import(s, me, trigger)
+        return _run_import(s, me, trigger, upload)
     finally:
         _import_lock.release()
 
 
-def _run_import(s: dict, me: dict, trigger: str) -> dict:
-    source, table = _source(s)
-    if not source:
-        raise HTTPException(400, "Set BATCH_IMPORT_PATH in backend/.env, or save the file path on this page first")
+def _run_import(s: dict, me: dict, trigger: str, upload: tuple | None = None) -> dict:
+    if upload:
+        file_path, table, shown_name = upload
+    else:
+        source, table = _source(s)
+        if not source:
+            raise HTTPException(400, "Set BATCH_IMPORT_PATH in backend/.env, or save the file path on this page first")
     try:
-        file_path = resolve_file(source)
+        if not upload:
+            file_path = resolve_file(source)
+            shown_name = file_path.name
         result = read_file(str(file_path), table)
     except Exception as exc:  # share offline, driver missing, wrong table, unreadable file
         raise HTTPException(400, f"Could not read the batch file: {exc}") from exc
@@ -249,8 +282,8 @@ def _run_import(s: dict, me: dict, trigger: str) -> dict:
 
     summary = {
         "at": now,
-        "file": file_path.name,
-        "path": str(file_path),
+        "file": shown_name,
+        "path": "Uploaded from the browser" if upload else str(file_path),
         "trigger": trigger,
         "by": me["name"],
         "rowsRead": len(result.rows),

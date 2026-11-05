@@ -9,6 +9,7 @@ import Select from '../../components/ui/Select';
 import DataTable from '../../components/ui/DataTable';
 import EmptyState from '../../components/ui/EmptyState';
 import ErrorState from '../../components/ui/ErrorState';
+import UploadButton from '../../components/ui/UploadButton';
 import { useAuth } from '../../context/AuthContext';
 import { useLookups } from '../../context/LookupsContext';
 import { useToast } from '../../context/ToastContext';
@@ -46,7 +47,6 @@ export default function Biometric() {
 
   const save = async () => {
     const errs = {};
-    if (!form.folderPath.trim()) errs.folderPath = 'Enter the folder path';
     if (!/^\d+$/.test(String(form.toleranceMinutes))) errs.toleranceMinutes = 'Minutes, numbers only';
     setErrors(errs);
     if (Object.keys(errs).length) return;
@@ -62,10 +62,10 @@ export default function Biometric() {
     }
   };
 
-  const runImport = async () => {
-    setBusy('import');
+  const runImport = async (file) => {
+    setBusy(file ? 'upload' : 'import');
     try {
-      const s = await api.importBiometric();
+      const s = file ? await api.uploadBiometric(file) : await api.importBiometric();
       setSummary(s);
       toast.success(`Imported ${s.daysStored} day record(s) for ${s.people} people from ${s.files.length} file(s).`);
     } catch (e) {
@@ -136,13 +136,16 @@ export default function Biometric() {
               <Button icon={Save} variant="secondary" loading={busy === 'save'} onClick={save}>
                 Save folder
               </Button>
-              <Button icon={RefreshCw} loading={busy === 'import'} disabled={!settings.data?.folderPath} onClick={runImport}>
+              <Button icon={RefreshCw} loading={busy === 'import'} disabled={!settings.data?.folderPath || !!busy} onClick={() => runImport()}>
                 Import now
               </Button>
+              <UploadButton accept=".csv,.txt,.tsv,.dat,.xlsx" loading={busy === 'upload'} disabled={!!busy && busy !== 'upload'} onFile={runImport}>
+                Upload file
+              </UploadButton>
             </div>
           )}
           <p className="mt-3 text-[12px] text-ink-500">
-            Each file needs an employee code or name column and a date with time, or In / Out time columns. People are matched by employee code, login ID or name; link anyone not matched below.
+            Use Upload file to pick the device export from this computer or the office share (needed when the backend runs on Vercel or another server outside the office). Each file needs an employee code or name column and a date with time, or In / Out time columns. People are matched by employee code, login ID or name; link anyone not matched below.
           </p>
         </Card>
 

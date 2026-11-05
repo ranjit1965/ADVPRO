@@ -8,6 +8,7 @@ import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
 import Select from '../../components/ui/Select';
 import EmptyState from '../../components/ui/EmptyState';
+import UploadButton from '../../components/ui/UploadButton';
 import ErrorState from '../../components/ui/ErrorState';
 import { useLookups } from '../../context/LookupsContext';
 import { useToast } from '../../context/ToastContext';
@@ -80,10 +81,10 @@ export default function BatchImport() {
     toast.success(message);
   };
 
-  const runImport = async () => {
-    setBusy('import');
+  const runImport = async (file) => {
+    setBusy(file ? 'upload' : 'import');
     try {
-      const s = await api.importBatches();
+      const s = file ? await api.uploadBatches(file) : await api.importBatches();
       done(s, `Imported ${s.batches} batches: ${s.created} new, ${s.updated} updated, ${s.assigned} assigned to an employee.`);
       settings.reload();
     } catch (e) {
@@ -164,9 +165,12 @@ export default function BatchImport() {
                 Use backend/.env path
               </Button>
             )}
-            <Button icon={RefreshCw} loading={busy === 'import'} disabled={!data?.filePath || !!busy} onClick={runImport}>
+            <Button icon={RefreshCw} loading={busy === 'import'} disabled={!data?.filePath || !!busy} onClick={() => runImport()}>
               Import batches now
             </Button>
+            <UploadButton accept=".xlsx,.csv,.txt,.accdb,.mdb" loading={busy === 'upload'} disabled={!!busy && busy !== 'upload'} onFile={runImport}>
+              Upload BatchMaster file
+            </UploadButton>
           </div>
           {data && (
             <div className="mt-4 flex items-start gap-2 rounded-lg bg-ink-50 px-3 py-2.5 text-[12px] text-ink-600">
@@ -185,7 +189,7 @@ export default function BatchImport() {
             </div>
           )}
           <p className="mt-3 text-[12px] text-ink-500">
-            Columns used: BatchNo, FacultyAlloted (short name), Course, BatchStartDate, BatchEndDate, ActualEndDate, BatchTimeIn, BatchTimeOut, ClassType, TotalHrs, CourseType and Status. Importing again updates the same batches; nothing is deleted. Reading an .accdb / .mdb file needs the Microsoft Access Database Engine on the backend computer.
+            <span className="font-medium text-ink-700">Upload BatchMaster file</span> picks the file from this computer or the office share and imports it; use it when the backend runs on Vercel or another server outside the office, which cannot open the network folder. Columns used: BatchNo, FacultyAlloted (short name), Course, BatchStartDate, BatchEndDate, ActualEndDate, BatchTimeIn, BatchTimeOut, ClassType, TotalHrs, CourseType and Status. Importing again updates the same batches; nothing is deleted. Reading an .accdb / .mdb file needs the Microsoft Access Database Engine on the backend computer.
           </p>
         </Card>
 
