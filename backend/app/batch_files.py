@@ -11,6 +11,7 @@ Faculty are required; the others are stored when present.
 """
 from __future__ import annotations
 
+import os
 import re
 from dataclasses import dataclass, field
 from datetime import date, datetime, time
@@ -172,11 +173,20 @@ def resolve_file(path_text: str) -> Path:
     """The batch file to read. A file path is used as it is. For a folder (such as the shared network
     folder set in BATCH_IMPORT_PATH) the newest file named like BatchMaster is used; if there is none,
     the newest Access database; then the newest Excel / CSV file."""
-    path = Path(str(path_text).strip().strip('"'))
+    text = str(path_text).strip().strip('"')
+    path = Path(text)
     if path.is_file():
         return path
     if not path.is_dir():
-        raise FileNotFoundError(f"Folder or file not found (or no permission): {path}")
+        if text.startswith(("\\\\", "//")):
+            if os.name != "nt":
+                raise FileNotFoundError(f"Cannot open {text}: a \\\\computer\\share path only works when the backend runs on Windows in the same office network")
+            raise FileNotFoundError(
+                f"Cannot open the network folder {text} from the computer running the backend. Check that "
+                "the computer is on, the folder is shared, and the Windows user running the backend can open it "
+                "(press Win + R, paste the path, Enter). If the folder name is different, type the right path here."
+            )
+        raise FileNotFoundError(f"Folder or file not found (or no permission): {text}")
     files = [p for p in path.iterdir() if p.is_file() and p.suffix.lower() in EXTENSIONS and not p.name.startswith("~$")]
     if not files:
         raise FileNotFoundError(f"No .accdb, .mdb, .xlsx or .csv file in {path}")

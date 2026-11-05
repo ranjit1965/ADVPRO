@@ -1,7 +1,7 @@
 r"""Master › Batch Import.
 
-The batch file comes from BATCH_IMPORT_PATH in backend/.env (a folder such as the shared
-\\192.168.0.129\Test\DAILY_REPORT_SOFTWARE_2026, or one file), or else from the path saved on the page.
+The batch file comes from the path saved on the Batch Import page, or else from BATCH_IMPORT_PATH in
+backend/.env (a folder such as the shared \\192.168.0.129\Test\DAILY_REPORT_SOFTWARE_2026, or one file).
 It is imported automatically once a month (BATCH_IMPORT_DAY / BATCH_IMPORT_HOUR) and whenever
 Manager / Admin click "Import batches". The import reads every batch with its allotted faculty
 short name, matches the short name to an employee code and saves the batch in Master › Batch (master_batches) assigned to that
@@ -32,7 +32,7 @@ CLASS_TYPES = {"weekdays": "WeekDays", "weekday": "WeekDays", "weekend": "WeekEn
 
 
 class SettingsIn(BaseModel):
-    filePath: str = Field(min_length=1, max_length=500)  # folder or file
+    filePath: str = Field(default="", max_length=500)  # folder or file; empty = use BATCH_IMPORT_PATH from backend/.env
     tableName: str = Field(default=DEFAULT_TABLE, max_length=64)
 
 
@@ -46,9 +46,12 @@ def _settings() -> dict:
 
 
 def _source(s: dict) -> tuple[str, str]:
-    """(folder or file path, Access table name): backend/.env first, then the path saved on the page."""
+    """A path saved on the Batch Import page wins; otherwise BATCH_IMPORT_PATH from backend/.env."""
+    saved = (s.get("filePath") or "").strip()
+    if saved:
+        return saved, s.get("tableName") or DEFAULT_TABLE
     env_path = settings.batch_import_path.strip().strip('"')
-    return (env_path or s.get("filePath") or ""), (settings.batch_import_table.strip() if env_path else s.get("tableName")) or DEFAULT_TABLE
+    return env_path, settings.batch_import_table.strip() or DEFAULT_TABLE
 
 
 def _local_now() -> datetime:
@@ -58,7 +61,8 @@ def _local_now() -> datetime:
 def _public(s: dict) -> dict:
     out = {k: s.get(k) for k in ("lastImport", "lastAutoMonth", "lastAutoError", "updatedBy", "updatedAt")}
     out["filePath"], out["tableName"] = _source(s)
-    out["fromEnv"] = bool(settings.batch_import_path.strip())
+    out["envPath"] = settings.batch_import_path.strip().strip('"')
+    out["fromEnv"] = not (s.get("filePath") or "").strip() and bool(out["envPath"])
     out["autoDay"], out["autoHour"] = settings.batch_import_day, settings.batch_import_hour
     out["facultyMap"] = s.get("facultyMap") or {}
     try:
@@ -96,13 +100,12 @@ def get_settings(_: dict = Depends(master_roles)):
 
 @router.put("/settings")
 def save_settings(body: SettingsIn, me: dict = Depends(master_roles)):
-    if settings.batch_import_path.strip():
-        raise HTTPException(400, "The path is set in backend/.env (BATCH_IMPORT_PATH). Change it there and restart the backend.")
     path = body.filePath.strip().strip('"')
-    try:
-        resolve_file(path)
-    except Exception as exc:
-        raise HTTPException(400, str(exc)) from exc
+    if path:  # empty clears the saved path, so BATCH_IMPORT_PATH from backend/.env is used again
+        try:
+            resolve_file(path)
+        except Exception as exc:
+            raise HTTPException(400, str(exc)) from exc
     db.db.settings.update_one(
         {"_id": SETTINGS_ID},
         {"$set": {"filePath": path, "tableName": (body.tableName or DEFAULT_TABLE).strip(), "updatedBy": me["name"], "updatedAt": datetime.now(timezone.utc).isoformat()}},

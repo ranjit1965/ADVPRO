@@ -188,9 +188,15 @@ after a confirmation.
   ```
 
   For a folder, the newest file named like *BatchMaster* is read (else the newest Access file,
-  else the newest Excel / CSV). For testing, point it at a local folder, for example
-  `BATCH_IMPORT_PATH=D:\Test\DAILY_REPORT_SOFTWARE_2026`. Restart the backend after a change.
-  Leave it empty to type the path on the Batch Import page instead.
+  else the newest Excel / CSV). Restart the backend after changing `.env`.
+* **Changing the path without editing .env**: on Master › Batch Import, type another folder or
+  file (for example `D:\Test\DAILY_REPORT_SOFTWARE_2026`) and click **Save path**. The saved path
+  is used instead of `BATCH_IMPORT_PATH` (for the monthly import too). **Use backend/.env path**
+  goes back to the `.env` value. The path is checked when saving.
+* "Cannot open the network folder" means the computer running the backend cannot reach the share:
+  check that 192.168.0.129 is on, the folder is shared, and the Windows user running the backend
+  can open it (Win + R, paste the path, Enter). A `\\computer\share` path only works when the
+  backend runs on Windows in the same office network (not on Vercel or another cloud server).
 * **Automatic monthly import**: the backend checks every 30 minutes and imports once a month
   (on `BATCH_IMPORT_DAY`, or at the first start after it if the backend was off). Manager /
   Admin can also click **Import batches now**, or run `python import_batches.py` in `backend`

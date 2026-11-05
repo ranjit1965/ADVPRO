@@ -17,9 +17,9 @@ import { formatDate, formatDateTime } from '../../utils/format';
 const STATUS_ORDER = ['Running', 'Planned', 'Break', 'Completed'];
 
 /**
- * Master › Batch Import. The BatchMaster table is read from BATCH_IMPORT_PATH in backend/.env (a folder
- * such as the shared network folder, or one .accdb / .mdb / .xlsx / .csv file); without it, from the path
- * saved here. The backend imports it by itself once a month, and "Import batches" imports it now. Each batch is saved in Master › Batch,
+ * Master › Batch Import. The BatchMaster table is read from the path saved here (a folder such as the
+ * shared network folder, or one .accdb / .mdb / .xlsx / .csv file); with none saved, from BATCH_IMPORT_PATH
+ * in backend/.env. The backend imports it by itself once a month, and "Import batches" imports it now. Each batch is saved in Master › Batch,
  * assigned to the employee whose code matches the faculty short name (FacultyAlloted). Short names
  * that match nobody are listed so they can be linked once; the link is remembered.
  */
@@ -42,6 +42,19 @@ export default function BatchImport() {
       setSummary(settings.data.lastImport || null);
     }
   }, [settings.data]);
+
+  const useEnvPath = async () => {
+    setBusy('reset');
+    try {
+      await api.saveBatchImportSettings({ filePath: '', tableName: 'BatchMaster' });
+      toast.success('Using the path from backend/.env again.');
+      settings.reload();
+    } catch (e) {
+      toast.error(e.message);
+    } finally {
+      setBusy('');
+    }
+  };
 
   const save = async () => {
     const errs = {};
@@ -116,8 +129,14 @@ export default function BatchImport() {
               placeholder="e.g. \\192.168.0.129\Test\DAILY_REPORT_SOFTWARE_2026"
               value={form.filePath}
               error={errors.filePath}
-              disabled={settings.loading || fromEnv}
-              hint={fromEnv ? 'Set in backend/.env (BATCH_IMPORT_PATH). Change it there and restart the backend.' : undefined}
+              disabled={settings.loading}
+              hint={
+                fromEnv
+                  ? 'From backend/.env (BATCH_IMPORT_PATH). Type another folder or file and click Save path to use it instead.'
+                  : data?.envPath
+                    ? `Saved on this page. The backend/.env path is ${data.envPath}.`
+                    : 'The folder must be reachable from the computer running the backend.'
+              }
               onChange={(e) => (setForm({ ...form, filePath: e.target.value }), setErrors({}))}
             />
             <Input
@@ -125,7 +144,7 @@ export default function BatchImport() {
               className="sm:col-span-4"
               value={form.tableName}
               error={errors.tableName}
-              disabled={settings.loading || fromEnv || !isAccess}
+              disabled={settings.loading || !isAccess}
               hint="Table inside the Access file"
               onChange={(e) => setForm({ ...form, tableName: e.target.value })}
             />
@@ -137,9 +156,12 @@ export default function BatchImport() {
             </p>
           )}
           <div className="mt-4 flex flex-wrap gap-2">
-            {!fromEnv && (
-              <Button icon={Save} variant="secondary" loading={busy === 'save'} onClick={save}>
-                Save path
+            <Button icon={Save} variant="secondary" loading={busy === 'save'} disabled={!!busy && busy !== 'save'} onClick={save}>
+              Save path
+            </Button>
+            {!fromEnv && data?.envPath && (
+              <Button variant="ghost" loading={busy === 'reset'} disabled={!!busy && busy !== 'reset'} onClick={useEnvPath}>
+                Use backend/.env path
               </Button>
             )}
             <Button icon={RefreshCw} loading={busy === 'import'} disabled={!data?.filePath || !!busy} onClick={runImport}>
