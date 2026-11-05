@@ -16,6 +16,8 @@ import { initials } from '../utils/format';
 
 export default function Settings() {
   const { user } = useAuth();
+  // Only Admin (and the Manager account) can change passwords; everyone else asks Admin.
+  const canChangePassword = ['ADMIN', 'MANAGER'].includes(user.role);
   const toast = useToast();
   const [prefs, setPrefs] = usePreferences();
   const [draft, setDraft] = useState(prefs);
@@ -54,7 +56,7 @@ export default function Settings() {
 
   return (
     <>
-      <PageHeader title="Settings" description="Your profile, password and preferences." />
+      <PageHeader title="Settings" description={canChangePassword ? 'Your profile, password and preferences.' : 'Your profile and preferences.'} />
       <div className="grid grid-cols-1 gap-5 xl:grid-cols-3">
         <Card title="Profile" className="xl:row-span-2">
           <div className="flex items-center gap-4">
@@ -92,6 +94,7 @@ export default function Settings() {
           </div>
         </Card>
 
+        {canChangePassword ? (
         <Card title="Change password" className="xl:col-span-2">
           <form onSubmit={changePassword} className="grid grid-cols-1 gap-4 sm:grid-cols-3" noValidate>
             <Input label="Current password" type="password" required autoComplete="current-password" value={pwd.current} error={pwdErrors.current} onChange={(e) => setPwd({ ...pwd, current: e.target.value })} />
@@ -104,6 +107,13 @@ export default function Settings() {
             </div>
           </form>
         </Card>
+        ) : (
+          <Card title="Password" className="xl:col-span-2">
+            <p className="flex items-center gap-2 text-[13px] text-ink-600">
+              <KeyRound className="size-4 text-ink-400" aria-hidden /> Passwords are changed by Admin only. Contact Admin to change your password.
+            </p>
+          </Card>
+        )}
 
       </div>
     </>

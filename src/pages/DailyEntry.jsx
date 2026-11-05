@@ -7,7 +7,7 @@ import Tabs from '../components/ui/Tabs';
 import Button from '../components/ui/Button';
 import { PageLoader } from '../components/ui/Loading';
 import ErrorState from '../components/ui/ErrorState';
-import EntryHeaderFields from '../components/entry/EntryHeaderFields';
+import EntryHeaderFields, { EntryTimeFields } from '../components/entry/EntryHeaderFields';
 import EntryActionBar from '../components/entry/EntryActionBar';
 import EntriesGrid from '../components/entry/EntriesGrid';
 import AddLookupModal from '../components/entry/AddLookupModal';
@@ -21,14 +21,13 @@ import { useToast } from '../context/ToastContext';
 import { useConfirm } from '../context/ConfirmContext';
 import * as api from '../services/api';
 import { ACTIVITY_TYPES, ACTIVITY_LABEL, DAY_START } from '../utils/constants';
-import { EMPTY_DETAILS, EMPTY_OUTSTATION, OTHERS_DAILY_LIMIT, buildPayload, emptyHeader, freshDetails, validateEntry } from '../utils/entryForm';
+import { EMPTY_DETAILS, EMPTY_OUTSTATION, LONG_ENTRY_MINUTES, OTHERS_CONFIRM_MINUTES, buildPayload, emptyHeader, freshDetails, validateEntry } from '../utils/entryForm';
 import { formatDate, formatDuration, minutesBetween, toISODate } from '../utils/format';
 
 const NO_ERRORS = { header: {}, details: {}, outstation: {} };
 
 /** Latest Time To among the day's entries ('' when there are none). HH:MM strings compare correctly. */
 /** Minutes already logged under Others that day (the entry being edited not counted). */
-const othersUsed = (rows, exceptId) => rows.filter((r) => r.activityType === 'others' && r.id !== exceptId).reduce((s, r) => s + minutesBetween(r.timeFrom, r.timeTo), 0);
 
 const lastEndTime = (rows) => rows.reduce((max, r) => (r.timeTo > max ? r.timeTo : max), '');
 
@@ -162,20 +161,19 @@ export default function DailyEntry() {
     e?.preventDefault();
     const form = { header, tab, details: details[tab], outstation };
     const { errors: errs, valid: formValid } = validateEntry(form);
-    let valid = formValid;
-    // Others: at most 1 hour a day, counting the day's other Others entries.
-    if (tab === 'others' && header.timeFrom && header.timeTo && !errs.header.timeTo) {
-      const used = othersUsed(grid.rows, editingId);
-      if (used + minutesBetween(header.timeFrom, header.timeTo) > OTHERS_DAILY_LIMIT) {
-        errs.header.timeTo = `Others is limited to 1 hour a day (${Math.max(0, OTHERS_DAILY_LIMIT - used)} min left)`;
-        valid = false;
-      }
-    }
     setErrors(errs);
-    if (!valid) {
-      toast.error(errs.header.timeTo?.startsWith('Others') ? errs.header.timeTo : 'Please fill the highlighted fields.', 'Entry not saved');
+    if (!formValid) {
+      toast.error('Please fill the highlighted fields.', 'Entry not saved');
       requestAnimationFrame(() => formRef.current?.querySelector('[aria-invalid="true"]')?.focus());
       return;
+    }
+    // Long slots are allowed, but the faculty confirms them first.
+    const mins = minutesBetween(header.timeFrom, header.timeTo);
+    const span = `${header.timeFrom} to ${header.timeTo} (${formatDuration(mins)})`;
+    if (tab === 'others' && mins > OTHERS_CONFIRM_MINUTES) {
+      if (!(await confirm({ title: 'Others more than 1 hour', message: `This Others entry is ${span}, more than 1 hour. Are you sure?`, confirmLabel: 'Yes, save' }))) return;
+    } else if (mins > LONG_ENTRY_MINUTES) {
+      if (!(await confirm({ title: 'More than 2 hours', message: `This entry is ${span}, more than 2 hours. Are you sure?`, confirmLabel: 'Yes, save' }))) return;
     }
     setSaving(true);
     try {
@@ -323,10 +321,13 @@ export default function DailyEntry() {
         )}
 
         <Card bodyClassName="p-5">
-          <EntryHeaderFields header={header} errors={errors.header} onChange={changeHeader} lookups={lookups} lastEnd={editingId ? '' : lastEndTime(grid.rows)} />
+          <EntryHeaderFields header={header} errors={errors.header} onChange={changeHeader} lookups={lookups} />
         </Card>
 
         <Card bodyClassName="p-0">
+          <div className="border-b border-ink-100 bg-ink-50/40 p-5">
+            <EntryTimeFields header={header} errors={errors.header} onChange={changeHeader} lastEnd={editingId ? '' : lastEndTime(grid.rows)} />
+          </div>
           <div className="border-b border-ink-100 p-3">
             <Tabs tabs={ACTIVITY_TYPES.map((t) => ({ ...t, badge: tabCounts[t.key] }))} value={tab} onChange={setTab} idPrefix="activity" />
           </div>
@@ -353,7 +354,6 @@ export default function DailyEntry() {
               onAddLookup={openLookupModal}
               onAddCourse={openCourseModal}
               onRequestCourse={() => setRequestCourseOpen(true)}
-              othersUsed={othersUsed(grid.rows, editingId)}
             />
           </div>
           <div className="border-t border-ink-100 bg-ink-50/60 px-5 py-3">

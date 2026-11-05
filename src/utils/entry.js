@@ -7,13 +7,15 @@ export function entrySummary(e) {
     case 'class':
       return [d.batchNo || d.classIn, d.courseId, d.chapterNo && `Ch ${d.chapterNo}`, d.dayOrder && `Day ${d.dayOrder}`, d.todaySessionType].filter(Boolean).join(' · ');
     case 'seminar':
-      return [d.seminarType, d.collegeName, d.dept].filter(Boolean).join(' · ');
+      return [d.seminarType, d.collegeName || d.courseId, d.dept, d.facultyRole === 'Assistance Faculty' && 'Assistance'].filter(Boolean).join(' · ');
+    case 'facultyDevelopment':
+      return [d.fdType, d.remarks].filter(Boolean).join(' · ');
     case 'marketing':
       return [d.marketingType, d.collegeName, d.total && `${d.total} total`, d.enquiryFormNo, d.registerNo].filter(Boolean).join(' · ');
     case 'learning':
       return [d.materialType, d.courseId, d.chapterNo && `Ch ${d.chapterNo}`].filter(Boolean).join(' · ');
     case 'selfLearning':
-      return [d.learningType, d.courseId, d.chapterNo && `Ch ${d.chapterNo}`].filter(Boolean).join(' · ');
+      return [d.learningType, d.courseId, d.chapterNo && `Ch ${d.chapterNo}`, d.chapterType, d.classMode].filter(Boolean).join(' · ');
     case 'database':
       return [d.databaseName, d.fileName, d.records && `${d.records} records`].filter(Boolean).join(' · ');
     case 'travelling':
@@ -34,10 +36,14 @@ export const C_TYPE_LEGEND = [
   ['CL', 'Class'],
   ['GL', 'Seminar Guest'],
   ['IV', 'Seminar Industrial Visit'],
+  ['IN', 'Internship'],
   ['CO', 'Counseling'],
   ['MK', 'Marketing Support'],
   ['CP', 'Learn Preparation'],
   ['SL', 'Learn Self Preparation'],
+  ['KS', 'Knowledge Sharing'],
+  ['CA', 'Class Attended'],
+  ['FD', 'Faculty Development'],
   ['DB', 'DataBase'],
   ['TR', 'Travelling'],
   ['SW', 'Software'],
@@ -51,13 +57,15 @@ function cType(e) {
     case 'class':
       return 'CL';
     case 'seminar':
-      return d.seminarType === 'Guest Lecture' ? 'GL' : 'IV';
+      return d.seminarType === 'Guest Lecture' ? 'GL' : d.seminarType === 'Internship' ? 'IN' : 'IV';
     case 'marketing':
       return d.marketingType === 'Councelling' ? 'CO' : 'MK';
     case 'learning':
       return 'CP';
     case 'selfLearning':
-      return 'SL';
+      return d.learningType === 'Knowledge Sharing' ? 'KS' : d.learningType === 'Class Attended' ? 'CA' : 'SL';
+    case 'facultyDevelopment':
+      return 'FD';
     case 'database':
       return 'DB';
     case 'travelling':
@@ -84,12 +92,16 @@ export function reportRow(e, courses = []) {
   const row = {
     batchNo: e.activityType === 'class' ? d.batchNo || d.classIn || '' : '',
     paper,
-    sNo: ['class', 'learning', 'selfLearning'].includes(e.activityType) ? d.chapterNo || '' : '',
-    sType: e.activityType === 'class' && d.chapterType ? d.chapterType.charAt(0) : '',
+    sNo: ['class', 'learning', 'selfLearning', 'seminar'].includes(e.activityType) ? d.chapterNo || '' : '',
+    // L = Lab / Practical, T = Theory
+    sType: d.chapterType ? (/^(lab|practical)/i.test(d.chapterType) ? 'L' : d.chapterType.charAt(0).toUpperCase()) : '',
     college: atCollege ? o.collegeName : d.collegeName || '',
     dept: atCollege ? o.dept : d.dept || '',
     yop: atCollege ? o.yop : d.yop || '',
     cType: cType(e),
+    // Main / Assistance faculty (Class at College / OD, Seminar)
+    role: ({ 'Main Faculty': 'Main', 'Assistance Faculty': 'Assistance' })[(atCollege ? o.facultyRole : e.activityType === 'seminar' ? d.facultyRole : '') || ''] || '',
+    mainFaculty: (atCollege ? o.mainFaculty : e.activityType === 'seminar' ? d.mainFaculty : '') || '',
   };
   switch (e.activityType) {
     case 'class':
@@ -99,10 +111,13 @@ export function reportRow(e, courses = []) {
       row.topic = join(d.materialType, d.chapterDetails, d.pages && `${d.pages} pages`);
       break;
     case 'selfLearning':
-      row.topic = join(d.learningType, d.chapterDetails);
+      row.topic = join(d.learningType, d.classFaculty && `by ${d.classFaculty}`, d.classMode, d.chapterDetails);
       break;
     case 'seminar':
-      row.topic = join(d.seminarType, d.totalStudent && `${d.totalStudent} students`, d.remarks);
+      row.topic = join(d.seminarType, d.chapterDetails, d.totalStudent && `${d.totalStudent} students`, d.remarks);
+      break;
+    case 'facultyDevelopment':
+      row.topic = join(d.fdType, d.remarks);
       break;
     case 'marketing':
       row.topic = join(d.marketingType, d.total && `${d.total} total`, d.enquiryFormNo, d.registerNo, d.remarks);

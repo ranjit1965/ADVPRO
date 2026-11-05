@@ -57,7 +57,13 @@ export const NAVIGATION = [
   { key: 'lab-support', label: 'Lab Support', icon: LifeBuoy, restricted: true },
   { key: 'mis', label: 'MIS', icon: BarChart3, restricted: true },
   { key: 'digital-marketing', label: 'Digital Marketing', icon: MonitorSmartphone, restricted: true },
-  { key: 'admin', label: 'Admin', icon: ShieldCheck, restricted: true },
+  {
+    key: 'admin',
+    label: 'Admin',
+    icon: ShieldCheck,
+    roles: MASTER_ROLES,
+    children: [{ key: 'data-upload', label: 'Data Upload', to: '/admin/data-upload' }],
+  },
   { key: 'marketing', label: 'Marketing', icon: Megaphone, restricted: true },
   {
     key: 'hr-report',

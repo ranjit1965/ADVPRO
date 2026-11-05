@@ -139,7 +139,7 @@ export default function Biometric() {
               <Button icon={RefreshCw} loading={busy === 'import'} disabled={!settings.data?.folderPath || !!busy} onClick={() => runImport()}>
                 Import now
               </Button>
-              <UploadButton accept=".csv,.txt,.tsv,.dat,.xlsx" loading={busy === 'upload'} disabled={!!busy && busy !== 'upload'} onFile={runImport}>
+              <UploadButton accept=".xlsx,.xls,.csv,.txt,.tsv,.dat" loading={busy === 'upload'} disabled={!!busy && busy !== 'upload'} onFile={runImport}>
                 Upload file
               </UploadButton>
             </div>

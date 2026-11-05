@@ -14,13 +14,18 @@ export const EMPTY_DETAILS = {
     courseId: '', batchNo: '', classIn: '', chapterNo: '', chapterType: '', dayOrder: '', noOfStudents: '', todaySessionType: '', todaySessionDetail: '',
     dailyTest: '', dailyActivityPost: '',
   },
-  seminar: { seminarType: '', collegeName: '', dept: '', sec: '', totalStudent: '', yop: '', databaseCollected: '', assistance: '', remarks: '' },
+  seminar: {
+    seminarType: '', collegeName: '', dept: '', sec: '', totalStudent: '', yop: '', databaseCollected: '', facultyRole: 'Main Faculty', mainFaculty: '', remarks: '',
+    // Internship asks the same as Knowledge Sharing
+    courseId: '', chapterNo: '', chapterType: '', chapterDetails: '',
+  },
   marketing: {
     marketingType: 'TC calls', collegeName: '', dept: '', sec: '', yop: '', total: '', freshRepeat: '',
     gradeA: '', gradeBPlus: '', gradeBMinus: '', gradeD: '', gradeNR: '', enquiryFormNo: '', registerNo: '', remarks: '',
   },
   learning: { courseId: '', materialType: '', chapterNo: '', pages: '', chapterDetails: '' },
-  selfLearning: { learningType: 'Self Learning', courseId: '', chapterNo: '', chapterDetails: '' },
+  selfLearning: { learningType: 'Self Learning', courseId: '', chapterNo: '', chapterType: '', classFaculty: '', classMode: '', chapterDetails: '' },
+  facultyDevelopment: { fdType: '', remarks: '' },
   database: { databaseName: '', fileName: '', records: '', storedPlace: '' },
   travelling: { fromPlace: '', toPlace: '', mode: '', purpose: '', remarks: '' },
   // Software and System Fault are no longer entered (tabs removed); kept so old entries still open.
@@ -30,7 +35,7 @@ export const EMPTY_DETAILS = {
 };
 
 export const EMPTY_OUTSTATION = {
-  collegeName: '', dept: '', sec: '', totalAbsent: '', yop: '', assistanceFaculty: '',
+  collegeName: '', dept: '', sec: '', totalAbsent: '', yop: '', facultyRole: 'Main Faculty', mainFaculty: '',
   videosShown: '', guidedExercisePpt: '', mentiQuiz: '', taskGiven: '',
 };
 
@@ -51,8 +56,19 @@ export const CLASS_CHECKS = [
 // Day Order of the class (1 to 20), for Center and College / OD.
 export const DAY_ORDERS = Array.from({ length: 20 }, (_, i) => String(i + 1));
 
-// Self Learning / Knowledge Sharing tab: the two modes share the same fields.
-export const SELF_LEARNING_TYPES = ['Self Learning', 'Knowledge Sharing'];
+// Self Learning / Knowledge Sharing tab. Class Attended also asks who took the class and Online / Offline.
+export const SELF_LEARNING_TYPES = ['Self Learning', 'Knowledge Sharing', 'Class Attended'];
+export const SESSION_KINDS = ['Theory', 'Practical'];
+export const CLASS_MODES = ['Online', 'Offline'];
+
+// Seminar / Work Shop types. Internship asks the same course questions as Knowledge Sharing.
+export const SEMINAR_TYPES = ['Guest Lecture', 'IV / Work Shop', 'Internship'];
+
+// Main or Assistance faculty (Class at College / OD, and Seminar). Assistance asks for the main faculty.
+export const FACULTY_ROLES = ['Main Faculty', 'Assistance Faculty'];
+
+// Faculty Development: meetings and breaks, each with required remarks.
+export const FD_TYPES = ['Meeting with HR', 'Meeting with Ranjit sir', 'Staff Meeting', 'Lunch Break', 'Tea Break'];
 
 // Marketing sub-types that record a count, and the label of that count.
 export const MARKETING_COUNT_LABEL = { 'TC calls': 'Total Calls', Mailers: 'Total Mails', SMS: 'Total SMS', 'Label Printout': 'Total Labels' };
@@ -65,17 +81,19 @@ export const MARKETING_GRADE_FIELDS = [
   ['gradeNR', 'NR'],
 ];
 
-/** Others may take at most 1 hour per person per day (all roles). */
-export const OTHERS_DAILY_LIMIT = 60;
+/** Entries longer than these (minutes) ask "Are you sure?" before saving. */
+export const LONG_ENTRY_MINUTES = 120;
+export const OTHERS_CONFIRM_MINUTES = 60;
 
 export const freshDetails = () => JSON.parse(JSON.stringify(EMPTY_DETAILS));
 
 const REQUIRED = {
   class: ['courseId', 'chapterNo', 'noOfStudents', 'todaySessionType'],
-  seminar: ['seminarType', 'collegeName', 'dept', 'totalStudent'],
+  seminar: ['seminarType'],
   marketing: ['marketingType'],
   learning: ['courseId', 'chapterDetails'],
   selfLearning: ['learningType', 'courseId', 'chapterDetails'],
+  facultyDevelopment: ['fdType', 'remarks'],
   database: ['databaseName', 'fileName', 'records'],
   travelling: ['fromPlace', 'toPlace', 'mode'],
   software: ['softwareName', 'softwareActivity'],
@@ -107,7 +125,19 @@ export function validateEntry({ header, tab, details, outstation }) {
         if (!String(outstation[f] ?? '').trim()) errors.outstation[f] = 'Required';
       });
       if (Number(outstation.totalAbsent || 0) > Number(details.noOfStudents || 0)) errors.outstation.totalAbsent = 'Cannot exceed No of Students';
+      if (outstation.facultyRole === 'Assistance Faculty' && !outstation.mainFaculty) errors.outstation.mainFaculty = 'Select the main faculty';
     }
+  }
+  if (tab === 'seminar') {
+    const need = details.seminarType === 'Internship' ? ['courseId', 'chapterDetails'] : ['collegeName', 'dept', 'totalStudent'];
+    need.forEach((f) => {
+      if (!String(details[f] ?? '').trim()) errors.details[f] = 'Required';
+    });
+    if (details.facultyRole === 'Assistance Faculty' && !details.mainFaculty) errors.details.mainFaculty = 'Select the main faculty';
+  }
+  if (tab === 'selfLearning' && details.learningType === 'Class Attended') {
+    if (!details.classFaculty) errors.details.classFaculty = 'Required';
+    if (!details.classMode) errors.details.classMode = 'Required';
   }
   Object.entries(details).forEach(([k, v]) => {
     if (NUMERIC.includes(k) && v !== '' && !/^\d+$/.test(String(v))) errors.details[k] = 'Numbers only';
@@ -134,7 +164,17 @@ export function validateEntry({ header, tab, details, outstation }) {
 export function buildPayload({ header, tab, details, outstation }) {
   let d = { ...details };
   // Only keep the fields of this tab (an edited old entry may still carry retired fields).
-  if (tab === 'learning' || tab === 'selfLearning') d = Object.fromEntries(Object.entries(d).filter(([k]) => k in EMPTY_DETAILS[tab]));
+  if (EMPTY_DETAILS[tab]) d = Object.fromEntries(Object.entries(d).filter(([k]) => k in EMPTY_DETAILS[tab]));
+  if (tab === 'selfLearning' && d.learningType !== 'Class Attended') {
+    d.classFaculty = '';
+    d.classMode = '';
+  }
+  if (tab === 'seminar') {
+    const course = ['courseId', 'chapterNo', 'chapterType', 'chapterDetails'];
+    const college = ['collegeName', 'dept', 'sec', 'totalStudent', 'yop', 'databaseCollected'];
+    (d.seminarType === 'Internship' ? college : course).forEach((k) => (d[k] = ''));
+  }
+  if ((tab === 'seminar' || tab === 'facultyDevelopment') && d.facultyRole !== 'Assistance Faculty' && 'mainFaculty' in d) d.mainFaculty = '';
   if (tab === 'marketing') {
     const t = d.marketingType;
     const keep = MARKETING_COUNT_LABEL[t]
@@ -155,6 +195,9 @@ export function buildPayload({ header, tab, details, outstation }) {
     activityType: tab,
     details: d,
     // College / OD keeps Total Student in its block too (older reports read it from there).
-    outstation: tab === 'class' && header.facultyIn === 'Outstation' ? { ...outstation, totalStudent: d.noOfStudents } : null,
+    outstation:
+      tab === 'class' && header.facultyIn === 'Outstation'
+        ? { ...outstation, mainFaculty: outstation.facultyRole === 'Assistance Faculty' ? outstation.mainFaculty : '', totalStudent: d.noOfStudents }
+        : null,
   };
 }

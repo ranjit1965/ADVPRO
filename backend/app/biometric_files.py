@@ -2,7 +2,7 @@
 
 Supported files in the folder (any mix):
   * .csv / .txt / .tsv / .dat  with a header row (comma, semicolon, tab or | separated)
-  * .xlsx                       first sheet, with a header row
+  * .xlsx / .xls                first sheet, with a header row
   * ZKTeco-style attendance logs without a header ("1  2026-10-01 09:02:11  1 0 ...")
 
 Two layouts are understood:
@@ -20,7 +20,7 @@ from dataclasses import dataclass, field
 from datetime import date, datetime, time
 from pathlib import Path
 
-EXTENSIONS = {".csv", ".txt", ".tsv", ".dat", ".xlsx"}
+EXTENSIONS = {".csv", ".txt", ".tsv", ".dat", ".xlsx", ".xls"}
 
 # Header names seen in common device exports, compared without spaces, dots, dashes or underscores.
 ID_HEADERS = {"empcode", "employeecode", "code", "empid", "employeeid", "userid", "enrollno", "enrollnumber", "acno", "cardno", "badgenumber", "id", "no", "staffid", "staffcode"}
@@ -126,6 +126,43 @@ def _rows_from_xlsx(path: Path) -> list[list]:
     return rows
 
 
+def _rows_from_xls(path: Path) -> list[list]:
+    """Old Excel 97-2003 (.xls) workbooks, first sheet. Dates come back as datetime values."""
+    import xlrd  # noqa: PLC0415
+
+    book = xlrd.open_workbook(str(path))
+    sh = book.sheet_by_index(0)
+    rows = []
+    for r in range(sh.nrows):
+        row = []
+        for c in range(sh.ncols):
+            cell = sh.cell(r, c)
+            v = cell.value
+            if cell.ctype == xlrd.XL_CELL_DATE:
+                try:
+                    v = xlrd.xldate.xldate_as_datetime(v, book.datemode)
+                except Exception:  # noqa: BLE001
+                    pass
+            elif cell.ctype == xlrd.XL_CELL_NUMBER and float(v).is_integer():
+                v = int(v)
+            row.append(v)
+        if any(x not in (None, "") for x in row):
+            rows.append(row)
+    return rows
+
+
+def rows_from_file(path: Path) -> list[list]:
+    """Rows of an .xlsx, .xls or text (.csv / .txt / .tsv / .dat) file, in any column order."""
+    ext = path.suffix.lower()
+    if ext == ".xlsx":
+        return _rows_from_xlsx(path)
+    if ext == ".xls":
+        return _rows_from_xls(path)
+    raw = path.read_bytes()
+    text = raw.decode("utf-16") if raw[:2] in (b"\xff\xfe", b"\xfe\xff") else raw.decode("utf-8-sig", errors="replace")
+    return _rows_from_text(text)
+
+
 def _find_header(rows: list[list]) -> tuple[int, dict[str, int]] | None:
     """Looks at the first rows for one that names an ID or Name column plus a date or time column."""
     for i, row in enumerate(rows[:15]):
@@ -196,12 +233,7 @@ def read_folder(folder: str) -> ReadResult:
     root = Path(folder)
     for path in sorted(p for p in root.iterdir() if p.is_file() and p.suffix.lower() in EXTENSIONS):
         try:
-            if path.suffix.lower() == ".xlsx":
-                rows = _rows_from_xlsx(path)
-            else:
-                raw = path.read_bytes()
-                text = raw.decode("utf-16") if raw[:2] in (b"\xff\xfe", b"\xfe\xff") else raw.decode("utf-8-sig", errors="replace")
-                rows = _rows_from_text(text)
+            rows = rows_from_file(path)
             read_rows(rows, path.name, out)
             out.files.append(path.name)
         except Exception as exc:  # one bad file must not stop the rest

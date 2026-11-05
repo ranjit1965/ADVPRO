@@ -5,6 +5,7 @@ export const ACTIVITY_TYPES = [
   { key: 'marketing', label: 'Marketing Support' },
   { key: 'learning', label: 'Course Preparation' },
   { key: 'selfLearning', label: 'Self Learning / Knowledge Sharing' },
+  { key: 'facultyDevelopment', label: 'Faculty Development' },
   { key: 'database', label: 'DataBase Creation/Download' },
   { key: 'travelling', label: 'Travelling Time' },
   { key: 'others', label: 'Others' },
@@ -32,7 +33,7 @@ export const FAULT_STATUS = ['Open', 'In Progress', 'Resolved'];
 
 // Activities that count toward activity performance. The legacy screen notes that
 // "Others" is not a part of activity performance.
-export const NON_PERFORMANCE_TYPES = ['others'];
+export const NON_PERFORMANCE_TYPES = ['others', 'facultyDevelopment'];
 
 export const PAGE_SIZE_OPTIONS = [10, 25, 50];
 

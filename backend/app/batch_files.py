@@ -3,7 +3,7 @@
 Supported sources:
   * .accdb / .mdb   Microsoft Access, read with pyodbc and the "Microsoft Access Driver (*.mdb, *.accdb)"
                     (Windows; install the free Microsoft Access Database Engine if the driver is missing)
-  * .xlsx           the table exported to Excel (first sheet, header row)
+  * .xlsx / .xls    the table exported to Excel (first sheet, header row)
   * .csv / .txt     the table exported as text (comma, semicolon, tab or | separated)
 
 Columns are found by their header name, so the order does not matter. Only Batch No and
@@ -17,9 +17,9 @@ from dataclasses import dataclass, field
 from datetime import date, datetime, time
 from pathlib import Path
 
-from .biometric_files import _key, _rows_from_text, _rows_from_xlsx, parse_date, parse_time
+from .biometric_files import _key, parse_date, parse_time, rows_from_file
 
-EXTENSIONS = {".accdb", ".mdb", ".xlsx", ".csv", ".txt"}
+EXTENSIONS = {".accdb", ".mdb", ".xlsx", ".xls", ".csv", ".txt"}
 DEFAULT_TABLE = "BatchMaster"
 
 # Header names, compared without spaces, dots, dashes or underscores.
@@ -175,18 +175,31 @@ def resolve_file(path_text: str) -> Path:
     the newest Access database; then the newest Excel / CSV file."""
     text = str(path_text).strip().strip('"')
     path = Path(text)
+    try:
+        os.stat(text)  # gives the real Windows reason (access denied, logon failure...) when it fails
+        os_error = None
+    except OSError as exc:
+        os_error = exc
     if path.is_file():
         return path
     if not path.is_dir():
+        reason = f" Reason: {os_error.strerror or os_error} (code {getattr(os_error, 'winerror', None) or os_error.errno})." if os_error else ""
         if text.startswith(("\\\\", "//")):
             if os.name != "nt":
                 raise FileNotFoundError(f"Cannot open {text}: a \\\\computer\\share path only works when the backend runs on Windows in the same office network")
             raise FileNotFoundError(
-                f"Cannot open the network folder {text} from the computer running the backend. Check that "
-                "the computer is on, the folder is shared, and the Windows user running the backend can open it "
-                "(press Win + R, paste the path, Enter). If the folder name is different, type the right path here."
+                f"The backend cannot open the network folder {text}.{reason} If it opens in File Explorer, the "
+                "backend is probably running as a different Windows user: start it from a normal Command Prompt "
+                "(not 'Run as administrator', not as a service), or copy BatchMaster.xlsx to a local folder and "
+                "save that path here."
             )
-        raise FileNotFoundError(f"Folder or file not found (or no permission): {text}")
+        raise FileNotFoundError(f"Folder or file not found (or no permission): {text}.{reason}")
+    try:
+        path.iterdir().__next__()
+    except StopIteration:
+        pass
+    except OSError as exc:
+        raise FileNotFoundError(f"The backend can see {text} but cannot list it. Reason: {exc.strerror or exc}") from exc
     files = [p for p in path.iterdir() if p.is_file() and p.suffix.lower() in EXTENSIONS and not p.name.startswith("~$")]
     if not files:
         raise FileNotFoundError(f"No .accdb, .mdb, .xlsx or .csv file in {path}")
@@ -200,13 +213,9 @@ def read_file(file_path: str, table: str = DEFAULT_TABLE) -> ReadResult:
     path = Path(file_path)
     ext = path.suffix.lower()
     if ext not in EXTENSIONS:
-        raise RuntimeError(f"Use an .accdb, .mdb, .xlsx or .csv file (got {ext or 'no extension'})")
+        raise RuntimeError(f"Use an .accdb, .mdb, .xlsx, .xls or .csv file (got {ext or 'no extension'})")
     if ext in (".accdb", ".mdb"):
         rows = _rows_from_access(path, table or DEFAULT_TABLE)
-    elif ext == ".xlsx":
-        rows = _rows_from_xlsx(path)
     else:
-        raw = path.read_bytes()
-        text = raw.decode("utf-16") if raw[:2] in (b"\xff\xfe", b"\xfe\xff") else raw.decode("utf-8-sig", errors="replace")
-        rows = _rows_from_text(text)
+        rows = rows_from_file(path)
     return read_rows(rows)

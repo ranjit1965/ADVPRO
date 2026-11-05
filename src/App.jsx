@@ -23,6 +23,7 @@ import MasterList from './pages/master/MasterList';
 import Scheduling from './pages/master/Scheduling';
 import Biometric from './pages/master/Biometric';
 import BatchImport from './pages/master/BatchImport';
+import DataUpload from './pages/admin/DataUpload';
 import MyWork from './pages/MyWork';
 import HrPolicy from './pages/hr/HrPolicy';
 import YourInfo from './pages/hr/YourInfo';
@@ -72,6 +73,7 @@ export default function App() {
               <Route path="master/biometric" element={<Biometric />} />
               <Route path="master/batch-import" element={<BatchImport />} />
               <Route path="master/:key" element={<MasterList />} />
+              <Route path="admin/data-upload" element={<DataUpload />} />
               <Route path="my-work" element={<MyWork />} />
               <Route path="hr-report" element={<Navigate to="/hr-report/policy" replace />} />
               <Route path="hr-report/policy" element={<HrPolicy />} />

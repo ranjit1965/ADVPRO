@@ -12,7 +12,8 @@ import SimpleBarChart from '../components/charts/BarChartCard';
 import { useAuth } from '../context/AuthContext';
 import { useLookups } from '../context/LookupsContext';
 import Select from '../components/ui/Select';
-import { canAccess, PEOPLE_VIEW_ROLES } from '../utils/permissions';
+import { canAccess, MASTER_ROLES, PEOPLE_VIEW_ROLES } from '../utils/permissions';
+import UploadReminder from '../components/UploadReminder';
 import { useAsync } from '../hooks/useAsync';
 import { getDashboardSummary } from '../services/api';
 import { ACTIVITY_LABEL } from '../utils/constants';
@@ -59,6 +60,7 @@ export default function Dashboard() {
 
   return (
     <>
+      {!other && canAccess(user, MASTER_ROLES) && <UploadReminder />}
       <PageHeader
         title={other ? `${other.name}'s dashboard` : `${greeting()}, ${user.name}`}
         description={other ? `${formatDate(new Date())} · ${other.role || ''}${other.designation && other.designation !== other.role ? ` · ${other.designation}` : ''} · Code ${other.code}` : `${formatDate(new Date())} · ${user.designation} · Grade ${user.grade}`}

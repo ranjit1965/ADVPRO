@@ -61,6 +61,11 @@ def migrate() -> None:
             db.lookups.update_one({"_id": "sessionTypes"}, {"$addToSet": {"values": "LAB Creation"}}, upsert=True),
         ),
     )
+    # Others no longer offers breaks, training or meetings: those go in the Faculty Development tab.
+    once(
+        "2026-11-others-headings",
+        lambda: db.lookups.update_one({"_id": "othersHeadings"}, {"$pull": {"values": {"$in": ["Lunch Break", "Lunch break", "Training Attended", "Staff Meeting", "Tea Break", "Tea break"]}}}),
+    )
 
 
 if __name__ == "__main__":

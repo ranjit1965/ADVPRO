@@ -102,7 +102,7 @@ async def upload_and_import(request: Request, name: str = Query(..., min_length=
     """Imports one device export file sent from the browser (raw file body), for a backend that
     cannot reach the folder, such as on Vercel."""
     if Path(name).suffix.lower() not in EXTENSIONS:
-        raise HTTPException(400, "Upload a .csv, .txt, .tsv, .dat or .xlsx export from the biometric device")
+        raise HTTPException(400, "Upload a .xlsx, .xls, .csv, .txt, .tsv or .dat export from the biometric device")
     data = await request.body()
     if not data:
         raise HTTPException(400, "The file is empty")

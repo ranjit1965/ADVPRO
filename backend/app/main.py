@@ -1,4 +1,3 @@
-import os
 import logging
 from contextlib import asynccontextmanager
 
@@ -15,17 +14,9 @@ logging.basicConfig(level=logging.INFO)
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     seed.run()
-
-    stop = None
-
-    # Run the background scheduler only on the office server
-    if not os.getenv("VERCEL"):
-        stop = batch_import.start_scheduler()
-
+    stop = batch_import.start_scheduler()  # monthly BatchMaster import
     yield
-
-    if stop is not None:
-        stop.set()
+    stop.set()
 
 
 app = FastAPI(title="Daily Entry Report API", version="1.0.0", lifespan=lifespan)

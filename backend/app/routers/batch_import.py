@@ -139,7 +139,7 @@ def import_now(me: dict = Depends(master_roles)):
 _import_lock = threading.Lock()  # one import at a time (button and monthly job)
 
 
-UPLOAD_EXTENSIONS = {".xlsx", ".csv", ".txt", ".accdb", ".mdb"}
+UPLOAD_EXTENSIONS = {".xlsx", ".xls", ".csv", ".txt", ".accdb", ".mdb"}
 MAX_UPLOAD_BYTES = 20 * 1024 * 1024
 
 
@@ -149,7 +149,7 @@ async def upload_and_import(request: Request, name: str = Query(..., min_length=
     cannot reach the office share, such as on Vercel."""
     ext = Path(name).suffix.lower()
     if ext not in UPLOAD_EXTENSIONS:
-        raise HTTPException(400, "Upload the BatchMaster .xlsx or .csv file (or .accdb / .mdb when the backend runs on Windows)")
+        raise HTTPException(400, "Upload the BatchMaster .xlsx, .xls or .csv file (or .accdb / .mdb when the backend runs on Windows)")
     data = await request.body()
     if not data:
         raise HTTPException(400, "The file is empty")

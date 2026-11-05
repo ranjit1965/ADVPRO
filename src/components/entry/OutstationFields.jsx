@@ -6,7 +6,7 @@ import SearchableSelect from '../ui/SearchableSelect';
 import RadioGroup from '../ui/RadioGroup';
 import LookupSelect from './LookupSelect';
 import { facultyOptions } from './fieldProps';
-import { OD_CHECKS } from '../../utils/entryForm';
+import { FACULTY_ROLES, OD_CHECKS } from '../../utils/entryForm';
 import ShortLabel from '../ui/ShortLabel';
 
 /** "College / OD" group shown on the Class tab when Faculty in = College / OD (stored as Outstation). */
@@ -23,7 +23,17 @@ export default function OutstationFields({ values, errors, set, lookups, onAddLo
         <Select label="Sec" className="lg:col-span-2" options={lookups.sections} {...f('sec')} />
         <Input label="Total Absent" className="lg:col-span-2" inputMode="numeric" {...f('totalAbsent')} />
         <YearInput label="YOP" className="lg:col-span-2" options={lookups.yopOptions} {...f('yop')} />
-        <SearchableSelect label="Assistance Faculty" className="col-span-2 lg:col-span-10" options={facultyOptions(lookups)} {...f('assistanceFaculty')} />
+        <RadioGroup
+          label="Faculty role"
+          name="out-facultyRole"
+          className="col-span-2 lg:col-span-4"
+          options={FACULTY_ROLES}
+          value={values.facultyRole || 'Main Faculty'}
+          onChange={(v) => (set('facultyRole', v), v !== 'Assistance Faculty' && set('mainFaculty', ''))}
+        />
+        {values.facultyRole === 'Assistance Faculty' && (
+          <SearchableSelect label="Main faculty name" className="col-span-2 lg:col-span-6" options={facultyOptions(lookups)} placeholder="Search faculty" {...f('mainFaculty', true)} />
+        )}
       </div>
       <div className="mt-4 border-t border-accent-600/15 pt-3">
         <p className="mb-2 text-[12px] font-medium text-ink-500">In this session (optional)</p>

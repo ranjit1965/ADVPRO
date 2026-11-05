@@ -10,7 +10,7 @@ from ..security import current_user
 
 router = APIRouter(prefix="/daily-entries", tags=["daily entries"])
 
-ACTIVITY_TYPES = ("class", "seminar", "marketing", "learning", "selfLearning", "database", "travelling", "software", "others", "systemFault")
+ACTIVITY_TYPES = ("class", "seminar", "marketing", "learning", "selfLearning", "facultyDevelopment", "database", "travelling", "software", "others", "systemFault")
 RETIRED_TYPES = {"software": "Software", "systemFault": "System Fault"}  # old entries only; no new ones
 TIME_RE = r"^([01]\d|2[0-3]):[0-5]\d$"
 SORTABLE = {"activityDate", "timeFrom", "facultyName", "activityType", "createdAt", "minutes", "id"}
@@ -74,19 +74,9 @@ def check_overlap(p: dict, ignore_id: str | None = None) -> None:
         raise HTTPException(409, f"Time overlaps with another entry on this day ({clash['timeFrom']}–{clash['timeTo']})")
 
 
-OTHERS_DAILY_LIMIT = 60  # minutes: "Others" may take at most 1 hour per person per day
-
-
 def check_others_limit(p: dict, ignore_id: str | None = None) -> None:
-    if p["activityType"] != "others":
-        return
-    q = {"facultyCode": p["facultyCode"], "activityDate": p["activityDate"], "activityType": "others"}
-    if ignore_id:
-        q["id"] = {"$ne": ignore_id}
-    used = sum(minutes_between(e["timeFrom"], e["timeTo"]) for e in db.entries.find(q, {"timeFrom": 1, "timeTo": 1}))
-    if used + minutes_between(p["timeFrom"], p["timeTo"]) > OTHERS_DAILY_LIMIT:
-        left = max(0, OTHERS_DAILY_LIMIT - used)
-        raise HTTPException(400, f"Others is limited to 1 hour a day. {left} minute(s) left for this day.")
+    """Others over 1 hour is now allowed after the faculty confirms "Are you sure?" in the form."""
+    return None
 
 
 def build_query(q=None, facultyCode=None, activityType=None, facultyIn=None, dateFrom=None, dateTo=None) -> dict:

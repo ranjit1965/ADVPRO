@@ -72,7 +72,7 @@ Other scripts:
 | Faculty › Daily Activity › Entry | `/faculty/daily-activity/entry` | The main entry form (see below) |
 | Faculty › Daily Activity › My Entries | `/faculty/daily-activity/history` | Search, date/activity/faculty/Center-Outstation filters, sorting, pagination, view/edit/delete, CSV export |
 | Entry details | `/entries/:id` | Full entry, employee info, created/updated info; Back, Print, Edit, Delete |
-| Faculty › Daily Activity › Print | `/faculty/daily-activity/print` | Printable activity sheet for a faculty and date range |
+| Faculty › Daily Activity › Print | `/faculty/daily-activity/print` | Daily Activity Report for a faculty and date range, A4 landscape, with **Download PDF** and **Download Excel**. Faculty and staff can print only their own report |
 | Faculty › Monthly Plan | `/faculty/monthly-plan` | Admin and Manager assign week-wise batch/course plans to one person, all faculty or all employees (one plan per person) and see everyone's plans with person and status filters. Each employee or faculty member sees only the plans assigned to them and updates the status (Pending, In Progress, Completed) and a progress note |
 | Faculty › Students Mark Entry | `/faculty/students-mark-entry` | Load a batch and enter marks / absent, with Save, Clear, Exit |
 | Faculty › Monthly Report | `/faculty/reports/monthly` | Activity report laid out like the September 2026 sample: headline figures, day-by-day, type, week and topic charts, daily and weekly summaries (Others in its own column), calendar view and activity log. **Download PDF** (print dialog, A4 landscape) and **Download Excel** (one sheet per section) |
@@ -83,7 +83,8 @@ Other scripts:
 | Faculty › Monthly Working Hrs Report | `/faculty/reports/working-hours` | Hours per employee and faculty (HR, Admin, Manager): class, center, outstation, performance, Others, total |
 | Employee (HR read-only) | `/master/employees` | HR sees every employee with hours and days this month and opens anyone's dashboard; only Admin and Manager can add, edit or delete |
 | Dashboard person picker | `/?code=SAN` | HR, Admin and Manager pick a faculty member or employee and the dashboard shows that person's entries, hours and missing days, with a link to their monthly report. Faculty and staff only ever see their own figures (also enforced by the API) |
-| Settings | `/settings` | Profile, change password, entry defaults (saved on your user record) |
+| Admin › Data Upload (Admin, Manager) | `/admin/data-upload` | Pick **Batch Master** or **Biometric** and upload the Excel file (.xlsx, .xls or .csv, any column order). Shows the last upload of each and a month-end reminder |
+| Settings | `/settings` | Profile and entry defaults (saved on your user record). **Change password** shows only for Admin and Manager; everyone else sees "Passwords are changed by Admin only" |
 
 On desktop, **Master, Faculty** and **HR_Report** open as a flyout menu to the right of the
 sidebar, like the legacy menu (nested items such as Faculty › Daily Activity cascade further
@@ -91,8 +92,8 @@ right). On mobile they expand inline in the drawer. **Employee** opens Master �
 The app uses a light palette: white sidebar and header on a light blue background.
 
 The remaining legacy menu items keep their place in the sidebar. **Transaction, Reports,
-Marketing, Admin** and **Support Team** were greyed out for the FACULTY role in the old
-application, so they appear locked. **Master** (manager and admin) maintains courses and their chapter / session details. 
+Marketing** and **Support Team** were greyed out for the FACULTY role in the old
+application, so they appear locked. **Admin** now holds Data Upload (Admin and Manager only). **Master** (manager and admin) maintains courses and their chapter / session details. 
 **Faculty › Others** opens the entry form on the Others tab. Others entries are not part of
 activity performance, so every report and the print sheet list them in a separate section
 with their own time total. **Exit** logs out
@@ -100,8 +101,10 @@ after a confirmation.
 
 ### Faculty Daily Activity Entry
 
-* Header, row 1: **Faculty Name** (type to search) and **Activity Date**. Row 2: **Time From**,
-  **Time To**, **Faculty in** (Center / College / OD, to the right of Time To) and **Worked Hours**.
+* Header: **Faculty Name** (type to search) and **Activity Date**. Directly above the tabs, on one
+  line: **Time From**, **Time To**, **Faculty in** (Center / College / OD) and **Worked Hours**.
+* Before saving, an entry longer than **2 hours** asks "More than 2 hours … Are you sure?", and an
+  **Others** entry longer than **1 hour** asks "Others more than 1 hour … Are you sure?". Yes saves it.
 * **Time From / Time To** are typed by hand in 24-hour (railway) time, HH:MM: type `0930` or
   `1345` and the colon is added (a first digit above 2, like `9`, becomes `09`). No picker and no
   AM / PM. The first entry of a day starts at **09:00**; the next one starts at the Time To of the
@@ -109,8 +112,8 @@ after a confirmation.
   As soon as a full Time To at or before Time From is typed (or Time From is changed past Time
   To), a red warning shows under Time To and on Worked Hours, before Save. A time such as 25:70
   shows "Enter a 24-hour time, 00:00 to 23:59".
-* Eight tabs: **Class, Seminar / Work Shop, Marketing Support, Course Preparation,
-  Self Learning / Knowledge Sharing, DataBase Creation/Download, Travelling Time, Others**.
+* Nine tabs: **Class, Seminar / Work Shop, Marketing Support, Course Preparation,
+  Self Learning / Knowledge Sharing, Faculty Development, DataBase Creation/Download, Travelling Time, Others**.
   Each tab shows a badge with that day's entry count. The tabs share the full row: one row on
   laptops and larger screens, two rows on tablets, two per row on phones. The Software and System Fault sections
   were removed: new ones cannot be saved, but old ones still show in My Entries, reports and print.
@@ -119,7 +122,7 @@ after a confirmation.
   **Day Order (1 to 20)**, **No of Students**, Today's Session Type (includes **LAB Creation**),
   **Daily test** and **Daily activity post** (Yes / No, for Center and College / OD), and Detail.
   With **College / OD** the College / OD block appears: College Name, Dept, Sec, Total Absent,
-  YOP, Assistance Faculty and four optional Yes / No questions: Videos shown, Guided exercise
+  YOP, **Faculty role** (Main Faculty / Assistance Faculty; Assistance asks for the **Main faculty name**) and four optional Yes / No questions: Videos shown, Guided exercise
   PPT shown, Menti quiz conducted, Task given. (The stored value is still `Outstation`, so older
   entries keep working; their Total Student and Daily test are shown in the new fields.)
 * **Class › Batch No** lists only the batches assigned to the selected faculty (see Batch import
@@ -133,10 +136,22 @@ after a confirmation.
   Paper Name (course name), S.No (chapter), S.Type (L / T), College Name, Dept, YOP, Topic and
   C.Type, with the code legend below (CL Class, GL Seminar Guest, IV Seminar Industrial Visit,
   CO Counseling, MK Marketing Support, CP Learn Preparation, SL Learn Self Preparation, DB DataBase,
-  TR Travelling, OT Others; SW Software and SF System Fault for old entries). Times stay in the 12-hour format.
+  TR Travelling, OT Others, IN Internship, KS Knowledge Sharing, CA Class Attended, FD Faculty Development;
+  SW Software and SF System Fault for old entries), plus a **Faculty Role** column (Main / Assistance and the main
+  faculty name). Times are in 24-hour format. **Download PDF** (jsPDF, A4 landscape) and **Download Excel**
+  (A4 landscape, fit to width) save the same sheet.
 * **Course Preparation**: Course ID (+ Add course), Material Type, Chapter / Session No,
-  No of Pages, Details. **Self Learning / Knowledge Sharing**: Type, Course ID, Chapter /
-  Session No, Details. Old "Learning / Preparation" entries are moved to the right tab on the
+  No of Pages, Details. **Self Learning / Knowledge Sharing**: Type (**Self Learning, Knowledge
+  Sharing, Class Attended**; Class Attended also asks **Class taken by** (faculty) and **Online /
+  Offline**), Course ID, Chapter / Session No, **Chap / Session Type** (Theory / Practical), Details.
+* **Seminar / Work Shop**: Type (**Guest Lecture, IV / Work Shop, Internship**) and **Faculty role**
+  (Main / Assistance, with the main faculty name). Internship asks the same course questions as
+  Knowledge Sharing; the other types ask the college details. Remarks for all.
+* **Faculty Development**: Type (Meeting with HR, Meeting with Ranjit sir, Staff Meeting, Lunch
+  Break, Tea Break) and Remarks (required). It counts in worked hours but, like Others, not in
+  activity performance.
+* **Others**: headings no longer include Lunch Break, Training Attended, Staff Meeting or Tea Break
+  (breaks and meetings go in Faculty Development). There is no daily limit; over 1 hour asks to confirm. Old "Learning / Preparation" entries are moved to the right tab on the
   first start (see `backend/app/seed.py`, `migrate()`).
 * **[CTRL + A]** on College Name / Dept / Course ID opens "Add new".
 * Every dropdown is sorted A to Z. Search boxes (faculty, employees, courses, colleges...)
@@ -152,11 +167,28 @@ after a confirmation.
 * Screens fit phones (iPhone 375 to 430 px wide), tablets, laptops, desktops and large monitors
   (content widens to 1680 px on 2K / 4K screens). Date boxes no longer overflow on iPhone Safari.
 
+### Passwords
+
+Only **Admin** (and the Manager account) can change passwords: their own under Settings, and any
+employee's under Master › Employees (Edit › New password). Faculty, staff and HR cannot change a
+password; `POST /api/auth/change-password` returns 403 for them.
+
+### Admin › Data Upload
+
+Admin and Manager choose **Batch Master** or **Biometric** in the dropdown and upload the Excel
+file (`.xlsx`, `.xls` or `.csv`; the columns can be in any order). Batch Master saves each batch
+for its employee (matched by name and short name); Biometric saves Time In / Time Out per employee
+per day, which the monthly report compares with the entries. Uploading a month again replaces those
+days. The same uploads stay on Master › Batch Import and Master › Biometric.
+From the day before the last day of the month (and in the first 5 days of the next month if it was
+missed), the Dashboard and this page remind Admin / Manager until each file is uploaded.
+`.xls` files need `xlrd` (in `backend/requirements.txt`).
+
 ### Biometric time in / out (Master › Biometric)
 
 * Manager / Admin enter the **folder path** where the biometric device saves its export
   files. It must be a folder the **backend server** can read (a local or mapped drive).
-* **Import now** reads every `.csv`, `.txt`, `.tsv`, `.dat` and `.xlsx` file in the folder.
+* **Import now** reads every `.csv`, `.txt`, `.tsv`, `.dat`, `.xlsx` and `.xls` file in the folder.
   Accepted layouts: one row per punch (Emp Code / Name / Date + Time, or one Date Time
   column), one row per day with In Time / Out Time columns, or a headerless ZKTeco attendance
   log. The first punch of a day is Time In, the last is Time Out. Results are stored in the

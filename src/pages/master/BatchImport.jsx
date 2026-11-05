@@ -168,7 +168,7 @@ export default function BatchImport() {
             <Button icon={RefreshCw} loading={busy === 'import'} disabled={!data?.filePath || !!busy} onClick={() => runImport()}>
               Import batches now
             </Button>
-            <UploadButton accept=".xlsx,.csv,.txt,.accdb,.mdb" loading={busy === 'upload'} disabled={!!busy && busy !== 'upload'} onFile={runImport}>
+            <UploadButton accept=".xlsx,.xls,.csv,.txt,.accdb,.mdb" loading={busy === 'upload'} disabled={!!busy && busy !== 'upload'} onFile={runImport}>
               Upload BatchMaster file
             </UploadButton>
           </div>

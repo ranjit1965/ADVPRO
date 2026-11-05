@@ -9,8 +9,19 @@ import { formatDuration, minutesBetween, toISODate } from '../../utils/format';
 import { cn } from '../../utils/cn';
 import { DAY_START } from '../../utils/constants';
 
-/** Faculty Name, Activity Date; then Time From, Time To, Faculty in, Worked Hours. */
-export default function EntryHeaderFields({ header, errors, onChange, lookups, lastEnd }) {
+/** Faculty Name and Activity Date (top card). */
+export default function EntryHeaderFields({ header, errors, onChange, lookups }) {
+  const set = (k) => (e) => onChange({ [k]: e?.target ? e.target.value : e });
+  return (
+    <div className="grid grid-cols-2 gap-x-3 gap-y-4 sm:gap-4 lg:grid-cols-12">
+      <SearchableSelect id="facultyCode" label="Faculty Name" required className="col-span-2 lg:col-span-8" options={facultyOptions(lookups)} value={header.facultyCode} onChange={set('facultyCode')} error={errors.facultyCode} placeholder="Search faculty" />
+      <DatePicker id="activityDate" label="Activity Date" required className="col-span-2 lg:col-span-4" value={header.activityDate} max={toISODate()} onChange={set('activityDate')} error={errors.activityDate} />
+    </div>
+  );
+}
+
+/** Time From, Time To, Faculty in and Worked Hours: one line shown above the activity tabs. */
+export function EntryTimeFields({ header, errors, onChange, lastEnd }) {
   const set = (k) => (e) => onChange({ [k]: e?.target ? e.target.value : e });
   const minutes = minutesBetween(header.timeFrom, header.timeTo);
   const valid = header.timeFrom && header.timeTo && minutes > 0;
@@ -18,8 +29,6 @@ export default function EntryHeaderFields({ header, errors, onChange, lookups, l
   const toWarning = header.timeFrom && header.timeTo && minutes <= 0 ? `Time To must be after Time From (${header.timeFrom})` : '';
   return (
     <div className="grid grid-cols-2 gap-x-3 gap-y-4 sm:gap-4 lg:grid-cols-12">
-      <SearchableSelect id="facultyCode" label="Faculty Name" required className="col-span-2 lg:col-span-8" options={facultyOptions(lookups)} value={header.facultyCode} onChange={set('facultyCode')} error={errors.facultyCode} placeholder="Search faculty" />
-      <DatePicker id="activityDate" label="Activity Date" required className="col-span-2 lg:col-span-4" value={header.activityDate} max={toISODate()} onChange={set('activityDate')} error={errors.activityDate} />
       <TimeField
         id="timeFrom"
         label="Time From"

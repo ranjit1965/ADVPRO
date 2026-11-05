@@ -14,6 +14,8 @@ from ..security import create_token, current_user, hash_password, public_user, v
 router = APIRouter(prefix="/auth", tags=["auth"])
 log = logging.getLogger("der.auth")
 MAX_OTP_ATTEMPTS = 5
+# Roles allowed to change passwords (their own here, anyone's under Master › Employees).
+PASSWORD_ROLES = ("ADMIN", "MANAGER")
 
 
 class LoginIn(BaseModel):
@@ -74,6 +76,9 @@ def save_preferences(body: dict, user: dict = Depends(current_user)):
 
 @router.post("/change-password")
 def change_password(body: ChangePasswordIn, user: dict = Depends(current_user)):
+    # Passwords are changed by Admin only (Master › Employees); faculty and other roles cannot.
+    if user.get("role") not in PASSWORD_ROLES:
+        raise HTTPException(403, "Only Admin can change passwords. Contact Admin.")
     if not verify_password(body.currentPassword, user["passwordHash"]):
         raise HTTPException(400, "Current password is incorrect")
     db.users.update_one({"_id": user["_id"]}, {"$set": {"passwordHash": hash_password(body.newPassword)}})

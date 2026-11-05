@@ -3,6 +3,7 @@ import SeminarTab from './SeminarTab';
 import MarketingTab from './MarketingTab';
 import LearningTab from './LearningTab';
 import SelfLearningTab from './SelfLearningTab';
+import FacultyDevelopmentTab from './FacultyDevelopmentTab';
 import DatabaseTab from './DatabaseTab';
 import TravellingTab from './TravellingTab';
 import SoftwareTab from './SoftwareTab';
@@ -15,6 +16,7 @@ export const TAB_COMPONENTS = {
   marketing: MarketingTab,
   learning: LearningTab,
   selfLearning: SelfLearningTab,
+  facultyDevelopment: FacultyDevelopmentTab,
   database: DatabaseTab,
   travelling: TravellingTab,
   software: SoftwareTab,
