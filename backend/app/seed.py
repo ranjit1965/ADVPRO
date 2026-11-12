@@ -66,6 +66,15 @@ def migrate() -> None:
         "2026-11-others-headings",
         lambda: db.lookups.update_one({"_id": "othersHeadings"}, {"$pull": {"values": {"$in": ["Lunch Break", "Lunch break", "Training Attended", "Staff Meeting", "Tea Break", "Tea break"]}}}),
     )
+    # Breaks are entered in Others again (not part of performance); Faculty Development keeps the meetings.
+    # Break entries saved under Faculty Development move to Others with the same heading and remarks.
+    def breaks_to_others():
+        db.lookups.update_one({"_id": "othersHeadings"}, {"$addToSet": {"values": {"$each": ["Lunch Break", "Tea Break"]}}}, upsert=True)
+        for e in db.entries.find({"activityType": "facultyDevelopment", "details.fdType": {"$in": ["Lunch Break", "Tea Break"]}}, {"id": 1, "details": 1}):
+            d = e.get("details") or {}
+            db.entries.update_one({"id": e["id"]}, {"$set": {"activityType": "others", "details": {"heading": d.get("fdType"), "remarks": d.get("remarks", "")}}})
+
+    once("2026-11-breaks-in-others", breaks_to_others)
 
 
 if __name__ == "__main__":

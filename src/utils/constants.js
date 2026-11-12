@@ -31,9 +31,9 @@ export const FACULTY_IN_OPTIONS = [
 
 export const FAULT_STATUS = ['Open', 'In Progress', 'Resolved'];
 
-// Activities that count toward activity performance. The legacy screen notes that
-// "Others" is not a part of activity performance.
-export const NON_PERFORMANCE_TYPES = ['others', 'facultyDevelopment'];
+// Activities that do not count toward activity performance. The legacy screen notes that
+// "Others" (including Lunch Break and Tea Break) is not a part of activity performance.
+export const NON_PERFORMANCE_TYPES = ['others'];
 
 export const PAGE_SIZE_OPTIONS = [10, 25, 50];
 

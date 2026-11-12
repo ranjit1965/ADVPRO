@@ -147,11 +147,13 @@ after a confirmation.
 * **Seminar / Work Shop**: Type (**Guest Lecture, IV / Work Shop, Internship**) and **Faculty role**
   (Main / Assistance, with the main faculty name). Internship asks the same course questions as
   Knowledge Sharing; the other types ask the college details. Remarks for all.
-* **Faculty Development**: Type (Meeting with HR, Meeting with Ranjit sir, Staff Meeting, Lunch
-  Break, Tea Break) and Remarks (required). It counts in worked hours but, like Others, not in
-  activity performance.
-* **Others**: headings no longer include Lunch Break, Training Attended, Staff Meeting or Tea Break
-  (breaks and meetings go in Faculty Development). There is no daily limit; over 1 hour asks to confirm. Old "Learning / Preparation" entries are moved to the right tab on the
+* **Faculty Development**: Type (Meeting with HR, Meeting with Ranjit sir, Staff Meeting) and
+  Remarks (required). Meetings count in worked hours and in activity performance.
+* **Others**: headings include **Lunch Break** and **Tea Break**. Others (breaks included) count
+  in worked hours but **not in activity performance**; reports show them in a separate Others
+  column. Training Attended and Staff Meeting are not Others headings (meetings should be entered
+  in Faculty Development). Break entries saved earlier under Faculty Development are moved to
+  Others at the next backend start. There is no daily limit; over 1 hour asks to confirm. Old "Learning / Preparation" entries are moved to the right tab on the
   first start (see `backend/app/seed.py`, `migrate()`).
 * **[CTRL + A]** on College Name / Dept / Course ID opens "Add new".
 * Every dropdown is sorted A to Z. Search boxes (faculty, employees, courses, colleges...)

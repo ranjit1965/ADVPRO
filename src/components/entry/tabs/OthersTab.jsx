@@ -35,7 +35,7 @@ export default function OthersTab({ values, errors, set, lookups, onAddLookup })
         <Info className="mt-0.5 size-4 shrink-0" aria-hidden />
         <span>
           <b className="text-accent-600">Please Note:</b> Information entered in the Others column is not a part of activity performance. An Others entry longer than{' '}
-          <b>1 hour</b> asks you to confirm before it is saved. Breaks and meetings go in <b>Faculty Development</b>.
+          <b>1 hour</b> asks you to confirm before it is saved. Meetings should be entered in <b>Faculty Development</b>.
         </span>
       </p>
     </div>

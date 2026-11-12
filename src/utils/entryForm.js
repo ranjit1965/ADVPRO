@@ -67,8 +67,8 @@ export const SEMINAR_TYPES = ['Guest Lecture', 'IV / Work Shop', 'Internship'];
 // Main or Assistance faculty (Class at College / OD, and Seminar). Assistance asks for the main faculty.
 export const FACULTY_ROLES = ['Main Faculty', 'Assistance Faculty'];
 
-// Faculty Development: meetings and breaks, each with required remarks.
-export const FD_TYPES = ['Meeting with HR', 'Meeting with Ranjit sir', 'Staff Meeting', 'Lunch Break', 'Tea Break'];
+// Faculty Development: meetings, each with required remarks. Breaks (Lunch / Tea) are entered in Others.
+export const FD_TYPES = ['Meeting with HR', 'Meeting with Ranjit sir', 'Staff Meeting'];
 
 // Marketing sub-types that record a count, and the label of that count.
 export const MARKETING_COUNT_LABEL = { 'TC calls': 'Total Calls', Mailers: 'Total Mails', SMS: 'Total SMS', 'Label Printout': 'Total Labels' };
