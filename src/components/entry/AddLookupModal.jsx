@@ -3,8 +3,8 @@ import Modal from '../ui/Modal';
 import Input from '../ui/Input';
 import Button from '../ui/Button';
 
-const TITLES = { colleges: 'Add College Name', departments: 'Add Dept', othersHeadings: 'Add Heading' };
-const LABELS = { colleges: 'College Name', departments: 'Dept', othersHeadings: 'Heading' };
+const TITLES = { colleges: 'Add College Name', departments: 'Add Dept', othersHeadings: 'Add Heading', travelModes: 'Add Mode of Travel' };
+const LABELS = { colleges: 'College Name', departments: 'Dept', othersHeadings: 'Heading', travelModes: 'Mode of Travel' };
 
 export default function AddLookupModal({ kind, onClose, onSubmit }) {
   const [value, setValue] = useState('');

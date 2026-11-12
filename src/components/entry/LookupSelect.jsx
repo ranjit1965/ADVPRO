@@ -1,12 +1,14 @@
 import { Keyboard } from 'lucide-react';
 import SearchableSelect from '../ui/SearchableSelect';
 
+const NAMES = { colleges: 'college', departments: 'department', travelModes: 'mode of travel' };
+
 /**
- * College Name / Dept dropdown. Like the legacy screen, Ctrl + A while the field
- * has focus opens "Add new" so a missing college or department can be added on the spot.
+ * College Name / Dept / Mode of Travel dropdown. Like the legacy screen, Ctrl + A while the field
+ * has focus opens "Add new" so a missing value can be added on the spot (any user).
  */
 export default function LookupSelect({ kind, options, onAddLookup, onChange, ...props }) {
-  const label = kind === 'colleges' ? 'college' : 'department';
+  const label = NAMES[kind] || 'value';
   return (
     <SearchableSelect
       {...props}

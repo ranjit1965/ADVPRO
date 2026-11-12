@@ -8,7 +8,7 @@ from .. import db
 from ..security import current_user
 
 router = APIRouter(prefix="/lookups", tags=["lookups"])
-EDITABLE = {"colleges", "departments", "othersHeadings"}
+EDITABLE = {"colleges", "departments", "othersHeadings", "travelModes"}  # any logged-in user can add
 
 
 class ValueIn(BaseModel):

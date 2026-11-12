@@ -155,7 +155,7 @@ after a confirmation.
   in Faculty Development). Break entries saved earlier under Faculty Development are moved to
   Others at the next backend start. There is no daily limit; over 1 hour asks to confirm. Old "Learning / Preparation" entries are moved to the right tab on the
   first start (see `backend/app/seed.py`, `migrate()`).
-* **[CTRL + A]** on College Name / Dept / Course ID opens "Add new".
+* **[CTRL + A]** on College Name / Dept / Course ID / **Mode of Travel** opens "Add new"; any user can add a new value (it is saved to the shared list).
 * Every dropdown is sorted A to Z. Search boxes (faculty, employees, courses, colleges...)
   list only the values that **start with** the typed letters.
 * Buttons: **Save** (Ctrl + S), **Clear**, **Edit**, **Delete**, **Exit**.
