@@ -90,7 +90,7 @@
     {
       "key": "batches",
       "label": "Batch",
-      "description": "Batches, their course, faculty, dates and timing. Imported from the Access BatchMaster table (Master › Batch Import) or added here. Each faculty sees the batches assigned to them in the Class tab.",
+      "description": "Batches, their course, faculty, dates and timing. Uploaded from the BatchMaster Excel file (Master › Batch Import) or added here. Tick the boxes to delete several batches at once. Each faculty sees the batches assigned to them in the Class tab.",
       "idPrefix": "BAT",
       "unique": "batchNo",
       "titleField": "batchNo",
@@ -118,7 +118,7 @@
           "key": "facultyShort",
           "label": "Short Name",
           "type": "text",
-          "hint": "Faculty short name from the Access file"
+          "hint": "Faculty short name from the BatchMaster file"
         },
         {
           "key": "otherFaculty",

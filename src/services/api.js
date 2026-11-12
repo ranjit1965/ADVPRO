@@ -149,6 +149,11 @@ export async function deleteMasterRecord(key, id) {
   return request(`/masters/${key}/${id}`, { method: 'DELETE' });
 }
 
+/** POST /api/masters/{key}/delete-many: deletes the ticked records, returns { deleted } */
+export async function deleteMasterRecords(key, ids) {
+  return request(`/masters/${key}/delete-many`, { method: 'POST', body: { ids } });
+}
+
 /* -------------------------------------------- Scheduling (work assignment) */
 // Admin and Manager assign work to employees and faculty; each person sees and
 // updates the progress of their own work under My Work.

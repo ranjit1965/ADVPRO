@@ -1,6 +1,6 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Navigate, useParams } from 'react-router-dom';
-import { Download, Pencil, Plus, Trash2 } from 'lucide-react';
+import { Download, Pencil, Plus, Trash2, X } from 'lucide-react';
 import * as api from '../../services/api';
 import PageHeader from '../../components/ui/PageHeader';
 import Card from '../../components/ui/Card';
@@ -71,6 +71,10 @@ export default function MasterList() {
   const [form, setForm] = useState(null);
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
+  const [picked, setPicked] = useState(() => new Set()); // ids of the ticked rows
+  const [deleting, setDeleting] = useState(false);
+
+  useEffect(() => setPicked(new Set()), [key]);
 
   const rows = useMemo(() => {
     const s = q.trim().toLowerCase();
@@ -78,6 +82,9 @@ export default function MasterList() {
     if (!s || !def) return list;
     return list.filter((r) => def.fields.some((f) => display(f, r[f.key], lookups).toLowerCase().includes(s)));
   }, [data, q, def, lookups]);
+
+  // Ticked rows that still exist (a reload or search may have removed some).
+  const pickedIds = useMemo(() => (data || []).filter((r) => picked.has(r.id)).map((r) => r.id), [data, picked]);
 
   if (!def) return <Navigate to="/master" replace />;
 
@@ -130,9 +137,61 @@ export default function MasterList() {
       toast.error(e.message);
     }
   };
+  const toggle = (ids, on) =>
+    setPicked((prev) => {
+      const next = new Set(prev);
+      ids.forEach((id) => (on ? next.add(id) : next.delete(id)));
+      return next;
+    });
+  const removeSelected = async () => {
+    const n = pickedIds.length;
+    if (!n) return;
+    const ok = await confirm({
+      title: `Delete ${n} ${def.label.toLowerCase()} record${n > 1 ? 's' : ''}`,
+      message: `Delete the ${n} selected ${def.label.toLowerCase()} record${n > 1 ? 's' : ''} from the database? This cannot be undone.`,
+      confirmLabel: 'OK, delete',
+      tone: 'danger',
+    });
+    if (!ok) return;
+    setDeleting(true);
+    try {
+      const { deleted } = await api.deleteMasterRecords(key, pickedIds);
+      toast.success(`Deleted ${deleted} ${def.label.toLowerCase()} record${deleted === 1 ? '' : 's'}.`);
+      setPicked(new Set());
+      reload();
+      reloadLookups();
+    } catch (e) {
+      toast.error(e.message);
+    } finally {
+      setDeleting(false);
+    }
+  };
   const exportCsv = () => downloadCsv(`${def.label.toLowerCase().replace(/\s+/g, '-')}.csv`, def.fields.map((f) => ({ header: f.label, value: (r) => display(f, r[f.key], lookups) })), rows);
 
+  const paged = rows.slice((page - 1) * pageSize, page * pageSize);
+  const pageIds = paged.map((r) => r.id);
+  const pageAll = pageIds.length > 0 && pageIds.every((id) => picked.has(id));
+  const pageSome = pageIds.some((id) => picked.has(id));
+  const allMatching = rows.length > 0 && rows.every((r) => picked.has(r.id));
+  const box = 'size-4 cursor-pointer rounded border-ink-300 accent-brand-600';
+
   const columns = [
+    {
+      key: 'select',
+      header: (
+        <input
+          type="checkbox"
+          className={box}
+          aria-label="Select all rows on this page"
+          checked={pageAll}
+          ref={(el) => el && (el.indeterminate = !pageAll && pageSome)}
+          onChange={(e) => toggle(pageIds, e.target.checked)}
+        />
+      ),
+      headerClassName: 'w-10',
+      className: 'w-10',
+      render: (r) => <input type="checkbox" className={box} aria-label={`Select ${r[def.titleField] || r.id}`} checked={picked.has(r.id)} onChange={(e) => toggle([r.id], e.target.checked)} />,
+    },
     ...def.fields.filter((f) => !f.hideInTable).map((f) => ({ key: f.key, header: f.label, align: f.type === 'number' ? 'right' : undefined, render: (r) => <span className={f.key === def.titleField ? 'font-medium text-ink-900' : ''}>{display(f, r[f.key], lookups)}</span> })),
     {
       key: 'actions',
@@ -146,7 +205,6 @@ export default function MasterList() {
       ),
     },
   ];
-  const paged = rows.slice((page - 1) * pageSize, page * pageSize);
 
   return (
     <>
@@ -162,8 +220,29 @@ export default function MasterList() {
         }
       />
       <Card bodyClassName="p-0">
-        <div className="border-b border-ink-100 p-4">
-          <Input label="Search" className="max-w-xs" placeholder={`Search ${def.label.toLowerCase()}…`} value={q} onChange={(e) => { setQ(e.target.value); setPage(1); }} />
+        <div className="flex flex-wrap items-end gap-3 border-b border-ink-100 p-4">
+          <Input label="Search" className="w-full max-w-xs" placeholder={`Search ${def.label.toLowerCase()}…`} value={q} onChange={(e) => { setQ(e.target.value); setPage(1); }} />
+          {pickedIds.length > 0 && (
+            <div role="status" className="flex flex-wrap items-center gap-2 rounded-lg border border-danger-500/30 bg-danger-50 px-3 py-1.5 text-[13px]">
+              <span className="font-medium text-ink-800">{pickedIds.length} selected</span>
+              {!allMatching && rows.length > pageIds.length && (
+                <Button size="sm" variant="ghost" onClick={() => toggle(rows.map((r) => r.id), true)}>
+                  Select all {rows.length}{q.trim() ? ' matching' : ''}
+                </Button>
+              )}
+              <Button size="sm" variant="ghost" icon={X} onClick={() => setPicked(new Set())}>
+                Clear
+              </Button>
+              <Button size="sm" variant="danger" icon={Trash2} loading={deleting} onClick={removeSelected}>
+                Delete selected
+              </Button>
+            </div>
+          )}
+          {pickedIds.length === 0 && rows.length > 0 && (
+            <Button variant="ghost" size="sm" className="mb-1" onClick={() => toggle(rows.map((r) => r.id), true)}>
+              Select all {rows.length}{q.trim() ? ' matching' : ''}
+            </Button>
+          )}
         </div>
         {error ? (
           <ErrorState message={error} onRetry={reload} />

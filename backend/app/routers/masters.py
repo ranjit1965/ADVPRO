@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, Body, Depends, HTTPException
+from pydantic import BaseModel, Field
 
 from .. import db
 from ..security import require_roles
@@ -18,6 +19,10 @@ router = APIRouter(prefix="/masters", tags=["masters"])
 master_roles = require_roles("MANAGER", "ADMIN")
 MASTERS = {m["key"]: m for m in json.loads((Path(__file__).parent.parent / "masters.json").read_text())["masters"]}
 SYSTEM = {"id", "createdBy", "createdAt", "updatedBy", "updatedAt"}
+
+
+class DeleteManyIn(BaseModel):
+    ids: list[str] = Field(min_length=1, max_length=50_000)
 
 
 def collection(key: str):
@@ -92,6 +97,13 @@ def create_record(key: str, body: dict = Body(...), me: dict = Depends(master_ro
     rec.update(id=f"{defn['idPrefix']}-{db.next_seq('master_' + key):04d}", createdBy=me["name"], createdAt=datetime.now(timezone.utc).isoformat())
     col.insert_one(rec)
     return clean(rec)
+
+
+@router.post("/{key}/delete-many")
+def delete_records(key: str, body: DeleteManyIn, _: dict = Depends(master_roles)):
+    """Deletes the selected records (the ticked rows) in one call."""
+    res = collection(key).delete_many({"id": {"$in": list(dict.fromkeys(body.ids))}})
+    return {"deleted": res.deleted_count}
 
 
 @router.put("/{key}/{rec_id}")
