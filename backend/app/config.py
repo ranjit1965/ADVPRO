@@ -29,6 +29,9 @@ class Settings(BaseSettings):
     wa_template_name: str = ""
     wa_template_lang: str = "en"
     wa_notify_numbers: str = ""  # Manager and Admin numbers with country code, comma separated
+    # Values for the template's {{1}}, {{2}} ... in order. Names: employee, code, employeeCode, course,
+    # courseId, remarks, date, email. Must match the number of variables in the approved template.
+    wa_template_params: str = "employee,code,course,courseId,remarks"
 
 
 settings = Settings()

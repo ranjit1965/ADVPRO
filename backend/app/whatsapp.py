@@ -7,14 +7,15 @@ Settings in backend/.env:
     WA_TEMPLATE_NAME=...      (approved template name)
     WA_TEMPLATE_ID=...        (template id in Pinbot, kept for reference)
     WA_TEMPLATE_LANG=en
-    WA_NOTIFY_NUMBERS=919xxxxxxxxx,919xxxxxxxxx   (Manager and Admin, with country code, no +)
+    WA_NOTIFY_NUMBERS=919xxxxxxxxx,919xxxxxxxxx   (Manager and Admin; a 10-digit number gets 91 in front)
+    WA_TEMPLATE_PARAMS=employee,code,course,courseId,remarks   (what goes in {{1}}, {{2}} ...)
 
-The course request template must be created and approved in Pinbot with 4 body variables, for example:
-    New course request from {{1}}.
-    Course: {{2}}
-    Suggested Course ID: {{3}}
-    Remarks: {{4}}
-    Please add it in Master > Courses & Chapters of the Daily Entry Report.
+The default WA_TEMPLATE_PARAMS fits a template with 5 body variables, for example:
+    New course request from {{1}} ({{2}}).
+    Course: {{3}}
+    Suggested Course ID: {{4}}
+    Remarks: {{5}}
+The list must have exactly as many names as the template has variables (Meta error #132000 otherwise).
 A failed WhatsApp message never stops the request: the email is the main channel.
 """
 from __future__ import annotations
@@ -33,8 +34,19 @@ def configured() -> bool:
     return bool(settings.wa_api_key and settings.wa_phone_number_id and settings.wa_template_name and notify_numbers())
 
 
+def _number(n: str) -> str:
+    n = "".join(ch for ch in n if ch.isdigit())
+    return f"91{n}" if len(n) == 10 else n  # Indian mobile without country code
+
+
 def notify_numbers() -> list[str]:
-    return [n.strip().lstrip("+").replace(" ", "") for n in settings.wa_notify_numbers.split(",") if n.strip()]
+    return [_number(n) for n in settings.wa_notify_numbers.split(",") if n.strip()]
+
+
+def template_params(values: dict) -> list[str]:
+    """The template's body variables, in WA_TEMPLATE_PARAMS order, from the named values."""
+    names = [k.strip() for k in settings.wa_template_params.split(",") if k.strip()]
+    return [str(values.get(k) or "-") for k in names]
 
 
 def send_template(to: str, params: list[str]) -> None:
@@ -60,8 +72,9 @@ def send_template(to: str, params: list[str]) -> None:
         raise RuntimeError(f"HTTP {e.code}: {e.read()[:300].decode(errors='replace')}") from e
 
 
-def notify(params: list[str]) -> dict:
+def notify(values: dict) -> dict:
     """Sends the template to every WA_NOTIFY_NUMBERS number. Returns {"sent": n, "errors": [...]}, never raises."""
+    params = template_params(values)
     if not configured():
         return {"sent": 0, "errors": ["WhatsApp is not configured (WA_* settings in backend/.env)"]}
     sent, errors = 0, []

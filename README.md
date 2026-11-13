@@ -158,10 +158,10 @@ after a confirmation.
   (Main / Assistance, with the main faculty name). Internship asks the same course questions as
   Knowledge Sharing; the other types ask the college details. Remarks for all except Internship.
 * **Marketing Support** types: TC calls, Mailers, SMS (**Total Msg**), **Lab Creation - Check**
-  (was Label Printout: **Utilization Check** Yes / No and **Fresh Lab / Repeat Lab Creation**, plus
-  Remarks), **DataBase Creation/Download** (College / Database Name, File Name, Total Records,
+  (was Label Printout: **College Name**, **Course ID**, **No of Students** (numbers only),
+  **Utilization Check** Yes / No and **Fresh Lab / Repeat Lab Creation**, all required, plus Remarks), **DataBase Creation/Download** (College / Database Name, File Name, Total Records,
   Stored Place, Remarks; print code DB), Councelling (**Enq Form No** typed by hand, **Course Name**
-  from the course list, Remarks) and Registration.
+  from the course list, Remarks) and Registration (**Register No** typed by hand, Remarks).
 * **Travelling Time**: **From Place** and **To Place** are each a Home / Office / College toggle;
   College opens the college list (Ctrl + A adds a college). Then Mode of Travel, Purpose, Remarks.
 * **Request new course** shows **Send mail & WhatsApp**: one click sends both.
@@ -218,20 +218,24 @@ WA_PHONE_NUMBER_ID=...    # your WhatsApp business phone number id in Pinbot
 WA_TEMPLATE_ID=...        # id of the approved template
 WA_TEMPLATE_NAME=course_request
 WA_TEMPLATE_LANG=en
-WA_NOTIFY_NUMBERS=919876543210,919812345678   # Manager and Admin, country code, no +
+WA_NOTIFY_NUMBERS=919876543210,9812345678   # Manager and Admin; a 10-digit number gets 91 added
+WA_TEMPLATE_PARAMS=employee,code,course,courseId,remarks   # what fills {{1}}, {{2}} ... in order
 ```
 
-Create and get approved a **Utility** template with four body variables, for example:
+The default `WA_TEMPLATE_PARAMS` fills a **Utility** template with five body variables, for example:
 
 ```
-New course request from {{1}}.
-Course: {{2}}
-Suggested Course ID: {{3}}
-Remarks: {{4}}
+New course request from {{1}} ({{2}}).
+Course: {{3}}
+Suggested Course ID: {{4}}
+Remarks: {{5}}
 Please add it to the course list.
 ```
 
-{{1}} is the employee name and code. If WhatsApp is not set up, or Pinbot refuses the message, the
+`WA_TEMPLATE_PARAMS` must list exactly as many values as the approved template has variables, in
+the template's order, or WhatsApp refuses the message with error #132000 ("Number of parameters does
+not match"). Names you can use: `employee` (name), `code` (employee code), `employeeCode` (name and
+code together), `course`, `courseId`, `remarks`, `date` and `email`. An empty value is sent as "-". If WhatsApp is not set up, or Pinbot refuses the message, the
 mail is still sent and the error is saved on the request (`whatsapp.errors`). The request body
 follows the Meta Cloud API template format; check it against your Pinbot account before going live.
 

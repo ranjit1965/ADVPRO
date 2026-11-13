@@ -50,6 +50,7 @@ export const DETAIL_FIELDS = {
     ['fileName', 'File Name'],
     ['records', 'Total Records'],
     ['storedPlace', 'Stored Place'],
+    ['noOfStudents', 'No of Students'],
     ['utilizationCheck', 'Utilization Check'],
     ['labCreation', 'Fresh Lab / Repeat Lab Creation'],
     ['remarks', 'Remarks', true],

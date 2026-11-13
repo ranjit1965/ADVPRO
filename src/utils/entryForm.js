@@ -23,7 +23,7 @@ export const EMPTY_DETAILS = {
     marketingType: 'TC calls', collegeName: '', dept: '', sec: '', yop: '', total: '', freshRepeat: '',
     gradeA: '', gradeBPlus: '', gradeBMinus: '', gradeD: '', gradeNR: '', enquiryFormNo: '', courseId: '', registerNo: '', remarks: '',
     // DataBase Creation/Download (moved here from its own tab) and Lab Creation - Check
-    databaseName: '', fileName: '', records: '', storedPlace: '', utilizationCheck: '', labCreation: '',
+    databaseName: '', fileName: '', records: '', storedPlace: '', utilizationCheck: '', labCreation: '', noOfStudents: '',
   },
   learning: { courseId: '', materialType: '', chapterNo: '', pages: '', chapterDetails: '' },
   selfLearning: { learningType: 'Self Learning', courseId: '', chapterNo: '', chapterType: '', materialType: '', classFaculty: '', classMode: '', trainee: '', chapterDetails: '' },
@@ -165,8 +165,8 @@ export function validateEntry({ header, tab, details, outstation }) {
     }
     if (t === 'Councelling' && !String(details.enquiryFormNo || '').trim()) errors.details.enquiryFormNo = 'Required';
     if (t === MK_DATABASE) ['databaseName', 'fileName', 'records'].forEach((k) => !String(details[k] || '').trim() && (errors.details[k] = 'Required'));
-    if (t === MK_LAB_CHECK) ['utilizationCheck', 'labCreation'].forEach((k) => !details[k] && (errors.details[k] = 'Required'));
-    if (t === 'Registration' && !details.registerNo) errors.details.registerNo = 'Required';
+    if (t === MK_LAB_CHECK) ['collegeName', 'courseId', 'noOfStudents', 'utilizationCheck', 'labCreation'].forEach((k) => !String(details[k] || '').trim() && (errors.details[k] = 'Required'));
+    if (t === 'Registration' && !String(details.registerNo || '').trim()) errors.details.registerNo = 'Required';
     if (details.yop && !/^\d{4}$/.test(details.yop)) errors.details.yop = 'Enter a 4-digit year';
   }
   Object.entries(outstation).forEach(([k, v]) => {
@@ -205,7 +205,7 @@ export function buildPayload({ header, tab, details, outstation }) {
         : t === MK_DATABASE
           ? ['marketingType', 'databaseName', 'fileName', 'records', 'storedPlace', 'remarks']
           : t === MK_LAB_CHECK
-            ? ['marketingType', 'utilizationCheck', 'labCreation', 'remarks']
+            ? ['marketingType', 'collegeName', 'courseId', 'noOfStudents', 'utilizationCheck', 'labCreation', 'remarks']
             : ['marketingType', 'registerNo', 'remarks'];
     d = Object.fromEntries(Object.entries(d).filter(([k]) => keep.includes(k)));
   }

@@ -97,7 +97,11 @@ def create_request(body: RequestIn, me: dict = Depends(current_user)):
     except Exception as e:  # SMTP refused, network down ...
         raise HTTPException(502, f"The email could not be sent: {e}") from e
     # WhatsApp to Manager / Admin with the sender's name; a failure is recorded but does not stop the request.
-    wa = whatsapp.notify([f"{me['name']} ({me['code']})", name, r["courseId"] or "-", r["notes"] or "-"])
+    wa = whatsapp.notify({
+        "employee": me["name"], "code": me["code"], "employeeCode": f"{me['name']} ({me['code']})",
+        "course": name, "courseId": r["courseId"], "remarks": r["notes"],
+        "date": datetime.now().strftime("%d-%b-%Y"), "email": me.get("email", ""),
+    })
     r["whatsapp"] = wa
     db.db.course_requests.insert_one(dict(r))
     return {"id": r["id"], "emailedTo": len(recipients), "whatsappTo": wa["sent"]}
