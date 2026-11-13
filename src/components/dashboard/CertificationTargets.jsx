@@ -4,76 +4,86 @@ import Card from '../ui/Card';
 import { useAsync } from '../../hooks/useAsync';
 import { getHalfyearly } from '../../services/api';
 import { formatDate } from '../../utils/format';
-import { periodDates } from '../../utils/halfyearly';
+import { isCurrent, periodDates } from '../../utils/halfyearly';
+import { cn } from '../../utils/cn';
 
-const Pill = ({ ok, yes, no }) => (
-  <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold ${ok ? 'bg-success-50 text-success-700' : 'bg-warning-50 text-warning-700'}`}>
-    {ok ? <CheckCircle2 className="size-3.5" aria-hidden /> : <Clock3 className="size-3.5" aria-hidden />}
-    {ok ? yes : no}
-  </span>
-);
+/** One certification or course as its own box: green when finished, amber while not finished. */
+function Item({ name, courseId, done, doneText, pendingText, extra }) {
+  return (
+    <li className={cn('rounded-xl border p-3', done ? 'border-success-600/30 bg-success-50' : 'border-warning-600/30 bg-warning-50')}>
+      <p className="font-medium text-ink-900">{name}</p>
+      {courseId && <p className="text-xs text-ink-500">Course {courseId}</p>}
+      <p className={cn('mt-2 inline-flex items-center gap-1 text-[12px] font-semibold', done ? 'text-success-700' : 'text-warning-700')}>
+        {done ? <CheckCircle2 className="size-4" aria-hidden /> : <Clock3 className="size-4" aria-hidden />}
+        {done ? doneText : pendingText}
+      </p>
+      {extra && <p className="mt-1 text-xs text-ink-600">{extra}</p>}
+    </li>
+  );
+}
+
+function Section({ title, count, done, children }) {
+  return (
+    <div>
+      <p className="mb-2 text-[12px] font-semibold uppercase tracking-wide text-ink-500">
+        {title} <span className="ml-1 rounded-full bg-ink-100 px-2 py-0.5 text-ink-700">{done} of {count} finished</span>
+      </p>
+      <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">{children}</ul>
+    </div>
+  );
+}
 
 /**
- * Top of the dashboard: the target and course delivery certifications HR assigned to this person
- * (Halfyearly Program Report), with the quarter, period dates and status. Hidden when none are assigned.
+ * Top of the dashboard: the current quarter's target certifications and delivery ready courses HR assigned
+ * to this person (Halfyearly Program Report), each in its own box. Hidden when nothing is assigned for now.
  */
 export default function CertificationTargets({ employeeCode, canUpdate }) {
   const { data } = useAsync(() => getHalfyearly({ employeeCode }), [employeeCode]);
-  if (!data?.length) return null;
+  const current = (data || []).filter((r) => isCurrent(r));
+  if (!current.length) return null;
+  const targets = current.flatMap((r) => r.targets);
+  const deliveries = current.flatMap((r) => r.deliveries);
+  const quarters = current.map((r) => {
+    const [from, to] = periodDates(r.startMonth, r.endMonth);
+    return `${r.quarter ? `${r.quarter} · ` : ''}${formatDate(from)} to ${formatDate(to)}`;
+  });
   return (
     <Card
       className="mb-5 border-brand-200"
       title={
         <span className="flex items-center gap-2">
-          <Award className="size-5 text-brand-600" aria-hidden /> Assigned certifications
+          <Award className="size-5 text-brand-600" aria-hidden /> Assigned certifications, current quarter
         </span>
       }
-      description="Halfyearly Program Report: target and course delivery certifications"
+      description={quarters.join(' | ')}
       actions={
         <Link to="/hr-report/halfyearly" className="inline-flex items-center gap-1 text-[13px] font-medium text-brand-700 hover:underline">
           {canUpdate ? 'Update status' : 'Open report'} <ArrowRight className="size-4" aria-hidden />
         </Link>
       }
     >
-      <ul className="grid grid-cols-1 gap-3 lg:grid-cols-2">
-        {data.map((r) => {
-          const [from, to] = periodDates(r.startMonth, r.endMonth);
-          return (
-            <li key={r.id} className="rounded-xl border border-ink-200 bg-white p-4">
-              <p className="text-xs font-semibold text-brand-700">
-                {r.quarter ? `${r.quarter} · ` : ''}
-                {r.period ? `${r.period} · ` : ''}
-                {formatDate(from)} to {formatDate(to)}
-              </p>
-              <div className="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-wide text-ink-500">Target certification</p>
-                  <ul className="mt-1 space-y-2">
-                    {r.targets.map((t, i) => (
-                      <li key={i}>
-                        <p className="font-medium text-ink-900">{t.name}</p>
-                        <Pill ok={t.achieved === 'Yes'} yes={`Achieved ${t.completionDate ? formatDate(t.completionDate) : ''}`} no="Not achieved yet" />
-                        {t.certificationCode && <p className="mt-1 text-xs text-ink-600">Code: {t.certificationCode}</p>}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-                <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-wide text-ink-500">Course delivery certification</p>
-                  <ul className="mt-1 space-y-2">
-                    {r.deliveries.length ? r.deliveries.map((d, i) => (
-                      <li key={i}>
-                        <p className="font-medium text-ink-900">{d.name}</p>
-                        <Pill ok={d.ready === 'Yes'} yes="Delivery ready" no="Delivery not ready" />
-                      </li>
-                    )) : <li className="text-xs text-ink-400">None assigned</li>}
-                  </ul>
-                </div>
-              </div>
-            </li>
-          );
-        })}
-      </ul>
+      <div className="space-y-5">
+        <Section title="Target certifications" count={targets.length} done={targets.filter((t) => t.achieved === 'Yes').length}>
+          {targets.map((t, i) => (
+            <Item
+              key={`t${i}`}
+              name={t.name}
+              courseId={t.courseId}
+              done={t.achieved === 'Yes'}
+              doneText={`Achieved${t.completionDate ? ` ${formatDate(t.completionDate)}` : ''}`}
+              pendingText="Not finished"
+              extra={t.certificationCode && `Code: ${t.certificationCode}`}
+            />
+          ))}
+        </Section>
+        {deliveries.length > 0 && (
+          <Section title="Delivery ready courses" count={deliveries.length} done={deliveries.filter((d) => d.ready === 'Yes').length}>
+            {deliveries.map((d, i) => (
+              <Item key={`d${i}`} name={d.name} courseId={d.courseId} done={d.ready === 'Yes'} doneText="Delivery ready" pendingText="Not ready yet" />
+            ))}
+          </Section>
+        )}
+      </div>
     </Card>
   );
 }

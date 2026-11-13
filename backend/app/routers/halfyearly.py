@@ -1,10 +1,10 @@
 """HR › Halfyearly Program Report.
 
-HR, Manager and Admin pick an employee or faculty and assign, for a quarter (H1 to H6) and period:
+HR, Manager and Admin pick an employee or faculty and assign, for a quarter (H1 to H6) with its months:
   * 1 to 3 target certifications (from the course list), and
-  * 1 to 3 course delivery certifications (from the course list).
+  * 1 to 3 delivery ready courses (from the course list).
 Only HR, Manager and Admin update the status: achieved / completion date / certification code for each
-target, and ready Yes / No for each delivery certification. The employee sees their rows read-only.
+target, and ready Yes / No for each delivery ready course. The employee sees their rows read-only.
 """
 from datetime import date, datetime, timezone
 from typing import Literal
@@ -30,6 +30,7 @@ def now() -> str:
 
 def _clean(r: dict) -> dict:
     r.pop("_id", None)
+    r.pop("period", None)  # Period was removed in v41
     return upgrade(r)
 
 
@@ -53,7 +54,6 @@ class CertIn(BaseModel):
 class AssignIn(Form):
     employeeCode: str = Field(min_length=1, max_length=40)
     quarter: Literal[QUARTERS] | None = None  # type: ignore[valid-type]
-    period: Literal["6 Months", "Quarter"] | None = None  # the end month is filled from it in the form
     startMonth: str = Field(pattern=MONTH_RE)
     endMonth: str = Field(pattern=MONTH_RE)
     targets: list[CertIn] = Field(min_length=1, max_length=3)

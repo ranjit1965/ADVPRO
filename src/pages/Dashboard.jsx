@@ -18,7 +18,7 @@ import CertificationTargets from '../components/dashboard/CertificationTargets';
 import { useAsync } from '../hooks/useAsync';
 import { getDashboardSummary, HR_ROLES } from '../services/api';
 import { ACTIVITY_LABEL } from '../utils/constants';
-import { formatDate, formatDuration, formatTime, parseISODate } from '../utils/format';
+import { formatDate, formatDuration, formatTime } from '../utils/format';
 import { entrySummary } from '../utils/entry';
 
 const QUICK_ACTIONS = [
@@ -34,7 +34,6 @@ const greeting = () => {
   return h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
 };
 
-const weekday = (iso) => parseISODate(iso).toLocaleDateString('en-GB', { weekday: 'short' });
 
 export default function Dashboard() {
   const { user } = useAuth();
@@ -126,8 +125,14 @@ export default function Dashboard() {
       </div>
 
       <div className="mt-5 grid grid-cols-1 gap-5 xl:grid-cols-3">
-        <Card title="Worked hours, last 7 days" description="Worked hours per day" className="xl:col-span-2">
-          {loading ? <Skeleton className="h-60 w-full" /> : <SimpleBarChart data={data.last7} xKey="date" yKey="hours" xFormatter={weekday} labelFormatter={formatDate} />}
+        <Card title="Activity mix this month" description="Hours by activity type" className="xl:col-span-2">
+          {loading ? (
+            <Skeleton className="h-60 w-full" />
+          ) : data.byType.length === 0 ? (
+            <EmptyState title="No activity this month" />
+          ) : (
+            <SimpleBarChart data={[...data.byType].sort((a, b) => b.hours - a.hours)} layout="vertical" xKey="type" yKey="hours" xFormatter={(k) => ACTIVITY_LABEL[k]} height={Math.max(180, data.byType.length * 34)} />
+          )}
         </Card>
 
         <Card title={other ? `${other.name} this month` : 'Quick actions'}>
@@ -159,52 +164,6 @@ export default function Dashboard() {
         </Card>
       </div>
 
-      <div className="mt-5 grid grid-cols-1 gap-5 xl:grid-cols-3">
-        <Card title="Today's activity" description={formatDate(new Date())}>
-          {loading ? (
-            <div className="space-y-3">
-              <Skeleton className="h-12" />
-              <Skeleton className="h-12" />
-            </div>
-          ) : data.todayList.length === 0 ? (
-            <EmptyState
-              icon={ClipboardList}
-              title="Nothing logged today"
-              message={other ? `${other.name} has not logged any activity today.` : 'Record your first activity for today.'}
-              action={
-                !other && <Button size="sm" icon={FilePlus2} onClick={() => navigate('/faculty/daily-activity/entry')}>
-                  Add entry
-                </Button>
-              }
-            />
-          ) : (
-            <ol className="relative space-y-4 border-l border-ink-200 pl-5">
-              {data.todayList.map((e) => (
-                <li key={e.id} className="relative">
-                  <span className="absolute top-1.5 -left-[25px] size-2.5 rounded-full bg-brand-600 ring-4 ring-white" aria-hidden />
-                  <Link to={`/entries/${e.id}`} className="block rounded-lg hover:bg-ink-50">
-                    <p className="text-xs text-ink-500 tabular-nums">
-                      {formatTime(e.timeFrom)} – {formatTime(e.timeTo)} · {formatDuration(e.minutes)}
-                    </p>
-                    <p className="font-medium text-ink-900">{ACTIVITY_LABEL[e.activityType]}</p>
-                    <p className="line-clamp-1 text-[13px] text-ink-600">{entrySummary(e)}</p>
-                  </Link>
-                </li>
-              ))}
-            </ol>
-          )}
-        </Card>
-
-        <Card title="Activity mix this month" description="Hours by activity type" className="xl:col-span-2">
-          {loading ? (
-            <Skeleton className="h-60 w-full" />
-          ) : data.byType.length === 0 ? (
-            <EmptyState title="No activity this month" />
-          ) : (
-            <SimpleBarChart data={[...data.byType].sort((a, b) => b.hours - a.hours)} layout="vertical" xKey="type" yKey="hours" xFormatter={(k) => ACTIVITY_LABEL[k]} height={Math.max(180, data.byType.length * 34)} />
-          )}
-        </Card>
-      </div>
 
       <Card
         title="Recent entries"

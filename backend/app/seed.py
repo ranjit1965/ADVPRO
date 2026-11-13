@@ -89,6 +89,8 @@ def migrate() -> None:
         b.update_many({"classMode": {"$exists": False}}, {"$set": {"classMode": "Offline"}})
 
     once("2026-11-batch-mode-online-offline", batch_modes)
+    # Halfyearly Program Report: the Period field (6 Months / Quarter) was removed; H1 to H6 stays.
+    once("2026-11-halfyearly-remove-period", lambda: db.db.halfyearly_reports.update_many({"period": {"$exists": True}}, {"$unset": {"period": ""}}))
 
 
 if __name__ == "__main__":

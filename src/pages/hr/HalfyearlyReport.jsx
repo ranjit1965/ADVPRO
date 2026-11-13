@@ -17,25 +17,21 @@ import { useConfirm } from '../../context/ConfirmContext';
 import { useAsync } from '../../hooks/useAsync';
 import { formatDate } from '../../utils/format';
 import { downloadCsv } from '../../utils/export';
-import { endOfPeriod, periodDates } from '../../utils/halfyearly';
+import { periodDates } from '../../utils/halfyearly';
 
 const YES_NO = ['Yes', 'No'];
 const COUNTS = ['1', '2', '3'];
 export const QUARTERS = ['H1', 'H2', 'H3', 'H4', 'H5', 'H6'];
-const PERIODS = [
-  { value: '6 Months', label: '6 Months' },
-  { value: 'Quarter', label: 'Quarter (3 mo)' },
-];
 const blankCert = () => ({ courseId: '', name: '' });
-const EMPTY_FORM = { employeeCode: '', quarter: '', period: '6 Months', startMonth: '', endMonth: '', targets: [blankCert()], deliveries: [blankCert()] };
+const EMPTY_FORM = { employeeCode: '', quarter: '', startMonth: '', endMonth: '', targets: [blankCert()], deliveries: [blankCert()] };
 
 const monthLabel = (m) => (m ? new Date(`${m}-01T00:00:00`).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' }) : '');
 const resize = (list, n) => Array.from({ length: n }, (_, i) => list[i] || blankCert());
 
 /**
  * HR › Halfyearly Program Report.
- * HR, Manager and Admin pick an employee and assign, for a quarter (H1 to H6) and period, 1 to 3 target
- * certifications and 1 to 3 course delivery certifications from the course list. Only they update the status;
+ * HR, Manager and Admin pick an employee and assign, for a quarter (H1 to H6) with its starting and ending month,
+ * 1 to 3 target certifications and 1 to 3 delivery ready courses from the course list. Only they update the status;
  * the employee sees their own rows read-only (and on the dashboard).
  */
 export default function HalfyearlyReport() {
@@ -62,12 +58,6 @@ export default function HalfyearlyReport() {
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
   const setF = (k, v) => setForm((f) => ({ ...f, [k]: v }));
-  // Choosing the period or the starting month fills the ending month (it can still be changed).
-  const setPeriod = (k, v) =>
-    setForm((f) => {
-      const next = { ...f, [k]: v };
-      return { ...next, endMonth: endOfPeriod(next.startMonth, next.period) || next.endMonth };
-    });
   const setCount = (list, n) => setForm((f) => ({ ...f, [list]: resize(f[list], Number(n)) }));
   const setCert = (list, i, courseId) => setForm((f) => ({ ...f, [list]: f[list].map((c, j) => (j === i ? { courseId, name: courseName[courseId] || '' } : c)) }));
   const [startDate, endDate] = periodDates(form.startMonth, form.endMonth);
@@ -75,7 +65,7 @@ export default function HalfyearlyReport() {
   const reset = () => {
     setEditingId(null);
     setErrors({});
-    setForm((f) => ({ ...EMPTY_FORM, quarter: f.quarter, period: f.period, startMonth: f.startMonth, endMonth: f.endMonth }));
+    setForm((f) => ({ ...EMPTY_FORM, quarter: f.quarter, startMonth: f.startMonth, endMonth: f.endMonth }));
   };
 
   const submit = async (e) => {
@@ -90,7 +80,7 @@ export default function HalfyearlyReport() {
     form.deliveries.forEach((c, i) => !c.name && (errs[`deliveries${i}`] = 'Choose a course'));
     setErrors(errs);
     if (Object.keys(errs).length) return toast.error('Please fill the highlighted fields.');
-    const body = { employeeCode: form.employeeCode, quarter: form.quarter, period: form.period, startMonth: form.startMonth, endMonth: form.endMonth, targets: form.targets, deliveries: form.deliveries };
+    const body = { employeeCode: form.employeeCode, quarter: form.quarter, startMonth: form.startMonth, endMonth: form.endMonth, targets: form.targets, deliveries: form.deliveries };
     setSaving(true);
     try {
       if (editingId) await api.updateHalfyearly(editingId, body);
@@ -109,7 +99,7 @@ export default function HalfyearlyReport() {
     setEditingId(r.id);
     setErrors({});
     const pick = (list) => (list?.length ? list.map((c) => ({ courseId: c.courseId || '', name: c.name })) : [blankCert()]);
-    setForm({ employeeCode: r.employeeCode, quarter: r.quarter || '', period: r.period || '', startMonth: r.startMonth, endMonth: r.endMonth, targets: pick(r.targets), deliveries: pick(r.deliveries) });
+    setForm({ employeeCode: r.employeeCode, quarter: r.quarter || '', startMonth: r.startMonth, endMonth: r.endMonth, targets: pick(r.targets), deliveries: pick(r.deliveries) });
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -131,14 +121,13 @@ export default function HalfyearlyReport() {
     downloadCsv('halfyearly-program-report.csv', [
       { header: 'Employee', value: (x) => `${x.r.employeeName} (${x.r.employeeCode})` },
       { header: 'Quarter', value: (x) => x.r.quarter || '' },
-      { header: 'Period', value: (x) => x.r.period || '' },
       { header: 'Starting Month', value: (x) => monthLabel(x.r.startMonth) },
       { header: 'Ending Month', value: (x) => monthLabel(x.r.endMonth) },
       { header: 'Target Certification', value: (x) => x.t.name || '' },
       { header: 'Achieved', value: (x) => x.t.achieved || '' },
       { header: 'Date of Completion', value: (x) => (x.t.completionDate ? formatDate(x.t.completionDate) : '') },
       { header: 'Certification Code', value: (x) => x.t.certificationCode || '' },
-      { header: 'Course Delivery Certification', value: (x) => x.d.name || '' },
+      { header: 'Delivery Ready Course', value: (x) => x.d.name || '' },
       { header: 'Delivery Ready', value: (x) => x.d.ready || '' },
     ], lines);
   };
@@ -174,25 +163,24 @@ export default function HalfyearlyReport() {
       <PageHeader
         title="Halfyearly Program Report"
         breadcrumb={[{ label: 'HR' }, { label: 'Halfyearly Program Report' }]}
-        description={isHr ? 'Assign each employee their target and course delivery certifications for the quarter, then record the status.' : 'Your target and course delivery certifications. HR records the status.'}
+        description={isHr ? 'Assign each employee their target certifications and delivery ready courses for the quarter, then record the status.' : 'Your target certifications and delivery ready courses. HR records the status.'}
         actions={<Button variant="secondary" icon={Download} disabled={!data?.length} onClick={exportCsv}>Export</Button>}
       />
 
       {isHr && (
         <Card className="mb-5" title={editingId ? 'Edit certifications' : 'Assign certifications'}>
           <form onSubmit={submit} noValidate className="grid grid-cols-1 gap-4 md:grid-cols-12">
-            <SearchableSelect label="Employee / Faculty" required className="md:col-span-4" options={people} placeholder="Search employee" value={form.employeeCode} onChange={(v) => setF('employeeCode', v)} error={errors.employeeCode} />
+            <SearchableSelect label="Employee / Faculty" required className="md:col-span-6" options={people} placeholder="Search employee" value={form.employeeCode} onChange={(v) => setF('employeeCode', v)} error={errors.employeeCode} />
             <Select label="Quarter" required sort={false} className="md:col-span-2" options={QUARTERS} placeholder="Select" value={form.quarter} onChange={(e) => setF('quarter', e.target.value)} error={errors.quarter} />
-            <Select label="Period" sort={false} className="md:col-span-2" options={PERIODS} placeholder="Custom" value={form.period} onChange={(e) => setPeriod('period', e.target.value)} />
-            <Input label="Starting Month" type="month" required className="md:col-span-2" value={form.startMonth} onChange={(e) => setPeriod('startMonth', e.target.value)} error={errors.startMonth} hint={startDate && `Start date ${formatDate(startDate)}`} />
+            <Input label="Starting Month" type="month" required className="md:col-span-2" value={form.startMonth} onChange={(e) => setF('startMonth', e.target.value)} error={errors.startMonth} hint={startDate && `Start date ${formatDate(startDate)}`} />
             <Input label="Ending Month" type="month" required className="md:col-span-2" value={form.endMonth} min={form.startMonth || undefined} onChange={(e) => setF('endMonth', e.target.value)} error={errors.endMonth} hint={endDate && `End date ${formatDate(endDate)}`} />
             <fieldset className="rounded-xl border border-ink-200 p-4 md:col-span-12">
               <legend className="px-1 text-[13px] font-semibold text-ink-700">Target Certification</legend>
               {certFields('targets', 'Target Certification')}
             </fieldset>
             <fieldset className="rounded-xl border border-ink-200 p-4 md:col-span-12">
-              <legend className="px-1 text-[13px] font-semibold text-ink-700">Course Delivery Certification</legend>
-              {certFields('deliveries', 'Course Delivery Certification')}
+              <legend className="px-1 text-[13px] font-semibold text-ink-700">Delivery Ready Courses</legend>
+              {certFields('deliveries', 'Delivery Ready Course')}
             </fieldset>
             <div className="flex items-end justify-end gap-2 md:col-span-12">
               {editingId && (
@@ -211,7 +199,7 @@ export default function HalfyearlyReport() {
       <Card
         bodyClassName="p-0"
         title="HALFYEARLY PROGRAM REPORT"
-        description={isHr ? 'Target and course delivery certifications. Record the status on each line and click Save.' : 'Read-only: HR records the status.'}
+        description={isHr ? 'Target certifications and delivery ready courses. Record the status on each line and click Save.' : 'Read-only: HR records the status.'}
         actions={isHr && <Select aria-label="Filter by employee" searchable className="w-64" placeholder="All employees" options={people} value={filter} onChange={(e) => setFilter(e.target.value)} />}
       >
         {error ? (
@@ -227,12 +215,12 @@ export default function HalfyearlyReport() {
               <thead className="bg-ink-50 text-xs font-semibold uppercase tracking-wide text-ink-500">
                 <tr>
                   <th className="px-3 py-2.5">Employee</th>
-                  <th className="px-3 py-2.5">Quarter / Period</th>
+                  <th className="px-3 py-2.5">Quarter</th>
                   <th className="px-3 py-2.5">Target Certification</th>
                   <th className="px-3 py-2.5">Achieved?</th>
                   <th className="px-3 py-2.5">Date of Completion</th>
                   <th className="px-3 py-2.5">Certification Code</th>
-                  <th className="px-3 py-2.5">Course Delivery Certification</th>
+                  <th className="px-3 py-2.5">Delivery Ready Course</th>
                   <th className="px-3 py-2.5">Delivery Ready?</th>
                   {isHr && <th className="px-3 py-2.5"><span className="sr-only">Actions</span></th>}
                 </tr>
@@ -314,7 +302,7 @@ function ReportRows({ row, isHr, onSaved, onEdit, onDelete }) {
                 <td rowSpan={n} className="whitespace-nowrap px-3 py-2.5">
                   {row.quarter && <div className="font-semibold text-ink-900">{row.quarter}</div>}
                   <div className="tabular-nums">{monthLabel(row.startMonth)} – {monthLabel(row.endMonth)}</div>
-                  <div className="text-xs text-ink-500">{row.period ? `${row.period} · ` : ''}{formatDate(from)} to {formatDate(to)}</div>
+                  <div className="text-xs text-ink-500">{formatDate(from)} to {formatDate(to)}</div>
                 </td>
               </>
             )}
@@ -347,7 +335,7 @@ function ReportRows({ row, isHr, onSaved, onEdit, onDelete }) {
             </td>
             <td className="px-3 py-2">
               {!d ? dash : isHr ? (
-                <Select aria-label={`Delivery certification ${i + 1} ready`} sort={false} className="w-24" options={YES_NO} placeholder="Select" value={v.deliveries[i].ready} onChange={(e) => setD(i, e.target.value)} />
+                <Select aria-label={`Delivery ready course ${i + 1} ready`} sort={false} className="w-24" options={YES_NO} placeholder="Select" value={v.deliveries[i].ready} onChange={(e) => setD(i, e.target.value)} />
               ) : (d.ready || <span className="text-ink-400">Pending</span>)}
             </td>
             {isHr && i === 0 && (

@@ -189,7 +189,7 @@ after a confirmation.
 * Screens fit phones (iPhone 375 to 430 px wide), tablets, laptops, desktops and large monitors
   (content widens to 1680 px on 2K / 4K screens). Date boxes no longer overflow on iPhone Safari.
 
-* **Dashboard** no longer shows the "This month" performance card. Performance time (all
+* **Dashboard** no longer shows the "This month" performance card, "Worked hours, last 7 days" or "Today's activity". Performance time (all
   activities except Others) is in **Monthly Report** (Generate Report: KPI card and Excel) and in
   the Monthly Working Hrs Report.
 
@@ -197,17 +197,20 @@ after a confirmation.
 
 Page `/hr-report/halfyearly`, under the heading **HALFYEARLY PROGRAM REPORT**.
 
-* **HR, Manager and Admin** pick the employee or faculty, the **Quarter** (H1 to H6), the **Period**
-  (6 Months or Quarter: with the **Starting Month** it fills the **Ending Month**; start and end dates
-  show under the fields) and then:
+* **HR, Manager and Admin** pick the employee or faculty, the **Quarter** (H1 to H6), the **Starting
+  Month** and **Ending Month** (start and end dates show under the fields), then:
   * **No of Target Certifications** (1, 2 or 3): that many name fields, each picked from the course list;
-  * **No of Course Delivery Certifications** (1, 2 or 3): that many name fields from the course list.
+  * **No of Delivery Ready Courses** (1, 2 or 3): that many name fields from the course list.
   **Request new course** (the same mail and WhatsApp request as the entry form) is next to the first name field.
+  (The Period field, 6 Months / Quarter, was removed in v41, also from saved rows.)
 * **Only HR, Manager and Admin record the status**, on each line of the report: Achieved? (Yes asks the
   date of completion and the certification code) for every target, and Delivery Ready? for every
-  delivery certification, then Save. Edit keeps the status of certifications that stay in the list.
-* **Faculty and staff see their own rows read-only** (no Save), and at the top of their **Dashboard**
-  under **Assigned certifications**. Export downloads a CSV with one line per certification.
+  delivery ready course, then Save. Edit keeps the status of certifications that stay in the list.
+* **Faculty and staff see their own rows read-only** (no Save). Export downloads a CSV with one line per certification.
+* **Dashboard**: at the top, **Assigned certifications, current quarter** shows only the rows whose
+  months include today. Each target certification and each delivery ready course is its own box:
+  green when finished (achieved / delivery ready), amber while not finished, with "1 of 2 finished"
+  counts per group.
 * Rows saved before v40 (one certification) are shown as one target certification.
 * For an HR login, create the user in Master › Employees with role **HR** (8+ character password).
 
