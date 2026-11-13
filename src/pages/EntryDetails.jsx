@@ -28,10 +28,10 @@ export default function EntryDetails() {
   if (error) return <ErrorState message={error} onRetry={reload} />;
 
   const facultyName = (code) => {
-    const f = lookups?.faculties.find((x) => x.code === code);
+    const f = lookups?.faculties.find((x) => x.code === code) || lookups?.employees?.find((x) => x.code === code);
     return f ? `${f.name} (${f.code})` : code;
   };
-  const display = (key, value) => (['assistance', 'assistanceFaculty', 'mainFaculty', 'classFaculty'].includes(key) && value ? facultyName(value) : value);
+  const display = (key, value) => (['assistance', 'assistanceFaculty', 'mainFaculty', 'classFaculty', 'trainee'].includes(key) && value ? facultyName(value) : value);
 
   const remove = async () => {
     const ok = await confirm({ title: 'Delete entry', message: 'Delete this entry? This cannot be undone.', confirmLabel: 'Delete', tone: 'danger' });

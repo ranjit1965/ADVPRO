@@ -9,15 +9,13 @@ import OutstationFields from '../OutstationFields';
 import { makeField, courseOptions } from '../fieldProps';
 import { CLASS_CHECKS, DAY_ORDERS } from '../../../utils/entryForm';
 
-const CHAPTER_TYPES = ['Theory', 'Lab'];
-
 export default function ClassTab({ values, errors, set, setMany, lookups, facultyCode, facultyIn, outstation, outstationErrors, setOutstation, onAddLookup, onRequestCourse }) {
   const f = makeField('class', values, errors, set);
   const outstationMode = facultyIn === 'Outstation';
 
-  // Chapters come from Master › Courses & Chapters. Picking one pre-selects its type; the user can change it.
+  // Chapters come from Master › Courses & Chapters.
   const courseChapters = lookups.chapters.filter((c) => c.courseId === values.courseId).sort((a, b) => a.no - b.no);
-  const onCourse = (e) => setMany({ courseId: e.target.value, chapterNo: '', chapterType: '' });
+  const onCourse = (e) => setMany({ courseId: e.target.value, chapterNo: '' });
 
   // Batch No offers the batches assigned to this faculty (Master › Batch / Batch Import, matched by short name)
   // and any batch with no faculty at all: open batches first (newest first), then ones completed in the last 12 months.
@@ -32,11 +30,7 @@ export default function ClassTab({ values, errors, set, setMany, lookups, facult
   const onBatch = (e) => {
     const batch = (lookups.batchList || []).find((b) => b.batchNo === e.target.value);
     const course = batch?.courseId && lookups.courses.some((c) => c.id === batch.courseId) && batch.courseId !== values.courseId ? batch.courseId : null;
-    setMany(course ? { batchNo: e.target.value, courseId: course, chapterNo: '', chapterType: '' } : { batchNo: e.target.value });
-  };
-  const onChapter = (e) => {
-    const ch = courseChapters.find((c) => String(c.no) === e.target.value);
-    setMany({ chapterNo: e.target.value, chapterType: CHAPTER_TYPES.includes(ch?.type) ? ch.type : '' });
+    setMany(course ? { batchNo: e.target.value, courseId: course, chapterNo: '' } : { batchNo: e.target.value });
   };
 
   return (
@@ -71,13 +65,12 @@ export default function ClassTab({ values, errors, set, setMany, lookups, facult
             onChange={onBatch}
           />
         )}
-        <Select label={<ShortLabel full="Chapter / Session No" short="Chapter No" />} className="lg:col-span-3" placeholder={values.courseId ? (courseChapters.length ? 'Select' : 'No chapters in Master') : 'Pick a course'} options={courseChapters.map((c) => ({ value: String(c.no), label: `Chapter ${c.no}` }))} {...f('chapterNo')} onChange={onChapter} />
-        <Select label={<ShortLabel full="Chap / Session Type" short="Chap Type" />} className="lg:col-span-2" options={CHAPTER_TYPES} {...f('chapterType')} />
+        <Select label={<ShortLabel full="Chapter / Session No" short="Chapter No" />} className="lg:col-span-3" placeholder={values.courseId ? (courseChapters.length ? 'Select' : 'No chapters in Master') : 'Pick a course'} options={courseChapters.map((c) => ({ value: String(c.no), label: `Chapter ${c.no}` }))} {...f('chapterNo')} />
         <Select label="Day Order" className="lg:col-span-2" placeholder="Select" options={DAY_ORDERS} {...f('dayOrder')} />
         <Input label="No of Students" className="lg:col-span-2" inputMode="numeric" maxLength={4} placeholder="0" {...f('noOfStudents')} />
         <Select label={<ShortLabel full="Today's Session Type" short="Session Type" />} className="lg:col-span-4" options={lookups.sessionTypes} {...f('todaySessionType')} />
         {CLASS_CHECKS.map(([name, label]) => (
-          <RadioGroup key={name} className="lg:col-span-2" label={label} name={`class-${name}`} options={['Yes', 'No']} value={values[name] ?? ''} onChange={(v) => set(name, v)} />
+          <RadioGroup key={name} className="lg:col-span-3" label={label} name={`class-${name}`} options={['Yes', 'No']} value={values[name] ?? ''} onChange={(v) => set(name, v)} />
         ))}
         <Textarea label="Today's Session Detail" className="col-span-2 lg:col-span-12" rows={2} maxLength={500} placeholder="What was covered in today's session" {...f('todaySessionDetail')} />
       </div>

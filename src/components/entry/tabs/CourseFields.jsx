@@ -1,14 +1,14 @@
-import { Plus } from 'lucide-react';
+import { Mail, Plus } from 'lucide-react';
 import Input from '../../ui/Input';
 import Select from '../../ui/Select';
 import { courseOptions } from '../fieldProps';
 
 /**
- * Course ID (with "Add course") and Chapter / Session No., shared by the Course Preparation
- * and Self Learning / Knowledge Sharing tabs. A course with no chapters in Master
+ * Course ID (with "Request new course" or "Add course") and Chapter / Session No., shared by the
+ * Course Preparation, Self Learning / Knowledge Sharing and Seminar (Internship) tabs. A course with no chapters in Master
  * (for example one just added) takes a typed chapter / session number.
  */
-export default function CourseFields({ f, values, set, setMany, lookups, onAddCourse, courseClass, chapterClass }) {
+export default function CourseFields({ f, values, set, setMany, lookups, onAddCourse, onRequestCourse, courseClass, chapterClass }) {
   const courseChapters = lookups.chapters.filter((c) => c.courseId === values.courseId).sort((a, b) => a.no - b.no);
   const typedChapter = !!values.courseId && courseChapters.length === 0;
   const addCourse = () => onAddCourse?.((id) => setMany({ courseId: id, chapterNo: '' }));
@@ -29,10 +29,16 @@ export default function CourseFields({ f, values, set, setMany, lookups, onAddCo
           }
         }}
         aside={
-          onAddCourse && (
+          onRequestCourse ? (
+            <button type="button" onClick={onRequestCourse} className="inline-flex items-center gap-1 text-[12px] font-medium text-brand-700 hover:underline" title="Course not in the list? Ask the Manager / Admin to add it">
+              <Mail className="size-3.5" aria-hidden /> Request new course
+            </button>
+          ) : (
+            onAddCourse && (
             <button type="button" onClick={addCourse} className="inline-flex items-center gap-1 text-[12px] font-medium text-brand-700 hover:underline" title="Add a new course (Ctrl + A)">
               <Plus className="size-3.5" aria-hidden /> Add course
             </button>
+            )
           )
         }
       />

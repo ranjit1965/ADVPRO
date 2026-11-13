@@ -38,7 +38,7 @@ export default function RequestCourseModal({ open, onClose }) {
     setSending(true);
     try {
       const res = await api.requestCourse({ courseName: form.courseName.trim(), courseId: form.courseId, notes: form.notes });
-      toast.success(`Request emailed to ${res.emailedTo} ${res.emailedTo === 1 ? 'address' : 'addresses'}.`, 'Course request sent');
+      toast.success(`Request emailed to ${res.emailedTo} ${res.emailedTo === 1 ? 'address' : 'addresses'}${res.whatsappTo ? ` and sent on WhatsApp to ${res.whatsappTo} ${res.whatsappTo === 1 ? 'number' : 'numbers'}` : ''}.`, 'Course request sent');
       onClose();
     } catch (err) {
       setErrors({ form: err.message });

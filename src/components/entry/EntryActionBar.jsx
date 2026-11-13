@@ -1,11 +1,11 @@
-import { Save, Eraser, Pencil, Trash2, LogOut } from 'lucide-react';
+import { Save, Eraser, Trash2, LogOut } from 'lucide-react';
 import Button from '../ui/Button';
 
 /**
- * The five legacy buttons, in legacy order: Save, Clear, Edit, Delete, Exit.
- * Edit and Delete act on the row selected in the grid below (Delete starts disabled, as before).
+ * Save (Update while editing), Clear (entry mode only), Delete, Exit.
+ * Edit lives above the "Entries for the day" grid; Delete acts on the row selected there.
  */
-export default function EntryActionBar({ editing, saving, deleting, hasSelection, onSave, onClear, onEdit, onDelete, onExit }) {
+export default function EntryActionBar({ editing, saving, deleting, hasSelection, onSave, onClear, onDelete, onExit }) {
   return (
     <div className="flex flex-wrap items-center justify-end gap-2">
       <p className="mr-auto hidden text-xs text-ink-500 md:block">
@@ -14,12 +14,11 @@ export default function EntryActionBar({ editing, saving, deleting, hasSelection
       <Button icon={Save} loading={saving} onClick={onSave}>
         {editing ? 'Update' : 'Save'}
       </Button>
-      <Button variant="secondary" icon={Eraser} onClick={onClear}>
-        Clear
-      </Button>
-      <Button variant="secondary" icon={Pencil} onClick={onEdit} disabled={!hasSelection} title={hasSelection ? 'Load the selected entry for editing' : 'Select an entry in the grid to edit'}>
-        Edit
-      </Button>
+      {!editing && (
+        <Button variant="secondary" icon={Eraser} onClick={onClear}>
+          Clear
+        </Button>
+      )}
       <Button variant="danger-outline" icon={Trash2} onClick={onDelete} disabled={!hasSelection} loading={deleting} title={hasSelection ? 'Delete the selected entry' : 'Select an entry in the grid to delete'}>
         Delete
       </Button>

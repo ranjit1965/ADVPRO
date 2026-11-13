@@ -82,10 +82,11 @@ export default function MonthlyReportView({ report, faculty, courses, biometric 
         </div>
       </header>
 
-      <div className="grid grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-6">
+      <div className="grid grid-cols-2 gap-2 md:grid-cols-4 xl:grid-cols-7">
         <Kpi label="Working days" value={kpi.workingDays} sub={`of ${kpi.calendarDays} calendar days`} color={NAVY} />
         <Kpi label="Average day" value={hm(kpi.averageDay)} sub="per working day" color={NAVY} />
         <Kpi label="Longest day" value={kpi.longest ? hm(kpi.longest.minutes) : '-'} sub={kpi.longest ? `${kpi.longest.dayName} ${kpi.longest.day}` : ''} color={NAVY} />
+        <Kpi label="Performance time" value={hm(kpi.performance)} sub={`${pct(kpi.total ? kpi.performance / kpi.total : 0)}, all except Others`} color="#1f9d55" />
         <Kpi label="Class and seminar" value={hm(kpi.classSeminar)} sub={`${pct(kpi.total ? kpi.classSeminar / kpi.total : 0)} of logged time`} color="#2b78d6" />
         <Kpi label="Preparation / learning" value={hm(kpi.preparation)} sub={`${pct(kpi.total ? kpi.preparation / kpi.total : 0)} of logged time`} color="#e9a20a" />
         <Kpi label="Others" value={hm(kpi.others)} sub={`${pct(kpi.total ? kpi.others / kpi.total : 0)}, counted separately`} color="#8a93a6" />

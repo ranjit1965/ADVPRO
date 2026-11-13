@@ -22,7 +22,8 @@
       "Revision",
       "Assessment",
       "Doubt Clearing",
-      "LAB Creation"
+      "LAB Creation",
+      "Coding"
     ],
     "colleges": [
       "Anna University - CEG Campus",
@@ -123,6 +124,20 @@
       "Server Room",
       "Reception",
       "Seminar Hall"
+    ],
+    "slMaterialTheory": [
+      "PPT",
+      "Book",
+      "PDF",
+      "Online Book",
+      "Google",
+      "AI"
+    ],
+    "slMaterialPractical": [
+      "Guided Exercise",
+      "Practical Exercise",
+      "Coding in VS Code",
+      "Cloud Lab"
     ]
   }
 }

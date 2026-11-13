@@ -15,7 +15,7 @@ export function entrySummary(e) {
     case 'learning':
       return [d.materialType, d.courseId, d.chapterNo && `Ch ${d.chapterNo}`].filter(Boolean).join(' · ');
     case 'selfLearning':
-      return [d.learningType, d.courseId, d.chapterNo && `Ch ${d.chapterNo}`, d.chapterType, d.classMode].filter(Boolean).join(' · ');
+      return [d.learningType, d.courseId, d.chapterNo && `Ch ${d.chapterNo}`, d.chapterType, d.materialType, d.classMode].filter(Boolean).join(' · ');
     case 'database':
       return [d.databaseName, d.fileName, d.records && `${d.records} records`].filter(Boolean).join(' · ');
     case 'travelling':
@@ -108,10 +108,10 @@ export function reportRow(e, courses = []) {
       row.topic = join(d.todaySessionDetail || d.todaySessionType, d.dayOrder && `Day ${d.dayOrder}`);
       break;
     case 'learning':
-      row.topic = join(d.materialType, d.chapterDetails, d.pages && `${d.pages} pages`);
+      row.topic = join(d.materialType, d.chapterDetails, d.pages && `Qty ${d.pages}`);
       break;
     case 'selfLearning':
-      row.topic = join(d.learningType, d.classFaculty && `by ${d.classFaculty}`, d.classMode, d.chapterDetails);
+      row.topic = join(d.learningType, d.classFaculty && `by ${d.classFaculty}`, d.classMode, d.trainee && `to ${d.trainee}`, d.materialType, d.chapterDetails);
       break;
     case 'seminar':
       row.topic = join(d.seminarType, d.chapterDetails, d.totalStudent && `${d.totalStudent} students`, d.remarks);

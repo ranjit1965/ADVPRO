@@ -21,6 +21,14 @@ class Settings(BaseSettings):
     utc_offset_minutes: int = 330
     # Who receives "Request new course" emails (comma separated). Empty = every active Manager and Admin with an email.
     course_request_emails: str = "ranjit@vectratech.in,admin@vectratech.in"
+    # WhatsApp (Pinbot) message sent with every course request; see app/whatsapp.py. Empty = no WhatsApp.
+    wa_api_base: str = "https://partnersv1.pinbot.ai/v3"
+    wa_api_key: str = ""
+    wa_phone_number_id: str = ""
+    wa_template_id: str = ""
+    wa_template_name: str = ""
+    wa_template_lang: str = "en"
+    wa_notify_numbers: str = ""  # Manager and Admin numbers with country code, comma separated
 
 
 settings = Settings()

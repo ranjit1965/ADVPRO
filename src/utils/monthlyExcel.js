@@ -48,6 +48,7 @@ export async function downloadMonthlyExcel(report, faculty, courses, biometric) 
     ['Working days', `${kpi.workingDays} of ${kpi.calendarDays}`],
     ['Average day', hm(kpi.averageDay)],
     ['Longest day', kpi.longest ? `${hm(kpi.longest.minutes)} (${kpi.longest.dayName} ${kpi.longest.day})` : '-'],
+    ['Performance time (all except Others)', hm(kpi.performance)],
     ['Class and seminar', hm(kpi.classSeminar)],
     ['Preparation / learning', hm(kpi.preparation)],
     ['Others (counted separately)', hm(kpi.others)],

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { NavLink, Navigate, useParams, useSearchParams } from 'react-router-dom';
-import { Clock3, Download, FileBarChart, FileSpreadsheet, FileText, Printer, Users, StickyNote } from 'lucide-react';
+import { Clock3, Download, Gauge, FileBarChart, FileSpreadsheet, FileText, Printer, Users, StickyNote } from 'lucide-react';
 import { useMemo } from 'react';
 import MonthlyReportView from '../components/report/MonthlyReportView';
 import { buildMonthlyReport } from '../utils/monthlyReport';
@@ -243,9 +243,10 @@ function WorkingHoursView({ data, loading, month }) {
   const sum = (k) => rows.reduce((s, r) => s + r[k], 0);
   return (
     <div className="space-y-5">
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard label="People" value={rows.length} sub="Employees and faculty" icon={Users} loading={busy} />
         <StatCard label="Total working time" value={formatDuration(sum('totalMinutes'))} icon={Clock3} tone="info" loading={busy} />
+        <StatCard label="Performance time" value={formatDuration(sum('performanceMinutes'))} sub="All activities except Others" icon={Gauge} tone="accent" loading={busy} />
         <StatCard label="Others time" value={formatDuration(sum('othersMinutes'))} sub="Not part of performance" icon={StickyNote} tone="warning" loading={busy} />
       </div>
       <Card title="Total hours per person" description={monthLabel(month)}>

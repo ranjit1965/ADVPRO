@@ -350,3 +350,28 @@ export async function getStudentMarks(query) {
 export async function saveStudentMarks(query, rows) {
   return request('/student-marks', { method: 'POST', body: { ...query, rows } });
 }
+
+/** GET /api/hr/halfyearly?employeeCode= : Halfyearly Program Report rows (employees see only their own). */
+export async function getHalfyearly({ employeeCode } = {}) {
+  return request('/hr/halfyearly', { params: { employeeCode } });
+}
+
+/** POST /api/hr/halfyearly (HR, Manager, Admin): assign a target certification and its months. */
+export async function assignHalfyearly(body) {
+  return request('/hr/halfyearly', { method: 'POST', body });
+}
+
+/** PUT /api/hr/halfyearly/{id} (HR, Manager, Admin): change the assignment. */
+export async function updateHalfyearly(id, body) {
+  return request(`/hr/halfyearly/${encodeURIComponent(id)}`, { method: 'PUT', body });
+}
+
+/** PUT /api/hr/halfyearly/{id}/status: achieved, completion date, certification code, delivery ready. */
+export async function updateHalfyearlyStatus(id, body) {
+  return request(`/hr/halfyearly/${encodeURIComponent(id)}/status`, { method: 'PUT', body });
+}
+
+/** DELETE /api/hr/halfyearly/{id} (HR, Manager, Admin) */
+export async function deleteHalfyearly(id) {
+  return request(`/hr/halfyearly/${encodeURIComponent(id)}`, { method: 'DELETE' });
+}

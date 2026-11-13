@@ -1,7 +1,7 @@
 import { Keyboard } from 'lucide-react';
 import SearchableSelect from '../ui/SearchableSelect';
 
-const NAMES = { colleges: 'college', departments: 'department', travelModes: 'mode of travel' };
+const NAMES = { colleges: 'college', departments: 'department', travelModes: 'mode of travel', sessionTypes: 'session type', slMaterialTheory: 'material type', slMaterialPractical: 'material type' };
 
 /**
  * College Name / Dept / Mode of Travel dropdown. Like the legacy screen, Ctrl + A while the field

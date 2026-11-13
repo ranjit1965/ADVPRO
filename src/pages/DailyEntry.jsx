@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { ListChecks, Printer, RotateCcw } from 'lucide-react';
+import { ListChecks, Pencil, Printer, RotateCcw } from 'lucide-react';
 import PageHeader from '../components/ui/PageHeader';
 import Card from '../components/ui/Card';
 import Tabs from '../components/ui/Tabs';
@@ -364,7 +364,6 @@ export default function DailyEntry() {
               hasSelection={!!selectedId}
               onSave={handleSave}
               onClear={handleClear}
-              onEdit={handleEdit}
               onDelete={handleDelete}
               onExit={handleExit}
             />
@@ -381,7 +380,14 @@ export default function DailyEntry() {
             ? `${[...(lookups.faculties || []), ...(lookups.employees || [])].find((f) => f.code === header.facultyCode)?.name || header.facultyCode} · ${formatDate(header.activityDate)} · ${grid.rows.length} entr${grid.rows.length === 1 ? 'y' : 'ies'} · ${formatDuration(dayMinutes)}`
             : 'Select a faculty to see entries'
         }
-        actions={<span className="text-xs text-ink-500">Select a row, then use Edit or Delete</span>}
+        actions={
+          <div className="flex items-center gap-3">
+            <span className="hidden text-xs text-ink-500 sm:inline">Select a row, then click Edit</span>
+            <Button size="sm" variant="secondary" icon={Pencil} onClick={handleEdit} disabled={!selectedId} title={selectedId ? 'Load the selected entry for editing' : 'Select an entry in the grid to edit'}>
+              Edit
+            </Button>
+          </div>
+        }
       >
         <EntriesGrid rows={grid.rows} loading={grid.loading} selectedId={selectedId} editingId={editingId} onSelect={setSelectedId} />
       </Card>

@@ -11,7 +11,7 @@ export const emptyHeader = (facultyCode = '', date = toISODate()) => ({
 
 export const EMPTY_DETAILS = {
   class: {
-    courseId: '', batchNo: '', classIn: '', chapterNo: '', chapterType: '', dayOrder: '', noOfStudents: '', todaySessionType: '', todaySessionDetail: '',
+    courseId: '', batchNo: '', classIn: '', chapterNo: '', dayOrder: '', noOfStudents: '', todaySessionType: '', todaySessionDetail: '',
     dailyTest: '', dailyActivityPost: '',
   },
   seminar: {
@@ -24,7 +24,7 @@ export const EMPTY_DETAILS = {
     gradeA: '', gradeBPlus: '', gradeBMinus: '', gradeD: '', gradeNR: '', enquiryFormNo: '', registerNo: '', remarks: '',
   },
   learning: { courseId: '', materialType: '', chapterNo: '', pages: '', chapterDetails: '' },
-  selfLearning: { learningType: 'Self Learning', courseId: '', chapterNo: '', chapterType: '', classFaculty: '', classMode: '', chapterDetails: '' },
+  selfLearning: { learningType: 'Self Learning', courseId: '', chapterNo: '', chapterType: '', materialType: '', classFaculty: '', classMode: '', trainee: '', chapterDetails: '' },
   facultyDevelopment: { fdType: '', remarks: '' },
   database: { databaseName: '', fileName: '', records: '', storedPlace: '' },
   travelling: { fromPlace: '', toPlace: '', mode: '', purpose: '', remarks: '' },
@@ -56,10 +56,13 @@ export const CLASS_CHECKS = [
 // Day Order of the class (1 to 20), for Center and College / OD.
 export const DAY_ORDERS = Array.from({ length: 20 }, (_, i) => String(i + 1));
 
-// Self Learning / Knowledge Sharing tab. Class Attended also asks who took the class and Online / Offline.
+// Self Learning / Knowledge Sharing tab. Class Attended also asks who took the class and Online / Offline;
+// Knowledge Sharing asks who learned (trainee) and uses Today's Session Type values as Chap / Session Type.
 export const SELF_LEARNING_TYPES = ['Self Learning', 'Knowledge Sharing', 'Class Attended'];
-export const SESSION_KINDS = ['Theory', 'Practical'];
+export const SESSION_KINDS = ['Theory', 'Lab'];
 export const CLASS_MODES = ['Online', 'Offline'];
+/** Material Type list of Self Learning: the Lab / Practical list for a lab, practical or coding session, else Theory. */
+export const materialKind = (chapterType) => (!chapterType ? '' : /lab|practical|coding/i.test(chapterType) ? 'slMaterialPractical' : 'slMaterialTheory');
 
 // Seminar / Work Shop types. Internship asks the same course questions as Knowledge Sharing.
 export const SEMINAR_TYPES = ['Guest Lecture', 'IV / Work Shop', 'Internship'];
@@ -169,6 +172,10 @@ export function buildPayload({ header, tab, details, outstation }) {
     d.classFaculty = '';
     d.classMode = '';
   }
+  if (tab === 'selfLearning' && d.learningType !== 'Knowledge Sharing') d.trainee = '';
+  if (tab === 'selfLearning' && !d.chapterType) d.materialType = '';
+  // Internship has no Remarks.
+  if (tab === 'seminar' && d.seminarType === 'Internship') d.remarks = '';
   if (tab === 'seminar') {
     const course = ['courseId', 'chapterNo', 'chapterType', 'chapterDetails'];
     const college = ['collegeName', 'dept', 'sec', 'totalStudent', 'yop', 'databaseCollected'];

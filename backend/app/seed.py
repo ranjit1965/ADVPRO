@@ -17,6 +17,7 @@ OPTION_LISTS = (
     "classIn", "chapterTypes", "sessionTypes", "colleges", "departments", "sections", "yopOptions",
     "marketingTypes", "enquiryFormNos", "materialTypes", "softwareActivities",
     "travelModes", "othersHeadings", "productTypes", "locations",
+    "slMaterialTheory", "slMaterialPractical",
 )
 
 
@@ -75,6 +76,8 @@ def migrate() -> None:
             db.entries.update_one({"id": e["id"]}, {"$set": {"activityType": "others", "details": {"heading": d.get("fdType"), "remarks": d.get("remarks", "")}}})
 
     once("2026-11-breaks-in-others", breaks_to_others)
+    # Today's Session Type gets "Coding" (Class and Knowledge Sharing use the same list).
+    once("2026-11-session-type-coding", lambda: db.lookups.update_one({"_id": "sessionTypes"}, {"$addToSet": {"values": "Coding"}}, upsert=True))
 
 
 if __name__ == "__main__":

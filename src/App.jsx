@@ -29,6 +29,7 @@ import HrPolicy from './pages/hr/HrPolicy';
 import YourInfo from './pages/hr/YourInfo';
 import BatchCompletion from './pages/hr/BatchCompletion';
 import LeaveForm from './pages/hr/LeaveForm';
+import HalfyearlyReport from './pages/hr/HalfyearlyReport';
 import NotFound from './pages/NotFound';
 
 function RequireAuth({ children }) {
@@ -80,6 +81,7 @@ export default function App() {
               <Route path="hr-report/your-info" element={<YourInfo />} />
               <Route path="hr-report/batch-paper-completion" element={<BatchCompletion />} />
               <Route path="hr-report/leave-permission" element={<LeaveForm />} />
+              <Route path="hr-report/halfyearly" element={<HalfyearlyReport />} />
               <Route path="users" element={<Navigate to="/master/employees" replace />} />
               <Route path="settings" element={<Settings />} />
               <Route path="*" element={<NotFound />} />

@@ -1,7 +1,8 @@
 """Course requests: faculty and employees ask Manager / Admin to add a missing course.
 
 The request is saved in `course_requests` and emailed to the addresses in COURSE_REQUEST_EMAILS
-(backend/.env); when that is empty, to every active Manager and Admin who has an email address. Manager / Admin then add the course in Master › Courses & Chapters
+(backend/.env); when that is empty, to every active Manager and Admin who has an email address. At the
+same time a WhatsApp template message goes to WA_NOTIFY_NUMBERS (see app/whatsapp.py). Both say who sent it. Manager / Admin then add the course in Master › Courses & Chapters
 (the request is marked Added) or dismiss it.
 """
 import re
@@ -13,6 +14,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import Field
 
 from .. import db
+from .. import whatsapp
 from ..mailer import MailNotConfigured, send_mail
 from ..config import settings
 from ..schemas import Form
@@ -89,13 +91,16 @@ def create_request(body: RequestIn, me: dict = Depends(current_user)):
         "emailedTo": recipients,
     }
     try:
-        send_mail(recipients, f"Course request: please add \"{name}\"", _mail_text(r), reply_to=me.get("email") or None)
+        send_mail(recipients, f"Course request from {me['name']}: please add \"{name}\"", _mail_text(r), reply_to=me.get("email") or None)
     except MailNotConfigured as e:
         raise HTTPException(503, str(e)) from e
     except Exception as e:  # SMTP refused, network down ...
         raise HTTPException(502, f"The email could not be sent: {e}") from e
+    # WhatsApp to Manager / Admin with the sender's name; a failure is recorded but does not stop the request.
+    wa = whatsapp.notify([f"{me['name']} ({me['code']})", name, r["courseId"] or "-", r["notes"] or "-"])
+    r["whatsapp"] = wa
     db.db.course_requests.insert_one(dict(r))
-    return {"id": r["id"], "emailedTo": len(recipients)}
+    return {"id": r["id"], "emailedTo": len(recipients), "whatsappTo": wa["sent"]}
 
 
 @router.get("")

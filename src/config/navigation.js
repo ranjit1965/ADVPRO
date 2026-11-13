@@ -75,6 +75,7 @@ export const NAVIGATION = [
       { key: 'your-info', label: 'Your Info', to: '/hr-report/your-info' },
       { key: 'batch-completion', label: 'Batch Paper Completion', to: '/hr-report/batch-paper-completion' },
       { key: 'leave', label: 'Leave/Permission Form', to: '/hr-report/leave-permission' },
+      { key: 'halfyearly', label: 'Halfyearly Program Report', to: '/hr-report/halfyearly' },
     ],
   },
   { key: 'transaction', label: 'Transaction', icon: ArrowLeftRight, restricted: true },

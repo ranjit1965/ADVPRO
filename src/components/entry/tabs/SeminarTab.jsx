@@ -47,7 +47,7 @@ export default function SeminarTab({ values, errors, set, setMany, lookups, onAd
           <RadioGroup className="lg:col-span-3" label="Database Collected" name="databaseCollected" options={['Yes', 'No']} value={values.databaseCollected} onChange={(v) => set('databaseCollected', v)} />
         </>
       )}
-      <Textarea label="Remarks" className="col-span-2 lg:col-span-12" rows={2} maxLength={500} {...f('remarks')} />
+      {!internship && <Textarea label="Remarks" className="col-span-2 lg:col-span-12" rows={2} maxLength={500} {...f('remarks')} />}
     </div>
   );
 }

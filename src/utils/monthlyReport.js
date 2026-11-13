@@ -125,6 +125,7 @@ export function buildMonthlyReport(rows, month, courses = []) {
     classSeminar: byGroup.class + byGroup.seminar,
     preparation: byGroup.preparation,
     others: byGroup.others,
+    performance: total - byGroup.others, // every activity except Others (moved here from the Dashboard)
     classes: sorted.filter((e) => e.activityType === 'class').length,
     seminars: sorted.filter((e) => e.activityType === 'seminar').length,
     sessions: sessions.length,

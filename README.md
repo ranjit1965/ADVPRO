@@ -118,8 +118,8 @@ after a confirmation.
   laptops and larger screens, two rows on tablets, two per row on phones. The Software and System Fault sections
   were removed: new ones cannot be saved, but old ones still show in My Entries, reports and print.
 * **Class**: **Course ID** first (left), then **Batch No** (Center) or **Class in** (College / OD,
-  options include **Advantage Pro**), Chapter / Session No, Chap / Session Type (Theory / Lab),
-  **Day Order (1 to 20)**, **No of Students**, Today's Session Type (includes **LAB Creation**),
+  options include **Advantage Pro**), Chapter / Session No,
+  **Day Order (1 to 20)**, **No of Students**, Today's Session Type (includes **LAB Creation** and **Coding**),
   **Daily test** and **Daily activity post** (Yes / No, for Center and College / OD), and Detail.
   With **College / OD** the College / OD block appears: College Name, Dept, Sec, Total Absent,
   YOP, **Faculty role** (Main Faculty / Assistance Faculty; Assistance asks for the **Main faculty name**) and four optional Yes / No questions: Videos shown, Guided exercise
@@ -128,7 +128,9 @@ after a confirmation.
 * **Class › Batch No** lists only the batches assigned to the selected faculty (see Batch import
   below): open batches first, then batches completed in the last 12 months. Picking a batch fills
   Course ID when that course is in the course list. **Request new course** emails the Manager /
-  Admin (`COURSE_REQUEST_EMAILS`) to add a missing course.
+  Admin (`COURSE_REQUEST_EMAILS`) to add a missing course and, when WhatsApp is set up (see
+  **WhatsApp course request message** below), sends them a WhatsApp template message at the same
+  time. Both the mail and the message name the employee who sent the request.
 * **YOP** (Seminar, Marketing, College / OD) can be picked from the saved YOP options or typed:
   any 4-digit year is accepted.
 * **Daily Activity Print** uses the same layout as the old software: ADVANTAGE PRO, "NAME (CODE)
@@ -140,13 +142,20 @@ after a confirmation.
   SW Software and SF System Fault for old entries), plus a **Faculty Role** column (Main / Assistance and the main
   faculty name). Times are in 24-hour format. **Download PDF** (jsPDF, A4 landscape) and **Download Excel**
   (A4 landscape, fit to width) save the same sheet.
-* **Course Preparation**: Course ID (+ Add course), Material Type, Chapter / Session No,
-  No of Pages, Details. **Self Learning / Knowledge Sharing**: Type (**Self Learning, Knowledge
-  Sharing, Class Attended**; Class Attended also asks **Class taken by** (faculty) and **Online /
-  Offline**), Course ID, Chapter / Session No, **Chap / Session Type** (Theory / Practical), Details.
+* **Course Preparation**: Course ID (+ **Request new course**, the same mail and WhatsApp request as
+  Class), Material Type, Chapter / Session No, **Activity Quantity** (numbers only; was No of Pages), Details.
+* **Self Learning / Knowledge Sharing**: Type (**Self Learning, Knowledge Sharing, Class Attended**;
+  Class Attended also asks **Class taken by** (faculty) and **Online / Offline**), Course ID (no Add
+  course here), Chapter / Session No, **Chap / Session Type**, **Material Type**, Details.
+  * Self Learning and Class Attended: Chap / Session Type is **Theory** or **Lab**. Material Type
+    then lists, for Theory: PPT, Book, PDF, Online Book, Google, AI; for Lab: Guided Exercise,
+    Practical Exercise, Coding in VS Code, Cloud Lab. **Ctrl + A** adds a new material type to the
+    chosen list.
+  * Knowledge Sharing: Chap / Session Type uses the same list as Class › Today's Session Type
+    (Ctrl + A adds to it), and **Trainee (who learned from me)** picks an employee.
 * **Seminar / Work Shop**: Type (**Guest Lecture, IV / Work Shop, Internship**) and **Faculty role**
   (Main / Assistance, with the main faculty name). Internship asks the same course questions as
-  Knowledge Sharing; the other types ask the college details. Remarks for all.
+  Knowledge Sharing; the other types ask the college details. Remarks for all except Internship.
 * **Faculty Development**: Type (Meeting with HR, Meeting with Ranjit sir, Staff Meeting) and
   Remarks (required). Meetings count in worked hours and in activity performance.
 * **Others**: headings include **Lunch Break** and **Tea Break**. Others (breaks included) count
@@ -155,10 +164,12 @@ after a confirmation.
   in Faculty Development). Break entries saved earlier under Faculty Development are moved to
   Others at the next backend start. There is no daily limit; over 1 hour asks to confirm. Old "Learning / Preparation" entries are moved to the right tab on the
   first start (see `backend/app/seed.py`, `migrate()`).
-* **[CTRL + A]** on College Name / Dept / Course ID / **Mode of Travel** opens "Add new"; any user can add a new value (it is saved to the shared list).
+* **[CTRL + A]** on College Name / Dept / Course ID / **Mode of Travel** / Knowledge Sharing session type / Material Type opens "Add new"; any user can add a new value (it is saved to the shared list).
 * Every dropdown is sorted A to Z. Search boxes (faculty, employees, courses, colleges...)
   list only the values that **start with** the typed letters.
-* Buttons: **Save** (Ctrl + S), **Clear**, **Edit**, **Delete**, **Exit**.
+* Buttons: **Save** (Ctrl + S), **Clear**, **Delete**, **Exit**. **Edit** is above the
+  "Entries for the day" grid: select a row there, then click Edit. While editing, the form shows
+  **Update** and **Cancel edit**; Clear is hidden (it only shows in entry mode).
 * Validation: required fields, Time To after Time From, no future dates, numbers only where
   expected, Total Absent not above No of Students, and no overlapping time slots.
 
@@ -168,6 +179,52 @@ after a confirmation.
   No of Students, Daily test / Daily activity post...), with shorter labels so the boxes stay level.
 * Screens fit phones (iPhone 375 to 430 px wide), tablets, laptops, desktops and large monitors
   (content widens to 1680 px on 2K / 4K screens). Date boxes no longer overflow on iPhone Safari.
+
+* **Dashboard** no longer shows the "This month" performance card. Performance time (all
+  activities except Others) is in **Monthly Report** (Generate Report: KPI card and Excel) and in
+  the Monthly Working Hrs Report.
+
+### HR › Halfyearly Program Report
+
+Page `/hr-report/halfyearly`, under the heading **HALFYEARLY PROGRAM REPORT**.
+
+* **HR, Manager and Admin** assign each employee or faculty a **Target Certification**, either picked
+  from the course list or typed by hand, with a **Starting Month** and **Ending Month**. They can edit
+  or delete a row and filter by employee.
+* **The employee / faculty** fills in, on the same row: **Achieved?** (Yes / No; Yes asks the **Date of
+  completion** and the **Certification code**) and **Course Delivery Ready?** (Yes / No), then Save.
+  Each person sees only their own rows. Export downloads a CSV.
+* For an HR login, create the user in Master › Employees with role **HR** (passwords need at least
+  8 characters, so "hr" alone is not accepted).
+
+### WhatsApp course request message
+
+When a course request is sent, the backend also sends a WhatsApp **template** message through
+Pinbot (`backend/app/whatsapp.py`). Set in `backend/.env` (and in Vercel / the server environment):
+
+```
+WA_API_BASE=https://partnersv1.pinbot.ai/v3
+WA_API_KEY=...            # Pinbot API key
+WA_PHONE_NUMBER_ID=...    # your WhatsApp business phone number id in Pinbot
+WA_TEMPLATE_ID=...        # id of the approved template
+WA_TEMPLATE_NAME=course_request
+WA_TEMPLATE_LANG=en
+WA_NOTIFY_NUMBERS=919876543210,919812345678   # Manager and Admin, country code, no +
+```
+
+Create and get approved a **Utility** template with four body variables, for example:
+
+```
+New course request from {{1}}.
+Course: {{2}}
+Suggested Course ID: {{3}}
+Remarks: {{4}}
+Please add it to the course list.
+```
+
+{{1}} is the employee name and code. If WhatsApp is not set up, or Pinbot refuses the message, the
+mail is still sent and the error is saved on the request (`whatsapp.errors`). The request body
+follows the Meta Cloud API template format; check it against your Pinbot account before going live.
 
 ### Passwords
 
@@ -292,6 +349,7 @@ Every page reads and writes data only through `src/services/api.js`, which calls
 | `getMasterRecords`, `saveMasterRecord`, `deleteMasterRecord` | `GET/POST /api/masters/{key}`, `PUT/DELETE /api/masters/{key}/{id}` |
 | `getWorkAssignments`, `createWorkAssignments`, `updateWorkAssignment`, `deleteWorkAssignment` | `GET/POST /api/work-assignments`, `PUT/DELETE /api/work-assignments/{id}` |
 | `getHrPolicy`, `saveHrPolicy`, `getEmployeeInfo`, `saveEmployeeInfo`, `getBatchCompletion`, `getLeaveRequests`, `createLeaveRequest`, `decideLeaveRequest` | `GET/PUT /api/hr/policy`, `GET /api/hr/info`, `PUT /api/hr/info/{userId}`, `GET /api/hr/batch-completion`, `GET/POST /api/hr/leave-requests`, `POST /api/hr/leave-requests/{id}/decision` |
+| `getHalfyearly`, `assignHalfyearly`, `updateHalfyearly`, `updateHalfyearlyStatus`, `deleteHalfyearly` | `GET/POST /api/hr/halfyearly`, `PUT/DELETE /api/hr/halfyearly/{id}`, `PUT /api/hr/halfyearly/{id}/status` |
 | `getMonthlyPlans`, `saveMonthlyPlan`, `deleteMonthlyPlan` | `/api/monthly-plans` |
 | `getStudentMarks`, `saveStudentMarks` | `/api/student-marks` |
 | `getNotifications` | `GET /api/notifications` |
@@ -343,7 +401,7 @@ passwords) and the same Gmail address as `SMTP_FROM`.
 
 MongoDB collections: `users` (bcrypt password hashes, roles FACULTY / HR / ADMIN / STAFF / MANAGER),
 `daily_entries`, `courses`, `chapters` (chapter / session details per course), `lookups` (one document per dropdown list), `monthly_plans`, `student_marks`,
-`master_registrations`, `master_batches`, `master_attendance`, `master_products`, `master_oldRegistrations`, `master_vendors`, `master_assets`, `work_assignments`, `settings` (HR policy), `leave_requests`, `manager_otps` (expire automatically), `notifications`, `counters` (entry numbers DAE-0001…).
+`master_registrations`, `master_batches`, `master_attendance`, `master_products`, `master_oldRegistrations`, `master_vendors`, `master_assets`, `work_assignments`, `settings` (HR policy), `leave_requests`, `halfyearly_reports`, `course_requests`, `manager_otps` (expire automatically), `notifications`, `counters` (entry numbers DAE-0001…).
 
 Rules enforced on the server: one manager only, created after the emailed 6-digit code is verified
 (10 minutes, 5 attempts) and is never returned by the API or written to the log; Admin and Manager

@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from . import seed
 from .config import settings
-from .routers import auth, batch_import, biometric, course_requests, entries, hr, lookups, master, masters, misc, reports, users, work
+from .routers import auth, batch_import, biometric, course_requests, entries, halfyearly, hr, lookups, master, masters, misc, reports, users, work
 
 logging.basicConfig(level=logging.INFO)
 
@@ -26,7 +26,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-for r in (auth, users, lookups, master, masters, work, entries, reports, hr, misc, biometric, course_requests, batch_import):
+for r in (auth, users, lookups, master, masters, work, entries, reports, halfyearly, hr, misc, biometric, course_requests, batch_import):
     app.include_router(r.router, prefix="/api")
 
 

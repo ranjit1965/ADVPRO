@@ -1,5 +1,5 @@
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { AlarmClock, CalendarCheck, CheckCircle2, ClipboardList, Clock3, FilePlus2, FileText, ListChecks, Printer, CalendarRange, AlertTriangle, ArrowRight } from 'lucide-react';
+import { AlarmClock, CheckCircle2, ClipboardList, Clock3, FilePlus2, FileText, ListChecks, Printer, CalendarRange, AlertTriangle, ArrowRight } from 'lucide-react';
 import PageHeader from '../components/ui/PageHeader';
 import StatCard from '../components/ui/StatCard';
 import Card from '../components/ui/Card';
@@ -110,10 +110,9 @@ export default function Dashboard() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard label="Today's entries" value={data?.todayEntries ?? 0} sub={formatDate(new Date())} icon={ClipboardList} loading={loading} onClick={other ? undefined : () => navigate('/faculty/daily-activity/entry')} />
         <StatCard label="Worked hours today" value={formatDuration(data?.todayMinutes)} sub="Sum of Time From to Time To" icon={Clock3} tone="info" loading={loading} />
-        <StatCard label="This month" value={data?.monthEntries ?? 0} sub={`${formatDuration(data?.monthMinutes)} performance time`} icon={CalendarCheck} tone="accent" loading={loading} />
         <StatCard label="Worked hours this month" value={formatDuration(data?.monthTotalMinutes)} sub="All activities, Others included" icon={AlarmClock} tone="warning" loading={loading} />
         <StatCard label="Total entries" value={data?.totalEntries ?? 0} sub="All time" icon={CheckCircle2} tone="success" loading={loading} onClick={other ? undefined : () => navigate('/faculty/daily-activity/history')} />
       </div>
@@ -129,7 +128,6 @@ export default function Dashboard() {
               {[
                 ['Entries this month', data?.monthEntries ?? 0],
                 ['Worked hours this month', formatDuration(data?.monthTotalMinutes)],
-                ['Performance time', formatDuration(data?.monthMinutes)],
                 ['Days without entry', data?.missingDays?.length ?? 0],
                 ['Total entries', data?.totalEntries ?? 0],
               ].map(([k, v]) => (

@@ -51,7 +51,7 @@ export const DETAIL_FIELDS = {
     ['courseId', 'Course ID'],
     ['materialType', 'Material Type'],
     ['chapterNo', 'Chapter / Session No'],
-    ['pages', 'No of Pages'],
+    ['pages', 'Activity Quantity'],
     ['chapterDetails', 'Chapter / Session Details', true],
   ],
   selfLearning: [
@@ -59,7 +59,9 @@ export const DETAIL_FIELDS = {
     ['courseId', 'Course ID'],
     ['chapterNo', 'Chapter / Session No'],
     ['chapterType', 'Chap / Session Type'],
+    ['materialType', 'Material Type'],
     ['classFaculty', 'Class taken by'],
+    ['trainee', 'Trainee (learned from me)'],
     ['classMode', 'Online / Offline'],
     ['chapterDetails', 'Chapter / Session Details', true],
   ],

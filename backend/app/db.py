@@ -35,6 +35,8 @@ def ensure_indexes() -> None:
     db.work_assignments.create_index("id", unique=True)
     db.work_assignments.create_index("assignedTo")
     leave_requests.create_index("id", unique=True)
+    db.halfyearly_reports.create_index("id", unique=True)
+    db.halfyearly_reports.create_index("employeeCode")
     for key in ("registrations", "batches", "attendance", "products", "oldRegistrations", "vendors", "assets"):
         db[f"master_{key}"].create_index("id", unique=True)
     db.work_assignments.create_index("id", unique=True)
