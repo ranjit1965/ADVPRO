@@ -60,8 +60,8 @@ class EntryIn(BaseModel):
 
 
 def can_touch(user: dict, faculty_code: str) -> None:
-    # Faculty may only record and change their own activity.
-    if user["role"] in ("FACULTY", "STAFF") and user["code"] != faculty_code:
+    # Faculty, staff and HR only record and change their own activity (HR reads everyone's, read-only).
+    if user["role"] not in ("MANAGER", "ADMIN") and user["code"] != faculty_code:
         raise HTTPException(403, "You can only manage your own entries")
 
 

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { LayoutDashboard, Pencil, Plus, Trash2, UserCheck, UserX } from 'lucide-react';
+import { LayoutDashboard, Pencil, Plus, ShieldCheck, ShieldOff, Trash2, UserCheck, UserX } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import * as api from '../services/api';
 import PageHeader from '../components/ui/PageHeader';
@@ -108,6 +108,19 @@ export default function Users() {
     }
   };
 
+  // Manager only: give or remove an Admin's access (an Admin without it works like a normal employee).
+  const toggleAdminAccess = async (r) => {
+    const removing = r.adminAccess !== false;
+    if (removing && !(await confirm({ title: 'Remove Admin access', message: `${r.name} will no longer create batches, upload Batch Master or manage employees until you give the access back.`, confirmLabel: 'OK, remove', tone: 'danger' }))) return;
+    try {
+      await api.setAdminAccess(r.userId, !removing);
+      toast.success(removing ? `Admin access removed for ${r.name}.` : `Admin access given back to ${r.name}.`);
+      load();
+    } catch (e) {
+      toast.error(e.message);
+    }
+  };
+
   const remove = async (r) => {
     if (!(await confirm({ title: 'Delete employee', message: `Delete ${r.name} (${r.userId})? Their saved entries stay in the reports.`, confirmLabel: 'Delete', tone: 'danger' }))) return;
     try {
@@ -123,7 +136,16 @@ export default function Users() {
     { key: 'userId', header: 'User ID' },
     { key: 'code', header: 'Code' },
     { key: 'name', header: 'Name', render: (r) => <span className="font-medium text-ink-900">{r.name}</span> },
-    { key: 'role', header: 'Role' },
+    {
+      key: 'role',
+      header: 'Role',
+      render: (r) => (
+        <span>
+          {r.role}
+          {r.role === ROLES.ADMIN && r.adminAccess === false && <span className="ml-1.5 rounded-full bg-warning-50 px-1.5 py-0.5 text-[11px] font-semibold text-warning-700">access removed</span>}
+        </span>
+      ),
+    },
     { key: 'department', header: 'Department', hideOnMobile: true },
     { key: 'email', header: 'Email', hideOnMobile: true },
     { key: 'hours', header: `Hours, ${monthLabel(month)}`, align: 'right', render: (r) => (hours[r.code] ? <span className="tabular-nums">{formatDuration(hours[r.code].totalMinutes)}</span> : <span className="text-ink-400">-</span>) },
@@ -136,6 +158,16 @@ export default function Users() {
       render: (r) => (
         <div className="flex justify-end gap-1">
           <Button size="sm" variant="ghost" icon={LayoutDashboard} onClick={() => navigate(`/?code=${encodeURIComponent(r.code)}`)} aria-label={`Open ${r.name}'s dashboard`} title="Open dashboard" />
+          {user.role === ROLES.MANAGER && r.role === ROLES.ADMIN && (
+            <Button
+              size="sm"
+              variant="ghost"
+              icon={r.adminAccess === false ? ShieldCheck : ShieldOff}
+              onClick={() => toggleAdminAccess(r)}
+              aria-label={r.adminAccess === false ? `Give Admin access to ${r.name}` : `Remove Admin access from ${r.name}`}
+              title={r.adminAccess === false ? 'Give Admin access' : 'Remove Admin access'}
+            />
+          )}
           {canEdit && r.role !== ROLES.MANAGER && (
             <>
             <Button size="sm" variant="ghost" icon={Pencil} onClick={() => openEdit(r)} aria-label={`Edit ${r.name}`} />

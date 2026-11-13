@@ -34,7 +34,7 @@ export default function LeaveForm() {
   const [form, setForm] = useState(() => empty(user));
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
-  const isManager = user.role === 'MANAGER';
+  const isManager = ['MANAGER', 'ADMIN'].includes(user.role); // Admin has the Manager's access
   const isHr = api.HR_ROLES.includes(user.role);
   const [scope, setScope] = useState(isHr ? 'all' : 'mine');
   const list = useAsync(() => api.getLeaveRequests(scope), [scope]);

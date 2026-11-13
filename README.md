@@ -197,19 +197,35 @@ after a confirmation.
 
 Page `/hr-report/halfyearly`, under the heading **HALFYEARLY PROGRAM REPORT**.
 
-* **HR, Manager and Admin** pick the employee or faculty and assign a **Target Certification**, either
-  picked from the course list or typed by hand. **Period** is **6 Months** (half year) or **Quarter**
-  (3 months): choosing it with the **Starting Month** fills the **Ending Month** (Oct 2026 + 6 months
-  ends Mar 2027), and the start and end dates show under the fields (01-Oct-2026 to 31-Mar-2027).
-  The ending month can still be changed. They can edit or delete a row and filter by employee.
-* The employee's **Dashboard** shows **Assigned certifications** at the top: each target with its
-  period dates and whether it is achieved and delivery-ready, with a link to update the status.
-  HR / Manager viewing someone's dashboard see that person's certifications.
-* **The employee / faculty** fills in, on the same row: **Achieved?** (Yes / No; Yes asks the **Date of
-  completion** and the **Certification code**) and **Course Delivery Ready?** (Yes / No), then Save.
-  Each person sees only their own rows. Export downloads a CSV.
-* For an HR login, create the user in Master › Employees with role **HR** (passwords need at least
-  8 characters, so "hr" alone is not accepted).
+* **HR, Manager and Admin** pick the employee or faculty, the **Quarter** (H1 to H6), the **Period**
+  (6 Months or Quarter: with the **Starting Month** it fills the **Ending Month**; start and end dates
+  show under the fields) and then:
+  * **No of Target Certifications** (1, 2 or 3): that many name fields, each picked from the course list;
+  * **No of Course Delivery Certifications** (1, 2 or 3): that many name fields from the course list.
+  **Request new course** (the same mail and WhatsApp request as the entry form) is next to the first name field.
+* **Only HR, Manager and Admin record the status**, on each line of the report: Achieved? (Yes asks the
+  date of completion and the certification code) for every target, and Delivery Ready? for every
+  delivery certification, then Save. Edit keeps the status of certifications that stay in the list.
+* **Faculty and staff see their own rows read-only** (no Save), and at the top of their **Dashboard**
+  under **Assigned certifications**. Export downloads a CSV with one line per certification.
+* Rows saved before v40 (one certification) are shown as one target certification.
+* For an HR login, create the user in Master › Employees with role **HR** (8+ character password).
+
+### Roles
+
+| | Manager | Admin | HR | Faculty / Staff |
+|---|---|---|---|---|
+| Batches, Batch Import, Biometric, masters, courses | yes | yes (while access is given) | no | no |
+| Employees: add, edit, disable, delete | yes | yes (while access is given) | view | no |
+| Approve leave | yes | yes (while access is given) | no | no |
+| Assign certifications and record their status | yes | yes | yes | read own |
+| All faculty entries, Monthly Report, Monthly Working Hrs (consolidated) Report | yes | yes | yes, read-only | own |
+| Add / change daily entries | anyone's | anyone's | own only | own only |
+
+**Admin access**: in Master › Employees the Manager has a shield button on each Admin row to
+**Remove Admin access** (confirm "OK, remove") or **Give Admin access** back. Without it the Admin
+works like a normal employee (own entries and reports) and sees a note on the dashboard; their next
+request already uses the new access. Only the Manager can change it (`PUT /api/users/{userId}/admin-access`).
 
 ### WhatsApp course request message
 
@@ -373,7 +389,8 @@ Every page reads and writes data only through `src/services/api.js`, which calls
 | `getMasterRecords`, `saveMasterRecord`, `deleteMasterRecord` | `GET/POST /api/masters/{key}`, `PUT/DELETE /api/masters/{key}/{id}` |
 | `getWorkAssignments`, `createWorkAssignments`, `updateWorkAssignment`, `deleteWorkAssignment` | `GET/POST /api/work-assignments`, `PUT/DELETE /api/work-assignments/{id}` |
 | `getHrPolicy`, `saveHrPolicy`, `getEmployeeInfo`, `saveEmployeeInfo`, `getBatchCompletion`, `getLeaveRequests`, `createLeaveRequest`, `decideLeaveRequest` | `GET/PUT /api/hr/policy`, `GET /api/hr/info`, `PUT /api/hr/info/{userId}`, `GET /api/hr/batch-completion`, `GET/POST /api/hr/leave-requests`, `POST /api/hr/leave-requests/{id}/decision` |
-| `getHalfyearly`, `assignHalfyearly`, `updateHalfyearly`, `updateHalfyearlyStatus`, `deleteHalfyearly` | `GET/POST /api/hr/halfyearly`, `PUT/DELETE /api/hr/halfyearly/{id}`, `PUT /api/hr/halfyearly/{id}/status` |
+| `getHalfyearly`, `assignHalfyearly`, `updateHalfyearly`, `updateHalfyearlyStatus` (HR, Manager, Admin), `deleteHalfyearly` | `GET/POST /api/hr/halfyearly`, `PUT/DELETE /api/hr/halfyearly/{id}`, `PUT /api/hr/halfyearly/{id}/status` |
+| `setAdminAccess` (Manager) | `PUT /api/users/{userId}/admin-access` |
 | `getMonthlyPlans`, `saveMonthlyPlan`, `deleteMonthlyPlan` | `/api/monthly-plans` |
 | `getStudentMarks`, `saveStudentMarks` | `/api/student-marks` |
 | `getNotifications` | `GET /api/notifications` |

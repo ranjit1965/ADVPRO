@@ -183,7 +183,7 @@ def create_leave(body: LeaveIn, me: dict = Depends(current_user)):
 
 
 @router.post("/leave-requests/{req_id}/decision")
-def decide_leave(req_id: str, body: DecisionIn, me: dict = Depends(require_roles("MANAGER"))):
+def decide_leave(req_id: str, body: DecisionIn, me: dict = Depends(require_roles("MANAGER", "ADMIN"))):
     res = db.leave_requests.find_one_and_update({"id": req_id}, {"$set": {"status": body.status, "decidedBy": me["name"], "decidedAt": now()}}, return_document=True)
     if not res:
         raise HTTPException(404, "Request not found")

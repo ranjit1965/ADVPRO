@@ -16,7 +16,7 @@ import { canAccess, MASTER_ROLES, PEOPLE_VIEW_ROLES } from '../utils/permissions
 import UploadReminder from '../components/UploadReminder';
 import CertificationTargets from '../components/dashboard/CertificationTargets';
 import { useAsync } from '../hooks/useAsync';
-import { getDashboardSummary } from '../services/api';
+import { getDashboardSummary, HR_ROLES } from '../services/api';
 import { ACTIVITY_LABEL } from '../utils/constants';
 import { formatDate, formatDuration, formatTime, parseISODate } from '../utils/format';
 import { entrySummary } from '../utils/entry';
@@ -62,6 +62,11 @@ export default function Dashboard() {
   return (
     <>
       {!other && canAccess(user, MASTER_ROLES) && <UploadReminder />}
+      {user.adminAccessRemoved && (
+        <div className="mb-5 rounded-xl border border-warning-600/25 bg-warning-50 px-4 py-3 text-[13px] text-warning-700" role="status">
+          Your Admin access was removed by the Manager. You can still enter and see your own work. Ask the Manager to give it back.
+        </div>
+      )}
       <PageHeader
         title={other ? `${other.name}'s dashboard` : `${greeting()}, ${user.name}`}
         description={other ? `${formatDate(new Date())} · ${other.role || ''}${other.designation && other.designation !== other.role ? ` · ${other.designation}` : ''} · Code ${other.code}` : `${formatDate(new Date())} · ${user.designation} · Grade ${user.grade}`}
@@ -98,7 +103,7 @@ export default function Dashboard() {
         </div>
       )}
 
-      <CertificationTargets employeeCode={target.code} own={!other} />
+      <CertificationTargets employeeCode={target.code} canUpdate={HR_ROLES.includes(user.role)} />
 
       {data?.missingDays?.length > 0 && (
         <div className="mb-5 flex flex-wrap items-center gap-3 rounded-xl border border-warning-600/25 bg-warning-50 px-4 py-3 text-[13px] text-warning-700" role="status">

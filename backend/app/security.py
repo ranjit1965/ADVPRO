@@ -42,6 +42,13 @@ def current_user(creds: HTTPAuthorizationCredentials | None = Depends(bearer)) -
     user = db.users.find_one({"userIdLower": payload["sub"].lower()})
     if not user or not user.get("active", True):
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Account not available")
+    return effective(user)
+
+
+def effective(user: dict) -> dict:
+    """An Admin whose access the Manager removed works as a normal employee (STAFF) until it is given back."""
+    if user.get("role") == "ADMIN" and user.get("adminAccess") is False:
+        return {**user, "role": "STAFF", "adminAccessRemoved": True}
     return user
 
 

@@ -375,3 +375,8 @@ export async function updateHalfyearlyStatus(id, body) {
 export async function deleteHalfyearly(id) {
   return request(`/hr/halfyearly/${encodeURIComponent(id)}`, { method: 'DELETE' });
 }
+
+/** PUT /api/users/{userId}/admin-access (Manager only): give (true) or remove (false) an Admin's access. */
+export async function setAdminAccess(userId, enabled) {
+  return request(`/users/${encodeURIComponent(userId)}/admin-access`, { method: 'PUT', body: { enabled } });
+}

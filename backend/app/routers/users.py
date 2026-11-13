@@ -94,6 +94,22 @@ def update_user(user_id: str, body: UserPatch, me: dict = Depends(manager_only))
     return public_user(db.users.find_one({"_id": u["_id"]}))
 
 
+class AdminAccessIn(BaseModel):
+    enabled: bool
+
+
+@router.put("/{user_id}/admin-access")
+def set_admin_access(user_id: str, body: AdminAccessIn, _: dict = Depends(require_roles("MANAGER"))):
+    """Manager only: give or remove an Admin's access (create batches, Batch Master upload, employees ...)."""
+    u = db.users.find_one({"userIdLower": user_id.lower()})
+    if not u:
+        raise HTTPException(404, "Employee not found")
+    if u["role"] != "ADMIN":
+        raise HTTPException(400, "Only an Admin account has Admin access to give or remove")
+    db.users.update_one({"_id": u["_id"]}, {"$set": {"adminAccess": body.enabled}})
+    return public_user(db.users.find_one({"_id": u["_id"]}))
+
+
 @router.delete("/{user_id}")
 def delete_user(user_id: str, me: dict = Depends(manager_only)):
     if me["userIdLower"] == user_id.lower():

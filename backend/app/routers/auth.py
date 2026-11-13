@@ -9,7 +9,7 @@ from pydantic import BaseModel, EmailStr, Field
 from .. import db
 from ..config import settings
 from ..mailer import MailNotConfigured, send_otp
-from ..security import create_token, current_user, hash_password, public_user, verify_password
+from ..security import create_token, current_user, effective, hash_password, public_user, verify_password
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 log = logging.getLogger("der.auth")
@@ -52,7 +52,7 @@ def login(body: LoginIn):
         raise HTTPException(401, "Invalid User ID or Password")
     if not u.get("active", True):
         raise HTTPException(403, "This account is disabled. Contact your manager.")
-    return {"accessToken": create_token(u["userId"]), "tokenType": "bearer", "user": public_user(u)}
+    return {"accessToken": create_token(u["userId"]), "tokenType": "bearer", "user": public_user(effective(u))}
 
 
 @router.post("/logout", status_code=204)
