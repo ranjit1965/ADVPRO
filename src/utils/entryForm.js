@@ -21,13 +21,15 @@ export const EMPTY_DETAILS = {
   },
   marketing: {
     marketingType: 'TC calls', collegeName: '', dept: '', sec: '', yop: '', total: '', freshRepeat: '',
-    gradeA: '', gradeBPlus: '', gradeBMinus: '', gradeD: '', gradeNR: '', enquiryFormNo: '', registerNo: '', remarks: '',
+    gradeA: '', gradeBPlus: '', gradeBMinus: '', gradeD: '', gradeNR: '', enquiryFormNo: '', courseId: '', registerNo: '', remarks: '',
+    // DataBase Creation/Download (moved here from its own tab) and Lab Creation - Check
+    databaseName: '', fileName: '', records: '', storedPlace: '', utilizationCheck: '', labCreation: '',
   },
   learning: { courseId: '', materialType: '', chapterNo: '', pages: '', chapterDetails: '' },
   selfLearning: { learningType: 'Self Learning', courseId: '', chapterNo: '', chapterType: '', materialType: '', classFaculty: '', classMode: '', trainee: '', chapterDetails: '' },
   facultyDevelopment: { fdType: '', remarks: '' },
   database: { databaseName: '', fileName: '', records: '', storedPlace: '' },
-  travelling: { fromPlace: '', toPlace: '', mode: '', purpose: '', remarks: '' },
+  travelling: { fromType: '', fromPlace: '', toType: '', toPlace: '', mode: '', purpose: '', remarks: '' },
   // Software and System Fault are no longer entered (tabs removed); kept so old entries still open.
   software: { softwareName: '', softwareActivity: '', location: '', systems: '', remarks: '' },
   others: { heading: '', remarks: '' },
@@ -35,7 +37,7 @@ export const EMPTY_DETAILS = {
 };
 
 export const EMPTY_OUTSTATION = {
-  collegeName: '', dept: '', sec: '', totalAbsent: '', yop: '', facultyRole: 'Main Faculty', mainFaculty: '',
+  collegeName: '', dept: '', sec: '', totalPresent: '', totalAbsent: '', yop: '', facultyRole: 'Main Faculty', mainFaculty: '',
   videosShown: '', guidedExercisePpt: '', mentiQuiz: '', taskGiven: '',
 };
 
@@ -74,7 +76,15 @@ export const FACULTY_ROLES = ['Main Faculty', 'Assistance Faculty'];
 export const FD_TYPES = ['Meeting with HR', 'Meeting with Ranjit sir', 'Staff Meeting'];
 
 // Marketing sub-types that record a count, and the label of that count.
-export const MARKETING_COUNT_LABEL = { 'TC calls': 'Total Calls', Mailers: 'Total Mails', SMS: 'Total SMS', 'Label Printout': 'Total Labels' };
+export const MARKETING_COUNT_LABEL = { 'TC calls': 'Total Calls', Mailers: 'Total Mails', SMS: 'Total Msg', 'Label Printout': 'Total Labels' };
+// Marketing types that replaced the DataBase Creation/Download tab and Label Printout.
+export const MK_DATABASE = 'DataBase Creation/Download';
+export const MK_LAB_CHECK = 'Lab Creation - Check';
+export const LAB_CREATION_OPTIONS = ['Fresh Lab', 'Repeat Lab'];
+// Travelling: From / To is Home, Office or a College picked from the college list.
+export const PLACE_TYPES = ['Home', 'Office', 'College'];
+/** YOP choices: the current year and the next five. */
+export const yopYears = (now = new Date()) => Array.from({ length: 6 }, (_, i) => String(now.getFullYear() + i));
 
 export const MARKETING_GRADE_FIELDS = [
   ['gradeA', 'A'],
@@ -106,7 +116,7 @@ const REQUIRED = {
 
 export const isRequired = (tab, field) => REQUIRED[tab]?.includes(field);
 
-const NUMERIC = ['noOfStudents', 'totalStudent', 'totalAbsent', 'total', 'records', 'systems', 'pages', 'yop', 'gradeA', 'gradeBPlus', 'gradeBMinus', 'gradeD', 'gradeNR'];
+const NUMERIC = ['noOfStudents', 'totalStudent', 'totalPresent', 'totalAbsent', 'total', 'records', 'systems', 'pages', 'yop', 'gradeA', 'gradeBPlus', 'gradeBMinus', 'gradeD', 'gradeNR'];
 
 /** Returns { header: {...}, details: {...}, outstation: {...} } error maps. */
 export function validateEntry({ header, tab, details, outstation }) {
@@ -128,6 +138,8 @@ export function validateEntry({ header, tab, details, outstation }) {
         if (!String(outstation[f] ?? '').trim()) errors.outstation[f] = 'Required';
       });
       if (Number(outstation.totalAbsent || 0) > Number(details.noOfStudents || 0)) errors.outstation.totalAbsent = 'Cannot exceed No of Students';
+      if (Number(outstation.totalPresent || 0) > Number(details.noOfStudents || 0)) errors.outstation.totalPresent = 'Cannot exceed No of Students';
+      else if (Number(outstation.totalPresent || 0) + Number(outstation.totalAbsent || 0) > Number(details.noOfStudents || 0)) errors.outstation.totalPresent = 'Present + Absent is more than No of Students';
       if (outstation.facultyRole === 'Assistance Faculty' && !outstation.mainFaculty) errors.outstation.mainFaculty = 'Select the main faculty';
     }
   }
@@ -151,7 +163,9 @@ export function validateEntry({ header, tab, details, outstation }) {
       if (!details.collegeName) errors.details.collegeName = 'Required';
       if (!details.total) errors.details.total = 'Required';
     }
-    if (t === 'Councelling' && !details.enquiryFormNo) errors.details.enquiryFormNo = 'Required';
+    if (t === 'Councelling' && !String(details.enquiryFormNo || '').trim()) errors.details.enquiryFormNo = 'Required';
+    if (t === MK_DATABASE) ['databaseName', 'fileName', 'records'].forEach((k) => !String(details[k] || '').trim() && (errors.details[k] = 'Required'));
+    if (t === MK_LAB_CHECK) ['utilizationCheck', 'labCreation'].forEach((k) => !details[k] && (errors.details[k] = 'Required'));
     if (t === 'Registration' && !details.registerNo) errors.details.registerNo = 'Required';
     if (details.yop && !/^\d{4}$/.test(details.yop)) errors.details.yop = 'Enter a 4-digit year';
   }
@@ -186,7 +200,13 @@ export function buildPayload({ header, tab, details, outstation }) {
     const t = d.marketingType;
     const keep = MARKETING_COUNT_LABEL[t]
       ? ['marketingType', 'collegeName', 'dept', 'sec', 'yop', 'total', 'freshRepeat', 'remarks', ...(t === 'TC calls' ? MARKETING_GRADE_FIELDS.map(([k]) => k) : [])]
-      : ['marketingType', t === 'Councelling' ? 'enquiryFormNo' : 'registerNo', 'remarks'];
+      : t === 'Councelling'
+        ? ['marketingType', 'enquiryFormNo', 'courseId', 'remarks']
+        : t === MK_DATABASE
+          ? ['marketingType', 'databaseName', 'fileName', 'records', 'storedPlace', 'remarks']
+          : t === MK_LAB_CHECK
+            ? ['marketingType', 'utilizationCheck', 'labCreation', 'remarks']
+            : ['marketingType', 'registerNo', 'remarks'];
     d = Object.fromEntries(Object.entries(d).filter(([k]) => keep.includes(k)));
   }
   if (tab === 'class') {

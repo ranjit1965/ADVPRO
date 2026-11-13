@@ -52,7 +52,7 @@ export default function RequestCourseModal({ open, onClose }) {
       open={open}
       onClose={onClose}
       title="Request a new course"
-      description="An email goes to the Manager and Admin asking them to add this course. Once added, it appears in Course ID."
+      description="An email and a WhatsApp message, both with your name, go to the Manager and Admin asking them to add this course. Once added, it appears in Course ID."
       size="sm"
       footer={
         <>
@@ -60,7 +60,7 @@ export default function RequestCourseModal({ open, onClose }) {
             Cancel
           </Button>
           <Button icon={Send} onClick={send} loading={sending}>
-            Send mail
+            Send mail &amp; WhatsApp
           </Button>
         </>
       }

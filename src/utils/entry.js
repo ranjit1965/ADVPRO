@@ -11,7 +11,7 @@ export function entrySummary(e) {
     case 'facultyDevelopment':
       return [d.fdType, d.remarks].filter(Boolean).join(' · ');
     case 'marketing':
-      return [d.marketingType, d.collegeName, d.total && `${d.total} total`, d.enquiryFormNo, d.registerNo].filter(Boolean).join(' · ');
+      return [d.marketingType, d.collegeName || d.databaseName, d.fileName, d.total && `${d.total} total`, d.records && `${d.records} records`, d.enquiryFormNo, d.courseId, d.registerNo, d.utilizationCheck && `Utilization ${d.utilizationCheck}`, d.labCreation].filter(Boolean).join(' · ');
     case 'learning':
       return [d.materialType, d.courseId, d.chapterNo && `Ch ${d.chapterNo}`].filter(Boolean).join(' · ');
     case 'selfLearning':
@@ -59,7 +59,7 @@ function cType(e) {
     case 'seminar':
       return d.seminarType === 'Guest Lecture' ? 'GL' : d.seminarType === 'Internship' ? 'IN' : 'IV';
     case 'marketing':
-      return d.marketingType === 'Councelling' ? 'CO' : 'MK';
+      return d.marketingType === 'Councelling' ? 'CO' : d.marketingType === 'DataBase Creation/Download' ? 'DB' : 'MK';
     case 'learning':
       return 'CP';
     case 'selfLearning':
@@ -120,7 +120,7 @@ export function reportRow(e, courses = []) {
       row.topic = join(d.fdType, d.remarks);
       break;
     case 'marketing':
-      row.topic = join(d.marketingType, d.total && `${d.total} total`, d.enquiryFormNo, d.registerNo, d.remarks);
+      row.topic = join(d.marketingType, d.databaseName, d.fileName, d.total && `${d.total} total`, d.records && `${d.records} records`, d.enquiryFormNo, d.courseId, d.registerNo, d.utilizationCheck && `Utilization ${d.utilizationCheck}`, d.labCreation, d.remarks);
       break;
     case 'others':
       row.topic = join(d.heading, d.remarks && d.remarks.toLowerCase() !== String(d.heading || '').toLowerCase() ? d.remarks : '');

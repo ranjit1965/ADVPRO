@@ -112,8 +112,9 @@ after a confirmation.
   As soon as a full Time To at or before Time From is typed (or Time From is changed past Time
   To), a red warning shows under Time To and on Worked Hours, before Save. A time such as 25:70
   shows "Enter a 24-hour time, 00:00 to 23:59".
-* Nine tabs: **Class, Seminar / Work Shop, Marketing Support, Course Preparation,
-  Self Learning / Knowledge Sharing, Faculty Development, DataBase Creation/Download, Travelling Time, Others**.
+* Eight tabs: **Class, Seminar / Work Shop, Marketing Support, Course Preparation,
+  Self Learning / Knowledge Sharing, Faculty Development, Travelling Time, Others**. DataBase
+  Creation/Download is now a type inside Marketing Support (old DataBase entries still show).
   Each tab shows a badge with that day's entry count. The tabs share the full row: one row on
   laptops and larger screens, two rows on tablets, two per row on phones. The Software and System Fault sections
   were removed: new ones cannot be saved, but old ones still show in My Entries, reports and print.
@@ -122,7 +123,7 @@ after a confirmation.
   **Day Order (1 to 20)**, **No of Students**, Today's Session Type (includes **LAB Creation** and **Coding**),
   **Daily test** and **Daily activity post** (Yes / No, for Center and College / OD), and Detail.
   With **College / OD** the College / OD block appears: College Name, Dept, Sec, Total Absent,
-  YOP, **Faculty role** (Main Faculty / Assistance Faculty; Assistance asks for the **Main faculty name**) and four optional Yes / No questions: Videos shown, Guided exercise
+  **Total Present**, Total Absent (Present + Absent cannot be more than No of Students), YOP, **Faculty role** (Main Faculty / Assistance Faculty; Assistance asks for the **Main faculty name**) and four optional Yes / No questions: Videos shown, Guided exercise
   PPT shown, Menti quiz conducted, Task given. (The stored value is still `Outstation`, so older
   entries keep working; their Total Student and Daily test are shown in the new fields.)
 * **Class › Batch No** lists only the batches assigned to the selected faculty (see Batch import
@@ -131,8 +132,8 @@ after a confirmation.
   Admin (`COURSE_REQUEST_EMAILS`) to add a missing course and, when WhatsApp is set up (see
   **WhatsApp course request message** below), sends them a WhatsApp template message at the same
   time. Both the mail and the message name the employee who sent the request.
-* **YOP** (Seminar, Marketing, College / OD) can be picked from the saved YOP options or typed:
-  any 4-digit year is accepted.
+* **YOP** (Seminar, Marketing, College / OD) is a dropdown of the current year and the next five
+  (2026 to 2031 in 2026). A year saved earlier outside that range still shows on old entries.
 * **Daily Activity Print** uses the same layout as the old software: ADVANTAGE PRO, "NAME (CODE)
   Daily Activity Report", Date, and the columns JobDate (01/Sep/26), Time From, Time To, Batch No,
   Paper Name (course name), S.No (chapter), S.Type (L / T), College Name, Dept, YOP, Topic and
@@ -156,6 +157,14 @@ after a confirmation.
 * **Seminar / Work Shop**: Type (**Guest Lecture, IV / Work Shop, Internship**) and **Faculty role**
   (Main / Assistance, with the main faculty name). Internship asks the same course questions as
   Knowledge Sharing; the other types ask the college details. Remarks for all except Internship.
+* **Marketing Support** types: TC calls, Mailers, SMS (**Total Msg**), **Lab Creation - Check**
+  (was Label Printout: **Utilization Check** Yes / No and **Fresh Lab / Repeat Lab Creation**, plus
+  Remarks), **DataBase Creation/Download** (College / Database Name, File Name, Total Records,
+  Stored Place, Remarks; print code DB), Councelling (**Enq Form No** typed by hand, **Course Name**
+  from the course list, Remarks) and Registration.
+* **Travelling Time**: **From Place** and **To Place** are each a Home / Office / College toggle;
+  College opens the college list (Ctrl + A adds a college). Then Mode of Travel, Purpose, Remarks.
+* **Request new course** shows **Send mail & WhatsApp**: one click sends both.
 * **Faculty Development**: Type (Meeting with HR, Meeting with Ranjit sir, Staff Meeting) and
   Remarks (required). Meetings count in worked hours and in activity performance.
 * **Others**: headings include **Lunch Break** and **Tea Break**. Others (breaks included) count
@@ -225,6 +234,12 @@ Please add it to the course list.
 {{1}} is the employee name and code. If WhatsApp is not set up, or Pinbot refuses the message, the
 mail is still sent and the error is saved on the request (`whatsapp.errors`). The request body
 follows the Meta Cloud API template format; check it against your Pinbot account before going live.
+
+### Batches (Master › Batches)
+
+Adding or editing a batch by hand asks **Mode** (Center / At College) and **Online / Offline**.
+Existing batches are converted at the next backend start: Online becomes Center + Online,
+Outstation becomes At College + Offline. Batches from the Batch Master upload are Center + Offline.
 
 ### Passwords
 

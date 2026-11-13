@@ -169,10 +169,19 @@
           "type": "select",
           "options": [
             "Center",
-            "Online",
-            "Outstation"
+            "At College"
           ],
           "default": "Center"
+        },
+        {
+          "key": "classMode",
+          "label": "Online / Offline",
+          "type": "select",
+          "options": [
+            "Offline",
+            "Online"
+          ],
+          "default": "Offline"
         },
         {
           "key": "status",

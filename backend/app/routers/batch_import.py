@@ -210,7 +210,7 @@ def run_import(rows: list[list], file_name: str, me: dict) -> dict:
             ops.append(UpdateOne({"id": old["id"]}, {"$set": {**rec, "batchNo": old["batchNo"] if old["batchNo"].upper() == no.upper() else no, "updatedBy": me["name"], "updatedAt": now}}))
             updated += 1
         else:
-            rec.update(mode="Center", createdBy=me["name"], createdAt=now)
+            rec.update(mode="Center", classMode="Offline", createdBy=me["name"], createdAt=now)
             new_recs.append(rec)
             existing[no.upper()] = rec
             created += 1

@@ -78,6 +78,17 @@ def migrate() -> None:
     once("2026-11-breaks-in-others", breaks_to_others)
     # Today's Session Type gets "Coding" (Class and Knowledge Sharing use the same list).
     once("2026-11-session-type-coding", lambda: db.lookups.update_one({"_id": "sessionTypes"}, {"$addToSet": {"values": "Coding"}}, upsert=True))
+    # Marketing Support: Label Printout becomes "Lab Creation - Check" and DataBase Creation/Download moves in as a type.
+    once("2026-11-marketing-lab-database", lambda: db.lookups.update_one({"_id": "marketingTypes"}, {"$set": {"values": DATA["lookups"]["marketingTypes"]}}, upsert=True))
+
+    # Batch Mode is Center or At College, with Online / Offline asked separately.
+    def batch_modes():
+        b = db.db.master_batches
+        b.update_many({"mode": "Online"}, {"$set": {"mode": "Center", "classMode": "Online"}})
+        b.update_many({"mode": "Outstation"}, {"$set": {"mode": "At College", "classMode": "Offline"}})
+        b.update_many({"classMode": {"$exists": False}}, {"$set": {"classMode": "Offline"}})
+
+    once("2026-11-batch-mode-online-offline", batch_modes)
 
 
 if __name__ == "__main__":

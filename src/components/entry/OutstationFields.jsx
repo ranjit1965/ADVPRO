@@ -21,8 +21,9 @@ export default function OutstationFields({ values, errors, set, lookups, onAddLo
         <LookupSelect kind="colleges" label="College Name" className="col-span-2 lg:col-span-5" options={lookups.colleges} onAddLookup={onAddLookup} {...f('collegeName', true)} />
         <LookupSelect kind="departments" label="Dept" className="lg:col-span-3" options={lookups.departments} onAddLookup={onAddLookup} {...f('dept', true)} />
         <Select label="Sec" className="lg:col-span-2" options={lookups.sections} {...f('sec')} />
+        <Input label="Total Present" className="lg:col-span-2" inputMode="numeric" {...f('totalPresent')} />
         <Input label="Total Absent" className="lg:col-span-2" inputMode="numeric" {...f('totalAbsent')} />
-        <YearInput label="YOP" className="lg:col-span-2" options={lookups.yopOptions} {...f('yop')} />
+        <YearInput label="YOP" className="lg:col-span-2" {...f('yop')} />
         <RadioGroup
           label="Faculty role"
           name="out-facultyRole"

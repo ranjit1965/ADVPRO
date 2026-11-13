@@ -37,7 +37,7 @@ export function topicOf(e, courses = []) {
     case 'seminar':
       return `${d.seminarType || 'Seminar'}${d.collegeName ? ` – ${d.collegeName}` : ''}`;
     case 'marketing':
-      return `Marketing – ${d.marketingType || 'General'}`;
+      return d.marketingType === 'DataBase Creation/Download' ? 'Database creation / download' : `Marketing – ${d.marketingType || 'General'}`;
     case 'database':
       return 'Database creation / download';
     case 'travelling':

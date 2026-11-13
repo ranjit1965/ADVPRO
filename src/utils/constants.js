@@ -6,13 +6,13 @@ export const ACTIVITY_TYPES = [
   { key: 'learning', label: 'Course Preparation' },
   { key: 'selfLearning', label: 'Self Learning / Knowledge Sharing' },
   { key: 'facultyDevelopment', label: 'Faculty Development' },
-  { key: 'database', label: 'DataBase Creation/Download' },
   { key: 'travelling', label: 'Travelling Time' },
   { key: 'others', label: 'Others' },
 ];
 
-// Software and System Fault are no longer entered; the labels stay so old entries still show.
-export const RETIRED_ACTIVITY_LABEL = { software: 'Software', systemFault: 'System Fault' };
+// Software, System Fault and DataBase Creation/Download are no longer separate tabs (DataBase is now a
+// Marketing Support type); the labels stay so old entries still show.
+export const RETIRED_ACTIVITY_LABEL = { software: 'Software', systemFault: 'System Fault', database: 'DataBase Creation/Download' };
 export const ACTIVITY_LABEL = { ...Object.fromEntries(ACTIVITY_TYPES.map((a) => [a.key, a.label])), ...RETIRED_ACTIVITY_LABEL };
 
 export const FACULTY_IN = {

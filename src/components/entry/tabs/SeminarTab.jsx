@@ -43,7 +43,7 @@ export default function SeminarTab({ values, errors, set, setMany, lookups, onAd
           <LookupSelect kind="departments" label="Dept" className="lg:col-span-3" options={lookups.departments} onAddLookup={onAddLookup} {...f('dept')} required />
           <Select label="Sec" className="lg:col-span-2" options={lookups.sections} {...f('sec')} />
           <Input label="Total Student" required className="lg:col-span-2" inputMode="numeric" {...f('totalStudent')} />
-          <YearInput label="YOP" className="lg:col-span-2" options={lookups.yopOptions} {...f('yop')} />
+          <YearInput label="YOP" className="lg:col-span-2" {...f('yop')} />
           <RadioGroup className="lg:col-span-3" label="Database Collected" name="databaseCollected" options={['Yes', 'No']} value={values.databaseCollected} onChange={(v) => set('databaseCollected', v)} />
         </>
       )}
