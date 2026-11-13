@@ -197,9 +197,14 @@ after a confirmation.
 
 Page `/hr-report/halfyearly`, under the heading **HALFYEARLY PROGRAM REPORT**.
 
-* **HR, Manager and Admin** assign each employee or faculty a **Target Certification**, either picked
-  from the course list or typed by hand, with a **Starting Month** and **Ending Month**. They can edit
-  or delete a row and filter by employee.
+* **HR, Manager and Admin** pick the employee or faculty and assign a **Target Certification**, either
+  picked from the course list or typed by hand. **Period** is **6 Months** (half year) or **Quarter**
+  (3 months): choosing it with the **Starting Month** fills the **Ending Month** (Oct 2026 + 6 months
+  ends Mar 2027), and the start and end dates show under the fields (01-Oct-2026 to 31-Mar-2027).
+  The ending month can still be changed. They can edit or delete a row and filter by employee.
+* The employee's **Dashboard** shows **Assigned certifications** at the top: each target with its
+  period dates and whether it is achieved and delivery-ready, with a link to update the status.
+  HR / Manager viewing someone's dashboard see that person's certifications.
 * **The employee / faculty** fills in, on the same row: **Achieved?** (Yes / No; Yes asks the **Date of
   completion** and the **Certification code**) and **Course Delivery Ready?** (Yes / No), then Save.
   Each person sees only their own rows. Export downloads a CSV.

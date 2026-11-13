@@ -14,6 +14,7 @@ import { useLookups } from '../context/LookupsContext';
 import Select from '../components/ui/Select';
 import { canAccess, MASTER_ROLES, PEOPLE_VIEW_ROLES } from '../utils/permissions';
 import UploadReminder from '../components/UploadReminder';
+import CertificationTargets from '../components/dashboard/CertificationTargets';
 import { useAsync } from '../hooks/useAsync';
 import { getDashboardSummary } from '../services/api';
 import { ACTIVITY_LABEL } from '../utils/constants';
@@ -96,6 +97,8 @@ export default function Dashboard() {
           )}
         </div>
       )}
+
+      <CertificationTargets employeeCode={target.code} own={!other} />
 
       {data?.missingDays?.length > 0 && (
         <div className="mb-5 flex flex-wrap items-center gap-3 rounded-xl border border-warning-600/25 bg-warning-50 px-4 py-3 text-[13px] text-warning-700" role="status">

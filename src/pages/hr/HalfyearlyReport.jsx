@@ -17,13 +17,19 @@ import { useConfirm } from '../../context/ConfirmContext';
 import { useAsync } from '../../hooks/useAsync';
 import { formatDate } from '../../utils/format';
 import { downloadCsv } from '../../utils/export';
+import { endOfPeriod, periodDates } from '../../utils/halfyearly';
 
 const YES_NO = ['Yes', 'No'];
 const SOURCES = [
   { value: 'course', label: 'From course list' },
   { value: 'manual', label: 'Type manually' },
 ];
-const EMPTY_FORM = { employeeCode: '', startMonth: '', endMonth: '', source: 'course', courseId: '', targetCertification: '' };
+const EMPTY_FORM = { employeeCode: '', period: '6 Months', startMonth: '', endMonth: '', source: 'course', courseId: '', targetCertification: '' };
+const PERIODS = [
+  { value: '6 Months', label: '6 Months (half year)' },
+  { value: 'Quarter', label: 'Quarter (3 months)' },
+];
+
 
 const monthLabel = (m) => (m ? new Date(`${m}-01T00:00:00`).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' }) : '');
 
@@ -55,6 +61,12 @@ export default function HalfyearlyReport() {
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
   const setF = (k, v) => setForm((f) => ({ ...f, [k]: v }));
+  // Choosing the period or the starting month fills the ending month (it can still be changed).
+  const setPeriod = (k, v) => setForm((f) => {
+    const next = { ...f, [k]: v };
+    return { ...next, endMonth: endOfPeriod(next.startMonth, next.period) || next.endMonth };
+  });
+  const [startDate, endDate] = periodDates(form.startMonth, form.endMonth);
 
   const submit = async (e) => {
     e.preventDefault();
@@ -67,7 +79,7 @@ export default function HalfyearlyReport() {
     if (!target) errs.target = form.source === 'course' ? 'Choose a course' : 'Type the certification name';
     setErrors(errs);
     if (Object.keys(errs).length) return toast.error('Please fill the highlighted fields.');
-    const body = { employeeCode: form.employeeCode, startMonth: form.startMonth, endMonth: form.endMonth, targetCertification: target, courseId: form.source === 'course' ? form.courseId : '' };
+    const body = { employeeCode: form.employeeCode, period: form.period, startMonth: form.startMonth, endMonth: form.endMonth, targetCertification: target, courseId: form.source === 'course' ? form.courseId : '' };
     setSaving(true);
     try {
       if (editingId) await api.updateHalfyearly(editingId, body);
@@ -86,7 +98,7 @@ export default function HalfyearlyReport() {
   const startEdit = (r) => {
     setEditingId(r.id);
     setErrors({});
-    setForm({ employeeCode: r.employeeCode, startMonth: r.startMonth, endMonth: r.endMonth, source: r.courseId ? 'course' : 'manual', courseId: r.courseId || '', targetCertification: r.courseId ? '' : r.targetCertification });
+    setForm({ employeeCode: r.employeeCode, period: r.period || '', startMonth: r.startMonth, endMonth: r.endMonth, source: r.courseId ? 'course' : 'manual', courseId: r.courseId || '', targetCertification: r.courseId ? '' : r.targetCertification });
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -104,6 +116,7 @@ export default function HalfyearlyReport() {
   const exportCsv = () =>
     downloadCsv('halfyearly-program-report.csv', [
       { header: 'Employee', value: (r) => `${r.employeeName} (${r.employeeCode})` },
+      { header: 'Period', value: (r) => r.period || '' },
       { header: 'Starting Month', value: (r) => monthLabel(r.startMonth) },
       { header: 'Ending Month', value: (r) => monthLabel(r.endMonth) },
       { header: 'Target Certification', value: (r) => r.targetCertification },
@@ -126,15 +139,16 @@ export default function HalfyearlyReport() {
         <Card className="mb-5" title={editingId ? 'Edit target certification' : 'Assign target certification'}>
           <form onSubmit={submit} noValidate className="grid grid-cols-1 gap-4 md:grid-cols-12">
             <SearchableSelect label="Employee / Faculty" required className="md:col-span-4" options={people} placeholder="Search employee" value={form.employeeCode} onChange={(v) => setF('employeeCode', v)} error={errors.employeeCode} />
-            <Input label="Starting Month" type="month" required className="md:col-span-2" value={form.startMonth} onChange={(e) => setF('startMonth', e.target.value)} error={errors.startMonth} />
-            <Input label="Ending Month" type="month" required className="md:col-span-2" value={form.endMonth} min={form.startMonth || undefined} onChange={(e) => setF('endMonth', e.target.value)} error={errors.endMonth} />
+            <RadioGroup className="md:col-span-4" label="Period" name="hyPeriod" options={PERIODS} value={form.period} onChange={(v) => setPeriod('period', v)} />
+            <Input label="Starting Month" type="month" required className="md:col-span-2" value={form.startMonth} onChange={(e) => setPeriod('startMonth', e.target.value)} error={errors.startMonth} hint={startDate && `Start date ${formatDate(startDate)}`} />
+            <Input label="Ending Month" type="month" required className="md:col-span-2" value={form.endMonth} min={form.startMonth || undefined} onChange={(e) => setF('endMonth', e.target.value)} error={errors.endMonth} hint={endDate && `End date ${formatDate(endDate)}`} />
             <RadioGroup className="md:col-span-4" label="Target Certification" name="hySource" options={SOURCES} value={form.source} onChange={(v) => setF('source', v)} />
             {form.source === 'course' ? (
               <SearchableSelect label="Course" required className="md:col-span-8" options={courses} placeholder="Search course" value={form.courseId} onChange={(v) => setF('courseId', v)} error={errors.target} />
             ) : (
               <Input label="Certification name" required className="md:col-span-8" maxLength={200} placeholder="e.g. AWS Certified Solutions Architect" value={form.targetCertification} onChange={(e) => setF('targetCertification', e.target.value)} error={errors.target} />
             )}
-            <div className="flex items-end justify-end gap-2 md:col-span-4">
+            <div className="flex items-end justify-end gap-2 md:col-span-12">
               {editingId && (
                 <Button variant="secondary" icon={X} onClick={() => { setEditingId(null); setForm(EMPTY_FORM); setErrors({}); }}>
                   Cancel
@@ -227,6 +241,7 @@ function ReportRow({ row, canEdit, isHr, onSaved, onEdit, onDelete }) {
       </td>
       <td className="whitespace-nowrap px-3 py-2.5 tabular-nums">
         {monthLabel(row.startMonth)} – {monthLabel(row.endMonth)}
+        {row.period && <div className="text-xs text-ink-500">{row.period}</div>}
       </td>
       <td className="px-3 py-2.5">
         <div className="text-ink-900">{row.targetCertification}</div>

@@ -37,6 +37,7 @@ class AssignIn(Form):
     endMonth: str = Field(pattern=MONTH_RE)
     targetCertification: str = Field(min_length=1, max_length=200)
     courseId: str | None = Field(default=None, max_length=40)
+    period: Literal["6 Months", "Quarter"] | None = None  # the end month is filled from it in the form
 
     @model_validator(mode="after")
     def check(self):
