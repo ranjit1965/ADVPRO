@@ -8,9 +8,10 @@ import { isCurrent, periodDates } from '../../utils/halfyearly';
 import { cn } from '../../utils/cn';
 
 /** One certification or course as its own box: green when finished, amber while not finished. */
-function Item({ name, courseId, done, doneText, pendingText, extra }) {
+function Item({ kind, name, courseId, done, doneText, pendingText, extra }) {
   return (
-    <li className={cn('rounded-xl border p-3', done ? 'border-success-600/30 bg-success-50' : 'border-warning-600/30 bg-warning-50')}>
+    <li className={cn('flex flex-col rounded-xl border p-4', done ? 'border-success-600/30 bg-success-50' : 'border-warning-600/30 bg-warning-50')}>
+      <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-ink-500">{kind}</p>
       <p className="font-medium text-ink-900">{name}</p>
       {courseId && <p className="text-xs text-ink-500">Course {courseId}</p>}
       <p className={cn('mt-2 inline-flex items-center gap-1 text-[12px] font-semibold', done ? 'text-success-700' : 'text-warning-700')}>
@@ -19,17 +20,6 @@ function Item({ name, courseId, done, doneText, pendingText, extra }) {
       </p>
       {extra && <p className="mt-1 text-xs text-ink-600">{extra}</p>}
     </li>
-  );
-}
-
-function Section({ title, count, done, children }) {
-  return (
-    <div>
-      <p className="mb-2 text-[12px] font-semibold uppercase tracking-wide text-ink-500">
-        {title} <span className="ml-1 rounded-full bg-ink-100 px-2 py-0.5 text-ink-700">{done} of {count} finished</span>
-      </p>
-      <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">{children}</ul>
-    </div>
   );
 }
 
@@ -62,28 +52,28 @@ export default function CertificationTargets({ employeeCode, canUpdate }) {
         </Link>
       }
     >
-      <div className="space-y-5">
-        <Section title="Target certifications" count={targets.length} done={targets.filter((t) => t.achieved === 'Yes').length}>
-          {targets.map((t, i) => (
-            <Item
-              key={`t${i}`}
-              name={t.name}
-              courseId={t.courseId}
-              done={t.achieved === 'Yes'}
-              doneText={`Achieved${t.completionDate ? ` ${formatDate(t.completionDate)}` : ''}`}
-              pendingText="Not finished"
-              extra={t.certificationCode && `Code: ${t.certificationCode}`}
-            />
-          ))}
-        </Section>
-        {deliveries.length > 0 && (
-          <Section title="Delivery ready courses" count={deliveries.length} done={deliveries.filter((d) => d.ready === 'Yes').length}>
-            {deliveries.map((d, i) => (
-              <Item key={`d${i}`} name={d.name} courseId={d.courseId} done={d.ready === 'Yes'} doneText="Delivery ready" pendingText="Not ready yet" />
-            ))}
-          </Section>
-        )}
-      </div>
+      <p className="mb-3 flex flex-wrap gap-2 text-[12px] font-semibold uppercase tracking-wide text-ink-500">
+        <span className="rounded-full bg-ink-100 px-2.5 py-0.5 text-ink-700">Target certifications: {targets.filter((t) => t.achieved === 'Yes').length} of {targets.length} finished</span>
+        {deliveries.length > 0 && <span className="rounded-full bg-ink-100 px-2.5 py-0.5 text-ink-700">Delivery ready courses: {deliveries.filter((d) => d.ready === 'Yes').length} of {deliveries.length} finished</span>}
+      </p>
+      {/* One row of boxes, the same size as the stat cards below (4 per row on wide screens). */}
+      <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {targets.map((t, i) => (
+          <Item
+            key={`t${i}`}
+            kind="Target certification"
+            name={t.name}
+            courseId={t.courseId}
+            done={t.achieved === 'Yes'}
+            doneText={`Achieved${t.completionDate ? ` ${formatDate(t.completionDate)}` : ''}`}
+            pendingText="Not finished"
+            extra={t.certificationCode && `Code: ${t.certificationCode}`}
+          />
+        ))}
+        {deliveries.map((d, i) => (
+          <Item key={`d${i}`} kind="Delivery ready course" name={d.name} courseId={d.courseId} done={d.ready === 'Yes'} doneText="Delivery ready" pendingText="Not ready yet" />
+        ))}
+      </ul>
     </Card>
   );
 }

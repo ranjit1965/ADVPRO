@@ -208,9 +208,10 @@ Page `/hr-report/halfyearly`, under the heading **HALFYEARLY PROGRAM REPORT**.
   delivery ready course, then Save. Edit keeps the status of certifications that stay in the list.
 * **Faculty and staff see their own rows read-only** (no Save). Export downloads a CSV with one line per certification.
 * **Dashboard**: at the top, **Assigned certifications, current quarter** shows only the rows whose
-  months include today. Each target certification and each delivery ready course is its own box:
-  green when finished (achieved / delivery ready), amber while not finished, with "1 of 2 finished"
-  counts per group.
+  months include today. Each target certification and each delivery ready course is its own box, all
+  in one row the same size as the stat cards below (4 per row on wide screens, 2 on tablets, 1 on
+  phones): green when finished (achieved / delivery ready), amber while not finished, with
+  "1 of 2 finished" counts above the row.
 * Rows saved before v40 (one certification) are shown as one target certification.
 * For an HR login, create the user in Master › Employees with role **HR** (8+ character password).
 
