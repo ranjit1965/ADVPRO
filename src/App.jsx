@@ -12,7 +12,6 @@ import EntryHistory from './pages/EntryHistory';
 import EntryDetails from './pages/EntryDetails';
 import DailyActivityPrint from './pages/DailyActivityPrint';
 import Reports from './pages/Reports';
-import MonthlyPlan from './pages/MonthlyPlan';
 import StudentsMarkEntry from './pages/StudentsMarkEntry';
 import Settings from './pages/Settings';
 import ManagerSetup from './pages/ManagerSetup';
@@ -38,7 +37,7 @@ function RequireAuth({ children }) {
   if (!user) return <Navigate to="/login" replace state={{ from: location }} />;
   // A menu the Manager turned off for this role (Master › Role Access) cannot be opened by its address either.
   const section = sectionForPath(location.pathname);
-  if (section && !hasSection(user, section)) return <Navigate to="/" replace />;
+  if (section && ![].concat(section).some((s) => hasSection(user, s))) return <Navigate to="/" replace />;
   return children;
 }
 
@@ -65,7 +64,6 @@ export default function App() {
               <Route path="faculty/daily-activity/history" element={<EntryHistory />} />
               <Route path="faculty/daily-activity/print" element={<DailyActivityPrint />} />
               <Route path="entries/:id" element={<EntryDetails />} />
-              <Route path="faculty/monthly-plan" element={<MonthlyPlan />} />
               <Route path="faculty/students-mark-entry" element={<StudentsMarkEntry />} />
               <Route path="faculty/reports/:type" element={<Reports />} />
               <Route path="faculty/others" element={<Navigate to="/faculty/daily-activity/entry?type=others" replace />} />

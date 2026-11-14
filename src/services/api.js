@@ -348,26 +348,6 @@ export async function getWorkingHoursReport({ month, facultyCode }) {
   return request('/reports/working-hours', { params: { month, facultyCode } });
 }
 
-/* ----------------------------------------------------- Monthly plan */
-// Admin and Manager assign monthly plans to employees and faculty. Everyone else
-// sees only the plans assigned to them and updates the status and a note.
-
-export const PLAN_STATUS = ['Pending', 'In Progress', 'Completed'];
-
-/** GET /api/monthly-plans?month=YYYY-MM&scope=mine|all */
-export async function getMonthlyPlans(month, scope = 'mine') {
-  return request('/monthly-plans', { params: { month, scope } });
-}
-
-/** POST /api/monthly-plans (one plan per user in `assignees`) or PUT /api/monthly-plans/{id}. */
-export async function saveMonthlyPlan({ assignees, ...plan }) {
-  return plan.id ? request(`/monthly-plans/${plan.id}`, { method: 'PUT', body: plan }) : request('/monthly-plans', { method: 'POST', body: { ...plan, assignees } });
-}
-
-export async function deleteMonthlyPlan(id) {
-  return request(`/monthly-plans/${id}`, { method: 'DELETE' });
-}
-
 /* -------------------------------------------------- Students mark entry */
 
 

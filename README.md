@@ -73,7 +73,6 @@ Other scripts:
 | Faculty › Daily Activity › My Entries | `/faculty/daily-activity/history` | Search, date/activity/faculty/Center-Outstation filters, sorting, pagination, view/edit/delete, CSV export |
 | Entry details | `/entries/:id` | Full entry, employee info, created/updated info; Back, Print, Edit, Delete |
 | Faculty › Daily Activity › Print | `/faculty/daily-activity/print` | Daily Activity Report for a faculty and date range, A4 landscape, with **Download PDF** and **Download Excel**. Faculty and staff can print only their own report |
-| Faculty › Monthly Plan | `/faculty/monthly-plan` | Admin and Manager assign week-wise batch/course plans to one person, all faculty or all employees (one plan per person) and see everyone's plans with person and status filters. Each employee or faculty member sees only the plans assigned to them and updates the status (Pending, In Progress, Completed) and a progress note |
 | Faculty › Students Mark Entry | `/faculty/students-mark-entry` | Load a batch and enter marks / absent, with Save, Clear, Exit |
 | Faculty › Monthly Report | `/faculty/reports/monthly` | Activity report laid out like the September 2026 sample: headline figures, day-by-day, type, week and topic charts, daily and weekly summaries (Others in its own column), calendar view and activity log. **Download PDF** (print dialog, A4 landscape) and **Download Excel** (one sheet per section) |
 | Master (Admin, Manager) | `/master`, `/master/<key>` | Batch, Batch Import, Employees, Course, MontlyStaffReport, Deleted Employees, Role Access (Manager), Biometric |
@@ -345,17 +344,27 @@ missed), the Dashboard and this page remind Admin / Manager until each file is u
   creating the batch (Master › Batch or Batch Import) or **Dismiss** them. Saved in `batch_requests`;
   `POST/GET /api/batch-requests`, `PATCH /api/batch-requests/{id}`.
 
+### Menus for Admin and HR (v48)
+
+* The **Admin** menu now holds Data Upload, **Employees, Deleted Employees, Batch, Batch Import,
+  Course and Biometric** (the same pages as in Master). Anyone whose role has the Admin tab ticked in
+  Roles & Access can use them, even without the Master tab; the server allows Master **or** Admin.
+* The **HR** menu holds **Employees** and **Deleted Employees** for HR and Admin roles with the HR tab:
+  read-only (they can open a deleted employee and their entries; Restore needs Master or Admin).
+* Others entries: **Remarks is optional** (Heading is still required).
+
 ### Removed in v46
 
 * Master › Registration, Attendence, Product, Old Registrations, Shedulling, Vendor and Assest;
-  HR › Batch Paper Completion and Leave/Permission Form; My Work (for every role); Transaction (v47). Their pages, menu
+  HR › Batch Paper Completion and Leave/Permission Form; My Work (for every role); Transaction (v47);
+  Faculty › Monthly Plan (v48). Their pages, menu
   items and API endpoints are gone. Your Info now shows EL / CL allotted (no taken / available).
 * Their data stays in MongoDB until you delete it once, from the `backend` folder:
   ```bash
   python -m app.cleanup_removed          # lists what would be deleted
   python -m app.cleanup_removed --yes    # drops master_registrations, master_attendance, master_products,
                                          # master_oldRegistrations, master_vendors, master_assets,
-                                         # work_assignments, leave_requests (take a mongodump first)
+                                         # work_assignments, leave_requests, monthly_plans (take a mongodump first)
   ```
 
 ### Roles & Access (Master › Roles & Access, Manager only)
@@ -438,7 +447,7 @@ The screenshots did not show these, so sensible defaults were used and are easy 
 
 * Fields of the **Marketing Support, DataBase Creation/Download** and **Travelling Time**
   tabs (`src/components/entry/tabs/`).
-* Monthly Plan and Students Mark Entry layouts.
+* Students Mark Entry layout.
 
 ## Deploying the frontend on Vercel
 
@@ -497,7 +506,6 @@ Every page reads and writes data only through `src/services/api.js`, which calls
 | `getHrPolicy`, `saveHrPolicy`, `getEmployeeInfo`, `saveEmployeeInfo` | `GET/PUT /api/hr/policy`, `GET /api/hr/info`, `PUT /api/hr/info/{userId}` |
 | `getHalfyearly`, `assignHalfyearly`, `updateHalfyearly`, `updateHalfyearlyStatus` (HR, Manager, Admin), `deleteHalfyearly` | `GET/POST /api/hr/halfyearly`, `PUT/DELETE /api/hr/halfyearly/{id}`, `PUT /api/hr/halfyearly/{id}/status` |
 | `setAdminAccess` (Manager) | `PUT /api/users/{userId}/admin-access` |
-| `getMonthlyPlans`, `saveMonthlyPlan`, `deleteMonthlyPlan` | `/api/monthly-plans` |
 | `getStudentMarks`, `saveStudentMarks` | `/api/student-marks` |
 | `getNotifications` | `GET /api/notifications` |
 | `getBatchImportSettings`, `uploadBatches`, `saveBatchFacultyMap` (manager, admin) | `GET /api/batch-import/settings`, `POST /api/batch-import/upload?name=` (raw file body), `PUT /api/batch-import/map` |
@@ -552,7 +560,7 @@ SSL. For Gmail use an App Password (Google Account › Security › 2-Step Verif
 passwords) and the same Gmail address as `SMTP_FROM`.
 
 MongoDB collections: `users` (bcrypt password hashes, roles FACULTY / HR / ADMIN / STAFF / MANAGER),
-`daily_entries`, `courses`, `chapters` (chapter / session details per course), `lookups` (one document per dropdown list), `monthly_plans`, `student_marks`,
+`daily_entries`, `courses`, `chapters` (chapter / session details per course), `lookups` (one document per dropdown list), `student_marks`,
 `master_batches`, `batch_requests`, `settings` (HR policy), `roles` (roles and their menu access), `halfyearly_reports`, `course_requests`, `deleted_users` (deleted employees, restorable), `deleted_records` (their entries and records), `manager_otps` (expire automatically), `notifications`, `counters` (entry numbers DAE-0001…).
 
 Rules enforced on the server: one manager only, created after the emailed 6-digit code is verified

@@ -25,9 +25,18 @@ export const hasSection = (user, key) => {
   return SECTION_DEFAULTS[key] ? SECTION_DEFAULTS[key].includes(user.role) : true;
 };
 
-/** Which menu a page address belongs to (for blocking typed-in addresses of a hidden menu). */
+/** Employees, Deleted Employees, Batch, Batch Import, Course and Biometric: in both the Master and the Admin menu. */
+export const canManage = (user) => hasSection(user, 'master') || hasSection(user, 'admin');
+
+/** Employees and Deleted Employees can also be viewed (read-only) by HR / Admin from the HR menu. */
+export const canViewPeople = (user) => canManage(user) || (hasSection(user, 'hr') && PEOPLE_VIEW_ROLES.includes(user?.role));
+
+const SHARED_PAGES = ['/master/batches', '/master/batch-import', '/master/courses', '/master/biometric'];
+
+/** Which menu(s) a page address belongs to (for blocking typed-in addresses of a hidden menu). */
 export const sectionForPath = (path) => {
-  if (path === '/master/employees') return null; // also under HR; the page checks itself
+  if (path.startsWith('/master/employees') || path.startsWith('/master/deleted-employees')) return null; // HR too; the page checks
+  if (SHARED_PAGES.some((p) => path.startsWith(p))) return ['master', 'admin'];
   if (path.startsWith('/master')) return 'master';
   if (path.startsWith('/admin')) return 'admin';
   if (path.startsWith('/hr-report')) return 'hr';

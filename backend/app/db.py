@@ -8,7 +8,6 @@ db = client[settings.mongodb_db]
 users = db.users
 entries = db.daily_entries
 lookups = db.lookups  # one document per list: {_id: "colleges", values: [...]}
-plans = db.monthly_plans
 marks = db.student_marks
 otps = db.manager_otps
 counters = db.counters
@@ -26,9 +25,6 @@ def ensure_indexes() -> None:
     entries.create_index("activityDate")
     db.biometric_days.create_index([("code", ASCENDING), ("date", ASCENDING)])
     db.biometric_days.create_index("date")
-    plans.create_index("id", unique=True)
-    plans.create_index("month")
-    plans.create_index("assignedTo")
     marks.create_index([("batchNo", ASCENDING), ("courseId", ASCENDING), ("examType", ASCENDING)], unique=True)
     for key in ("batches",):
         db[f"master_{key}"].create_index("id", unique=True)

@@ -21,7 +21,7 @@ from ..schemas import Form
 from ..security import require_section, current_user, require_roles
 
 router = APIRouter(prefix="/course-requests", tags=["course requests"])
-master_roles = require_section("master")  # Master menu ticked for the role (Master › Role Access)
+master_roles = require_section("master", "admin")  # Master or Admin menu ticked for the role
 
 
 class RequestIn(Form):

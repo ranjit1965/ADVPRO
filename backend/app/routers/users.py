@@ -8,13 +8,13 @@ from ..schemas import Form
 from ..security import all_roles, current_user, hash_password, public_user, require_roles, require_section, sections_for
 
 router = APIRouter(prefix="/users", tags=["users"])
-manager_only = require_section("master")  # Master › Employees (Master menu ticked for the role)
+manager_only = require_section("master", "admin")  # Employees: Master or Admin menu ticked for the role
 
 
 def people_view(user: dict = Depends(current_user)) -> dict:
     """Employee list: anyone with the Master menu, or HR / Admin with the HR menu (read-only for HR)."""
     access = sections_for(user)
-    if user["role"] == "MANAGER" or access["master"] or (access["hr"] and user["role"] in ("HR", "ADMIN")):
+    if user["role"] == "MANAGER" or access["master"] or access["admin"] or (access["hr"] and user["role"] in ("HR", "ADMIN")):
         return user
     raise HTTPException(403, "You do not have access to this menu. Ask the Manager.")
 
@@ -182,12 +182,12 @@ def delete_user(user_id: str, me: dict = Depends(manager_only)):
 
 
 @router.get("/deleted/list")
-def list_deleted(_: dict = Depends(manager_only)):
+def list_deleted(_: dict = Depends(people_view)):  # HR: read-only
     return [public_user(u) for u in db.deleted_users.find().sort("deletedAt", -1)]
 
 
 @router.get("/deleted/{user_id}")
-def deleted_detail(user_id: str, _: dict = Depends(manager_only)):
+def deleted_detail(user_id: str, _: dict = Depends(people_view)):
     """One deleted employee with the daily entries and other records saved with them."""
     rec = db.deleted_users.find_one({"userIdLower": user_id.lower()})
     if not rec:

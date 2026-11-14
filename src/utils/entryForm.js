@@ -110,7 +110,7 @@ const REQUIRED = {
   database: ['databaseName', 'fileName', 'records'],
   travelling: ['fromPlace', 'toPlace', 'mode'],
   software: ['softwareName', 'softwareActivity'],
-  others: ['heading', 'remarks'],
+  others: ['heading'],
   systemFault: ['productType', 'location', 'advproNo', 'faultError', 'faultStatus'],
 };
 

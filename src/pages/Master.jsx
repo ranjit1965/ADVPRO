@@ -13,7 +13,7 @@ import { useAuth } from '../context/AuthContext';
 import { useLookups } from '../context/LookupsContext';
 import { useToast } from '../context/ToastContext';
 import { useConfirm } from '../context/ConfirmContext';
-import { canAccess, hasSection, MASTER_ROLES } from '../utils/permissions';
+import { canManage } from '../utils/permissions';
 import { cn } from '../utils/cn';
 import { useAsync } from '../hooks/useAsync';
 import { formatDateTime } from '../utils/format';
@@ -33,13 +33,13 @@ export default function Master() {
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
 
-  const requests = useAsync(() => (hasSection(user, 'master') ? api.getCourseRequests() : Promise.resolve([])), []);
-  const batchRequests = useAsync(() => (hasSection(user, 'master') ? api.getBatchRequests() : Promise.resolve([])), []);
+  const requests = useAsync(() => (canManage(user) ? api.getCourseRequests() : Promise.resolve([])), []);
+  const batchRequests = useAsync(() => (canManage(user) ? api.getBatchRequests() : Promise.resolve([])), []);
   const courses = lookups?.courses ?? [];
   const courseId = selected || courses[0]?.id || '';
   const chapters = useMemo(() => (lookups?.chapters ?? []).filter((c) => c.courseId === courseId).sort((a, b) => a.no - b.no), [lookups, courseId]);
 
-  if (!hasSection(user, 'master')) {
+  if (!canManage(user)) {
     return (
       <>
         <PageHeader title="Master" />

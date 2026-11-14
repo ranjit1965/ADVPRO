@@ -9,7 +9,7 @@ from .. import db
 from ..security import require_section, require_roles
 
 router = APIRouter(prefix="/master", tags=["master"])
-master_roles = require_section("master")  # Master menu ticked for the role (Master › Role Access)
+master_roles = require_section("master", "admin")  # Master or Admin menu ticked for the role
 
 
 class CourseIn(BaseModel):

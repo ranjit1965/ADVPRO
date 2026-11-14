@@ -18,7 +18,7 @@ from ..schemas import Form
 from ..security import current_user, require_section
 
 router = APIRouter(prefix="/batch-requests", tags=["batch requests"])
-master_roles = require_section("master")
+master_roles = require_section("master", "admin")  # Master or Admin menu ticked for the role
 
 
 class BatchRequestIn(Form):

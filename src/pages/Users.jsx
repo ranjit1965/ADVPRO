@@ -13,7 +13,7 @@ import ErrorState from '../components/ui/ErrorState';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { useConfirm } from '../context/ConfirmContext';
-import { canAccess, hasSection, MASTER_ROLES, PEOPLE_VIEW_ROLES, ROLES } from '../utils/permissions';
+import { canManage, canViewPeople, ROLES } from '../utils/permissions';
 import { formatDuration, monthLabel, toISODate } from '../utils/format';
 
 const ROLE_OPTIONS = [ROLES.FACULTY, ROLES.HR, ROLES.ADMIN, 'STAFF'].map((r) => ({ value: r, label: r }));
@@ -27,7 +27,7 @@ const EMPTY = { userId: '', code: '', name: '', email: '', role: 'FACULTY', desi
 export default function Users() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const canEdit = hasSection(user, 'master');
+  const canEdit = canManage(user);
   const month = toISODate().slice(0, 7);
   const [hours, setHours] = useState({});
   const toast = useToast();
@@ -68,7 +68,7 @@ export default function Users() {
     return s ? rows.filter((r) => [r.userId, r.code, r.name, r.email, r.role, r.department].some((v) => String(v || '').toLowerCase().includes(s))) : rows;
   }, [rows, q]);
 
-  if (!(hasSection(user, 'master') || (hasSection(user, 'hr') && canAccess(user, PEOPLE_VIEW_ROLES)))) {
+  if (!canViewPeople(user)) {
     return (
       <>
         <PageHeader title="Employees" />

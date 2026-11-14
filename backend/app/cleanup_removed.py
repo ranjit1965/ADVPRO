@@ -2,7 +2,7 @@
 
 Removed: Master › Registration, Attendence, Product, Old Registrations, Shedulling (work assignments),
 Vendor and Assest; HR › Batch Paper Completion (no data of its own) and Leave/Permission Form; My Work;
-Transaction (v47, a menu placeholder with no data).
+Transaction (v47, a menu placeholder with no data); Monthly Plan (v48, monthly_plans).
 
     cd backend
     python -m app.cleanup_removed          # shows what would be deleted
@@ -14,7 +14,7 @@ from . import db
 
 COLLECTIONS = (
     "master_registrations", "master_attendance", "master_products", "master_oldRegistrations",
-    "master_vendors", "master_assets", "work_assignments", "leave_requests",
+    "master_vendors", "master_assets", "work_assignments", "leave_requests", "monthly_plans",
 )
 
 

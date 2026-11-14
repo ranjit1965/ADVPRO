@@ -29,7 +29,7 @@ export default function OthersTab({ values, errors, set, lookups, onAddLookup })
           {...f('heading')}
           onChange={(v) => set('heading', v)}
         />
-        <Textarea label="Remarks" className="lg:col-span-8" rows={2} maxLength={500} placeholder="Describe the activity" {...f('remarks')} />
+        <Textarea label="Remarks" className="lg:col-span-8" rows={2} maxLength={500} placeholder="Describe the activity (optional)" {...f('remarks')} />
       </div>
       <p className="flex items-start gap-2 rounded-lg border border-info-600/20 bg-info-50 px-3 py-2.5 text-[13px] text-info-700">
         <Info className="mt-0.5 size-4 shrink-0" aria-hidden />

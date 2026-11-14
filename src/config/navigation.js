@@ -45,7 +45,6 @@ export const NAVIGATION = [
           { key: 'print', label: 'Print', to: '/faculty/daily-activity/print' },
         ],
       },
-      { key: 'monthly-plan', label: 'Monthly Plan', to: '/faculty/monthly-plan' },
       { key: 'students-mark-entry', label: 'Students Mark Entry', to: '/faculty/students-mark-entry' },
       { key: 'others', label: 'Others', to: '/faculty/daily-activity/entry?type=others' },
       { key: 'monthly-report', label: 'Monthly Report', to: '/faculty/reports/monthly' },
@@ -60,7 +59,15 @@ export const NAVIGATION = [
     label: 'Admin',
     icon: ShieldCheck,
     section: 'admin',
-    children: [{ key: 'data-upload', label: 'Data Upload', to: '/admin/data-upload' }],
+    children: [
+      { key: 'data-upload', label: 'Data Upload', to: '/admin/data-upload' },
+      { key: 'admin-employees', label: 'Employees', to: '/master/employees' },
+      { key: 'admin-deleted-employees', label: 'Deleted Employees', to: '/master/deleted-employees' },
+      { key: 'admin-batch', label: 'Batch', to: '/master/batches' },
+      { key: 'admin-batch-import', label: 'Batch Import', to: '/master/batch-import' },
+      { key: 'admin-course', label: 'Course', to: '/master/courses' },
+      { key: 'admin-biometric', label: 'Biometric', to: '/master/biometric' },
+    ],
   },
   { key: 'marketing', label: 'Marketing', icon: Megaphone, restricted: true, section: 'marketing' },
   {
@@ -70,6 +77,7 @@ export const NAVIGATION = [
     section: 'hr',
     children: [
       { key: 'employees', label: 'Employees', to: '/master/employees', roles: PEOPLE_VIEW_ROLES },
+      { key: 'deleted-employees', label: 'Deleted Employees', to: '/master/deleted-employees', roles: PEOPLE_VIEW_ROLES },
       { key: 'hr-policy', label: 'HR Policy', to: '/hr-report/policy' },
       { key: 'your-info', label: 'Your Info', to: '/hr-report/your-info' },
       { key: 'halfyearly', label: 'Halfyearly Program Report', to: '/hr-report/halfyearly' },
