@@ -16,7 +16,7 @@ import { useConfirm } from '../context/ConfirmContext';
 import { canAccess, hasSection, MASTER_ROLES, PEOPLE_VIEW_ROLES, ROLES } from '../utils/permissions';
 import { formatDuration, monthLabel, toISODate } from '../utils/format';
 
-const ROLE_OPTIONS = [ROLES.FACULTY, ROLES.HR, ROLES.ADMIN, 'STAFF'];
+const ROLE_OPTIONS = [ROLES.FACULTY, ROLES.HR, ROLES.ADMIN, 'STAFF'].map((r) => ({ value: r, label: r }));
 const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const EMPTY = { userId: '', code: '', name: '', email: '', role: 'FACULTY', designation: 'FACULTY', grade: 'E1', department: '', branch: 'Chennai Center', password: '' };
 
@@ -56,7 +56,11 @@ export default function Users() {
   }, [month]);
   useEffect(load, [load]);
   useEffect(() => {
-    if (canEdit) api.getRoles().then(setRoleOptions).catch(() => {});
+    if (canEdit)
+      api
+        .getRoles()
+        .then((list) => setRoleOptions(list.map((r) => ({ value: r.key, label: r.label && r.label.toUpperCase() !== r.key.replace(/_/g, ' ') ? `${r.key} (${r.label})` : r.key }))))
+        .catch((e) => toast.error(`Roles could not be loaded: ${e.message}`));
   }, [canEdit]);
 
   const filtered = useMemo(() => {
@@ -319,7 +323,7 @@ export default function Users() {
           <Input label="Employee code" required value={form.code} error={errors.code} onChange={set('code')} hint="Shown as NAME (CODE) in dropdowns" />
           <Input label="Name" required value={form.name} error={errors.name} onChange={set('name')} />
           <Input label="Email" type="email" value={form.email} error={errors.email} onChange={set('email')} />
-          <Select label="Role" required options={roleOptions} value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value, designation: e.target.value })} />
+          <Select label="Role" required options={roleOptions} value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value, designation: e.target.value })} hint={user.role === ROLES.MANAGER ? 'Roles are created in Master › Roles & Access' : undefined} />
           <Input label="Designation" value={form.designation} onChange={set('designation')} />
           <Input label="Department" value={form.department} onChange={set('department')} />
           <Input label="Grade" value={form.grade} onChange={set('grade')} />

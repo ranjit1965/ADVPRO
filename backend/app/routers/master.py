@@ -13,38 +13,40 @@ master_roles = require_section("master")  # Master menu ticked for the role (Mas
 
 
 class CourseIn(BaseModel):
-    """Same columns as the CourseMaster table. CourseId, CourseName and InstalmentAmt are required."""
+    """A course saves only Course ID and Course Name."""
     id: str = Field(min_length=1, max_length=40)  # any letters, digits or symbols (ADCH&N, C++, ...)
     name: str = Field(min_length=1, max_length=200)
-    instalmentAmt: float = Field(ge=0)
-    lumpsumAmt: float | None = Field(default=None, ge=0)
-    status: str = Field(default="", max_length=40)
-    totalHrs: float | None = Field(default=None, ge=0)
-    insAmt: float | None = Field(default=None, ge=0)
-    lumpAmt: float | None = Field(default=None, ge=0)
-    courseStatus: str = Field(default="", max_length=40)
 
-    @field_validator("id", "name", "status", "courseStatus")
+    @field_validator("id", "name")
     @classmethod
     def strip(cls, v: str) -> str:
-        return v.strip()
-
-    @field_validator("name")
-    @classmethod
-    def name_given(cls, v: str) -> str:
+        v = v.strip()
         if not v:
-            raise ValueError("Enter the course name")
+            raise ValueError("Required")
         return v
 
     def fields(self) -> dict:
-        return self.model_dump(exclude={"id"})
+        return {"name": self.name}
+
+
+# Fields older versions saved on a course / chapter; removed when the record is next saved.
+OLD_COURSE_FIELDS = {k: "" for k in ("instalmentAmt", "lumpsumAmt", "status", "totalHrs", "insAmt", "lumpAmt", "courseStatus")}
+OLD_CHAPTER_FIELDS = {"type": "", "details": ""}
 
 
 class ChapterIn(BaseModel):
+    """A chapter saves only Chapter No and Chapter Name."""
     courseId: str
     no: int = Field(ge=1, le=999)
-    type: str = Field(min_length=1)
-    details: str = Field(min_length=1, max_length=300)
+    name: str = Field(min_length=1, max_length=300)
+
+    @field_validator("name")
+    @classmethod
+    def strip(cls, v: str) -> str:
+        v = v.strip()
+        if not v:
+            raise ValueError("Enter the chapter name")
+        return v
 
 
 @router.post("/courses", status_code=201)
@@ -65,7 +67,7 @@ def add_course(body: CourseIn, me: dict = Depends(master_roles)):
 
 @router.put("/courses/{course_id:path}")
 def update_course(course_id: str, body: CourseIn, _: dict = Depends(master_roles)):
-    if not db.courses.update_one({"id": course_id}, {"$set": body.fields()}).matched_count:
+    if not db.courses.update_one({"id": course_id}, {"$set": body.fields(), "$unset": OLD_COURSE_FIELDS}).matched_count:
         raise HTTPException(404, "Course not found")
     return True
 
@@ -95,7 +97,7 @@ def add_chapter(body: ChapterIn, _: dict = Depends(master_roles)):
 def update_chapter(course_id: str, no: int, body: ChapterIn, _: dict = Depends(master_roles)):
     if body.no != no and db.chapters.find_one({"courseId": course_id, "no": body.no}):
         raise HTTPException(409, f"Chapter {body.no} already exists for {course_id}")
-    res = db.chapters.update_one({"courseId": course_id, "no": no}, {"$set": {**body.model_dump(), "courseId": course_id}})
+    res = db.chapters.update_one({"courseId": course_id, "no": no}, {"$set": {**body.model_dump(), "courseId": course_id}, "$unset": OLD_CHAPTER_FIELDS})
     if not res.matched_count:
         raise HTTPException(404, "Chapter not found")
     return True

@@ -1,7 +1,6 @@
 import {
   LayoutDashboard,
   Database,
-  ArrowLeftRight,
   BarChart3,
   Megaphone,
   GraduationCap,
@@ -11,20 +10,18 @@ import {
   FileBarChart,
   Settings,
   LogOut,
-  ClipboardCheck,
 } from 'lucide-react';
 import { MASTER_MENU } from './masterMenu';
 import { PEOPLE_VIEW_ROLES, WORKING_HOURS_ROLES } from '../utils/permissions';
 
 /**
- * Sidebar navigation: Dashboard, My Work, Master, then the department menus in the agreed
- * order (Faculty, Lab Support, MIS, Digital Marketing, Admin, Marketing, HR), then Transaction.
+ * Sidebar navigation: Dashboard, Master, then the department menus in the agreed
+ * order (Faculty, Lab Support, MIS, Digital Marketing, Admin, Marketing, HR).
  * `restricted: true` items were greyed out for the FACULTY role in the legacy app
  * and stay visible-but-locked here; the backend will decide this per role later.
  */
 export const NAVIGATION = [
   { key: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, to: '/' },
-  { key: 'my-work', label: 'My Work', icon: ClipboardCheck, to: '/my-work', section: 'myWork' },
   {
     key: 'master',
     label: 'Master',
@@ -75,12 +72,9 @@ export const NAVIGATION = [
       { key: 'employees', label: 'Employees', to: '/master/employees', roles: PEOPLE_VIEW_ROLES },
       { key: 'hr-policy', label: 'HR Policy', to: '/hr-report/policy' },
       { key: 'your-info', label: 'Your Info', to: '/hr-report/your-info' },
-      { key: 'batch-completion', label: 'Batch Paper Completion', to: '/hr-report/batch-paper-completion' },
-      { key: 'leave', label: 'Leave/Permission Form', to: '/hr-report/leave-permission' },
       { key: 'halfyearly', label: 'Halfyearly Program Report', to: '/hr-report/halfyearly' },
     ],
   },
-  { key: 'transaction', label: 'Transaction', icon: ArrowLeftRight, restricted: true, section: 'transaction' },
 ];
 
 export const FOOTER_NAVIGATION = [

@@ -1,4 +1,4 @@
-"""Generic Master screens (Registration, Batch, Attendence, Product, Old Registrations, Vendor, Assest).
+"""Generic Master screens: Batch (Registration, Attendence, Product, Old Registrations, Vendor and Assest were removed in v46).
 
 Each master is described in masters.json (same file as src/config/masters.json) and stored in
 its own collection, master_<key>. Admin and Manager maintain them.

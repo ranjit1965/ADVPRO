@@ -50,7 +50,7 @@ Open http://localhost:5173.
 On first start the backend only writes the dropdown option lists (`backend/app/seed_data.json`,
 for example Class in, Session types, Colleges) and the default HR policy into MongoDB. Batch,
 Advpro No and Register No dropdowns come from the Master screens, and the student list on
-Students Mark Entry comes from **Master › Registration** for the chosen batch.
+Students Mark Entry lists the students whose marks were saved earlier (Master › Registration was removed in v46).
 
 Upgrading from an earlier version that created demo users and sample records? Start with an
 empty database: `mongosh daily_entry_report --eval "db.dropDatabase()"`.
@@ -76,10 +76,9 @@ Other scripts:
 | Faculty › Monthly Plan | `/faculty/monthly-plan` | Admin and Manager assign week-wise batch/course plans to one person, all faculty or all employees (one plan per person) and see everyone's plans with person and status filters. Each employee or faculty member sees only the plans assigned to them and updates the status (Pending, In Progress, Completed) and a progress note |
 | Faculty › Students Mark Entry | `/faculty/students-mark-entry` | Load a batch and enter marks / absent, with Save, Clear, Exit |
 | Faculty › Monthly Report | `/faculty/reports/monthly` | Activity report laid out like the September 2026 sample: headline figures, day-by-day, type, week and topic charts, daily and weekly summaries (Others in its own column), calendar view and activity log. **Download PDF** (print dialog, A4 landscape) and **Download Excel** (one sheet per section) |
-| Master (Admin, Manager) | `/master`, `/master/<key>` | Legacy Master menu: Registration, Batch, Employees, Course, Attendence, Product, Old Registrations, Shedulling, MontlyStaffReport, Vendor, Assest. Each list has tick boxes: tick rows (or the header box for the page, or **Select all**) and click **Delete selected**, then **OK, delete**, to remove them from the database in one call (`POST /api/masters/<key>/delete-many`). Generic screens are driven by `src/config/masters.json` (copy in `backend/app/masters.json`, keep both identical); each is its own collection `master_<key>` |
+| Master (Admin, Manager) | `/master`, `/master/<key>` | Batch, Batch Import, Employees, Course, MontlyStaffReport, Deleted Employees, Role Access (Manager), Biometric |
 | Master › Employees | `/master/employees` | Admin and Manager add, edit, disable and delete employees (the manager account itself can only be changed by the manager) |
-| Master › Shedulling, My Work | `/master/scheduling`, `/my-work` | Admin and Manager assign work to one person, all faculty or all employees; each person updates status and a progress note under My Work |
-| HR_Report › HR Policy, Your Info, Batch Paper Completion, Leave/Permission Form | `/hr-report/...` | Policy text (HR edits), PF/bank details, EL/CL balance, permissions, absent days and monthly ratings, batch start/end dates from Class entries, leave and permission requests the manager sanctions or rejects |
+| HR_Report › HR Policy, Your Info | `/hr-report/...` | Policy text (HR edits); PF/bank details, EL/CL allotted, absent days and ratings |
 | Faculty › Monthly Working Hrs Report | `/faculty/reports/working-hours` | Hours per employee and faculty (HR, Admin, Manager): class, center, outstation, performance, Others, total |
 | Employee (HR read-only) | `/master/employees` | HR sees every employee with hours and days this month and opens anyone's dashboard; only Admin and Manager can add, edit or delete |
 | Dashboard person picker | `/?code=SAN` | HR, Admin and Manager pick a faculty member or employee and the dashboard shows that person's entries, hours and missing days, with a link to their monthly report. Faculty and staff only ever see their own figures (also enforced by the API) |
@@ -91,7 +90,7 @@ sidebar, like the legacy menu (nested items such as Faculty › Daily Activity c
 right). On mobile they expand inline in the drawer. **Employee** opens Master › Employees.
 The app uses a light palette: white sidebar and header on a light blue background.
 
-The remaining legacy menu items keep their place in the sidebar. **Transaction, Reports,
+The remaining legacy menu items keep their place in the sidebar. **Reports,
 Marketing** and **Support Team** were greyed out for the FACULTY role in the old
 application, so they appear locked. **Admin** now holds Data Upload (Admin and Manager only). **Master** (manager and admin) maintains courses and their chapter / session details. 
 **Faculty › Others** opens the entry form on the Others tab. Others entries are not part of
@@ -221,7 +220,6 @@ Page `/hr-report/halfyearly`, under the heading **HALFYEARLY PROGRAM REPORT**.
 |---|---|---|---|---|
 | Batches, Batch Import, Biometric, masters, courses | yes | yes (while access is given) | no | no |
 | Employees: add, edit, disable, delete | yes | yes (while access is given) | view | no |
-| Approve leave | yes | yes (while access is given) | no | no |
 | Assign certifications and record their status | yes | yes | yes | read own |
 | All faculty entries, Monthly Report, Monthly Working Hrs (consolidated) Report | yes | yes | yes, read-only | own |
 | Add / change daily entries | anyone's | anyone's | own only | own only |
@@ -331,26 +329,54 @@ missed), the Dashboard and this page remind Admin / Manager until each file is u
 
 ### Course (Master › Course and "Add course" on the Learning tab)
 
-* The course form has the CourseMaster columns in order: **Course ID**, **Course Name**,
-  **Instalment Amt** (these three are required), then Lumpsum Amt, Status, Total Hrs, Ins Amt,
-  Lump Amt and Course Status (optional).
-* Course ID can be any letters, digits or symbols (for example `ADCH&N`, `C/C++`), up to 40
-  characters; it is saved in capitals. The selected course in Master › Course shows all the values.
+* A course saves only **Course ID** and **Course Name**; each chapter saves only **Chapter No** and
+  **Chapter Name** (no type, details or remarks). Older price fields and chapter type / details are
+  removed from a course or chapter the next time it is saved; an old chapter's details show as its name.
+* Course ID can be any letters, digits or symbols (for example `ADCH&N`, `C/C++`), up to 40 characters,
+  saved in capitals. The chapter lists in the entry form show "1 · Chapter Name".
 
-### Role Access and roles (Master › Role Access, Manager only)
+### Request Batch No (Class tab)
 
-* **Roles**: Admin, HR, Faculty and Staff are built in. The Manager can **add a role** (for example
-  ACCOUNTS or LAB ASSISTANT) and pick it as the Role in Master › Employees. A role can be removed when
-  no employee has it. An added role works like Staff (own entries and reports) and starts with Staff's menus.
-* **Menus**: one checkbox per side-pane tab per role: My Work, Master, Faculty, Lab Support, MIS,
-  Digital Marketing, Admin (Data Upload), Marketing, HR and Transaction. Unticking hides the tab for
-  that role, blocks its page addresses and the server refuses its data; ticking gives it (for
-  example Master to HR). Dashboard and Settings are always shown. The Manager always has every tab.
-* Defaults are the old rules: Master and Admin for Admin only, everything else for everyone.
-  **Default access** puts these back.
+* Next to **Batch No** in the Class entry, **Request Batch No** opens a short form: Course ID
+  (filled from the entry), batch start date, batch time, number of students and remarks (all but the
+  course optional). Sending it emails the same addresses as course requests (`COURSE_REQUEST_EMAILS`,
+  otherwise every active Manager / Admin) and sends the same WhatsApp template, with the sender's name.
+* Manager / Admin see pending requests at the top of **Master › Course** and mark them **Done** after
+  creating the batch (Master › Batch or Batch Import) or **Dismiss** them. Saved in `batch_requests`;
+  `POST/GET /api/batch-requests`, `PATCH /api/batch-requests/{id}`.
+
+### Removed in v46
+
+* Master › Registration, Attendence, Product, Old Registrations, Shedulling, Vendor and Assest;
+  HR › Batch Paper Completion and Leave/Permission Form; My Work (for every role); Transaction (v47). Their pages, menu
+  items and API endpoints are gone. Your Info now shows EL / CL allotted (no taken / available).
+* Their data stays in MongoDB until you delete it once, from the `backend` folder:
+  ```bash
+  python -m app.cleanup_removed          # lists what would be deleted
+  python -m app.cleanup_removed --yes    # drops master_registrations, master_attendance, master_products,
+                                         # master_oldRegistrations, master_vendors, master_assets,
+                                         # work_assignments, leave_requests (take a mongodump first)
+  ```
+
+### Roles & Access (Master › Roles & Access, Manager only)
+
+* **Roles are stored in their own collection, `roles`**, one document per role: key (e.g. `ACCOUNTS`),
+  name, description, built-in or not, the menu ticks (`access`), who created it and when.
+  Admin, HR, Faculty and Staff are built in (created on first start). The Manager is not a role
+  document and always has everything.
+* **Create role** (name + optional description): the role appears at once in the **Role** list of
+  Master › Employees (add / edit employee), which reads `GET /api/access/roles`. A role can be
+  deleted only when no employee has it; built-in roles cannot be deleted.
+* **Menu access**: one checkbox per side-pane tab per role: Master, Faculty, Lab Support, MIS,
+  Digital Marketing, Admin (Data Upload), Marketing and HR. Tick to give, untick to remove: the tab
+  is hidden for that role, its page addresses are blocked and the server refuses its data. Dashboard
+  and Settings are always shown. **Default access** restores Master and Admin for Admin only and the
+  rest for everyone; a new role starts with Staff's menus and works like Staff elsewhere.
 * HR and Admin can edit HR Policy, employee info and Halfyearly reports only while their HR tab is ticked.
-* Changes apply to each person the next time they open or refresh the app. Saved in `settings`
-  (`_id: roleAccess`: `roles`, `customRoles`).
+* Changes apply to each person the next time they open or refresh the app.
+* Upgrading from v45 / v46 moves roles and ticks saved in `settings` (`_id: roleAccess`) into `roles`
+  automatically on start.
+* API: `GET/PUT /api/access`, `POST /api/access/roles`, `PATCH/DELETE /api/access/roles/{role}`, `GET /api/access/roles`.
 
 ### Missing daily entries: automatic Inactive (Faculty only)
 
@@ -358,7 +384,7 @@ missed), the Dashboard and this page remind Admin / Manager until each file is u
   entry on their last 3 working days** (today is not counted), their login is set **Inactive** and
   they cannot sign in. The login page tells them why. Manager, Admin, HR and Staff are never checked.
 * Working days are Monday to Saturday. Sundays (`AUTO_INACTIVE_WEEKLY_OFF=6`), the dates in
-  `AUTO_INACTIVE_HOLIDAYS` and that person's **approved leave** are skipped, not counted as missed.
+  `AUTO_INACTIVE_HOLIDAYS` are skipped, not counted as missed.
 * In **Master › Employees** these rows show **Inactive · no entries** (hover to see the missed
   dates). The Manager or Admin clicks the person-tick button on the row to make them **Active**
   again. Only the working days **after** the day they were made active count, so the next run does
@@ -390,11 +416,10 @@ missed), the Dashboard and this page remind Admin / Manager until each file is u
 
 * **Delete** in Master › Employees moves the employee to **Deleted Employees** (`deleted_users`)
   with who deleted them and when; they can no longer sign in. Their records move with them to
-  `deleted_records`: daily entries, leave / permission requests, halfyearly reports, work
-  assignments and biometric days. Reports no longer count them while they are deleted.
+  `deleted_records`: daily entries, halfyearly reports and biometric days. Reports no longer count them while they are deleted.
 * **Master › Deleted Employees** (also the **Deleted employees** button on the Employees page) lists
   them. Click one to see their details, how many records were saved, all their daily entries (date,
-  time, hours, activity) and their leave and work items.
+  time, hours, activity).
 * **Restore** brings the employee back as Active with the same User ID, code, details and password,
   and puts every record back. If another employee now uses the same User ID or code, change that one first.
 
@@ -469,8 +494,7 @@ Every page reads and writes data only through `src/services/api.js`, which calls
 | `getMonthlyReport`, `getWorkingHoursReport` | `GET /api/reports/monthly`, `/working-hours` |
 | `saveCourse`, `deleteCourse`, `saveChapter`, `deleteChapter` (manager, admin) | `POST /api/master/courses`, `PUT/DELETE /api/master/courses/{id}`, `POST /api/master/chapters`, `PUT/DELETE /api/master/chapters/{courseId}/{no}` |
 | `getMasterRecords`, `saveMasterRecord`, `deleteMasterRecord` | `GET/POST /api/masters/{key}`, `PUT/DELETE /api/masters/{key}/{id}` |
-| `getWorkAssignments`, `createWorkAssignments`, `updateWorkAssignment`, `deleteWorkAssignment` | `GET/POST /api/work-assignments`, `PUT/DELETE /api/work-assignments/{id}` |
-| `getHrPolicy`, `saveHrPolicy`, `getEmployeeInfo`, `saveEmployeeInfo`, `getBatchCompletion`, `getLeaveRequests`, `createLeaveRequest`, `decideLeaveRequest` | `GET/PUT /api/hr/policy`, `GET /api/hr/info`, `PUT /api/hr/info/{userId}`, `GET /api/hr/batch-completion`, `GET/POST /api/hr/leave-requests`, `POST /api/hr/leave-requests/{id}/decision` |
+| `getHrPolicy`, `saveHrPolicy`, `getEmployeeInfo`, `saveEmployeeInfo` | `GET/PUT /api/hr/policy`, `GET /api/hr/info`, `PUT /api/hr/info/{userId}` |
 | `getHalfyearly`, `assignHalfyearly`, `updateHalfyearly`, `updateHalfyearlyStatus` (HR, Manager, Admin), `deleteHalfyearly` | `GET/POST /api/hr/halfyearly`, `PUT/DELETE /api/hr/halfyearly/{id}`, `PUT /api/hr/halfyearly/{id}/status` |
 | `setAdminAccess` (Manager) | `PUT /api/users/{userId}/admin-access` |
 | `getMonthlyPlans`, `saveMonthlyPlan`, `deleteMonthlyPlan` | `/api/monthly-plans` |
@@ -478,8 +502,9 @@ Every page reads and writes data only through `src/services/api.js`, which calls
 | `getNotifications` | `GET /api/notifications` |
 | `getBatchImportSettings`, `uploadBatches`, `saveBatchFacultyMap` (manager, admin) | `GET /api/batch-import/settings`, `POST /api/batch-import/upload?name=` (raw file body), `PUT /api/batch-import/map` |
 | `getBiometricSettings`, `saveBiometricSettings`, `uploadBiometric`, `saveBiometricMap`, `getBiometricRecords` | `GET/PUT /api/biometric/settings` (tolerance), `POST /api/biometric/upload?name=` (raw file body), `PUT /api/biometric/map`, `GET /api/biometric/records` |
+| `requestBatch`, `getBatchRequests`, `setBatchRequestStatus` | `POST/GET /api/batch-requests`, `PATCH /api/batch-requests/{id}` |
 | `requestCourse`, `getCourseRequests`, `setCourseRequestStatus` | `POST/GET /api/course-requests`, `PATCH /api/course-requests/{id}` |
-| `getRoleAccess`, `saveRoleAccess`, `addRole`, `deleteRole` (Manager), `getRoles` | `GET/PUT /api/access`, `POST /api/access/roles`, `DELETE /api/access/roles/{role}`, `GET /api/access/roles` |
+| `getRoleAccess`, `saveRoleAccess`, `addRole`, `deleteRole` (Manager), `getRoles` | `GET/PUT /api/access`, `POST /api/access/roles`, `PATCH/DELETE /api/access/roles/{role}`, `GET /api/access/roles` |
 | `getAutoInactive`, `runAutoInactive` (manager, admin) | `GET /api/users/auto-inactive` (settings, last run, preview), `POST /api/users/auto-inactive/run` |
 | `getDeletedUsers`, `getDeletedUser`, `restoreUser` (Master menu) | `GET /api/users/deleted/list`, `GET /api/users/deleted/{userId}`, `POST /api/users/deleted/{userId}/restore` |
 | `requestPasswordResetOtp`, `resetPasswordWithOtp` (manager account only) | `POST /api/auth/forgot-password/request-otp`, `POST /api/auth/forgot-password/reset` |
@@ -528,7 +553,7 @@ passwords) and the same Gmail address as `SMTP_FROM`.
 
 MongoDB collections: `users` (bcrypt password hashes, roles FACULTY / HR / ADMIN / STAFF / MANAGER),
 `daily_entries`, `courses`, `chapters` (chapter / session details per course), `lookups` (one document per dropdown list), `monthly_plans`, `student_marks`,
-`master_registrations`, `master_batches`, `master_attendance`, `master_products`, `master_oldRegistrations`, `master_vendors`, `master_assets`, `work_assignments`, `settings` (HR policy), `leave_requests`, `halfyearly_reports`, `course_requests`, `deleted_users` (deleted employees, restorable), `deleted_records` (their entries and records), `manager_otps` (expire automatically), `notifications`, `counters` (entry numbers DAE-0001…).
+`master_batches`, `batch_requests`, `settings` (HR policy), `roles` (roles and their menu access), `halfyearly_reports`, `course_requests`, `deleted_users` (deleted employees, restorable), `deleted_records` (their entries and records), `manager_otps` (expire automatically), `notifications`, `counters` (entry numbers DAE-0001…).
 
 Rules enforced on the server: one manager only, created after the emailed 6-digit code is verified
 (10 minutes, 5 attempts) and is never returned by the API or written to the log; Admin and Manager

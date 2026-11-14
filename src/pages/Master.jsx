@@ -5,8 +5,6 @@ import PageHeader from '../components/ui/PageHeader';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
-import Select from '../components/ui/Select';
-import Textarea from '../components/ui/Textarea';
 import Modal from '../components/ui/Modal';
 import DataTable from '../components/ui/DataTable';
 import EmptyState from '../components/ui/EmptyState';
@@ -19,9 +17,9 @@ import { canAccess, hasSection, MASTER_ROLES } from '../utils/permissions';
 import { cn } from '../utils/cn';
 import { useAsync } from '../hooks/useAsync';
 import { formatDateTime } from '../utils/format';
-import CourseFormFields, { COURSE_FIELDS, EMPTY_COURSE, courseBody, courseToForm, validateCourse } from '../components/master/CourseFormFields';
+import CourseFormFields, { EMPTY_COURSE, courseBody, courseToForm, validateCourse } from '../components/master/CourseFormFields';
 
-const EMPTY_CHAPTER = { no: '', type: '', details: '' };
+const EMPTY_CHAPTER = { no: '', name: '' };
 
 /** Master › Courses & Chapters: the course list and the chapter / session details the Class tab fills in. */
 export default function Master() {
@@ -36,6 +34,7 @@ export default function Master() {
   const [saving, setSaving] = useState(false);
 
   const requests = useAsync(() => (hasSection(user, 'master') ? api.getCourseRequests() : Promise.resolve([])), []);
+  const batchRequests = useAsync(() => (hasSection(user, 'master') ? api.getBatchRequests() : Promise.resolve([])), []);
   const courses = lookups?.courses ?? [];
   const courseId = selected || courses[0]?.id || '';
   const chapters = useMemo(() => (lookups?.chapters ?? []).filter((c) => c.courseId === courseId).sort((a, b) => a.no - b.no), [lookups, courseId]);
@@ -86,11 +85,10 @@ export default function Master() {
   const saveChapter = async () => {
     const errs = {};
     if (!/^\d{1,3}$/.test(String(chapterForm.no)) || Number(chapterForm.no) < 1) errs.no = 'Enter a number';
-    if (!chapterForm.type) errs.type = 'Required';
-    if (!chapterForm.details.trim()) errs.details = 'Required';
+    if (!chapterForm.name.trim()) errs.name = 'Enter the chapter name';
     setErrors(errs);
     if (Object.keys(errs).length) return;
-    const ch = { courseId, no: Number(chapterForm.no), type: chapterForm.type, details: chapterForm.details.trim() };
+    const ch = { courseId, no: Number(chapterForm.no), name: chapterForm.name.trim() };
     if (await run(() => api.saveChapter(ch, chapterForm.originalNo), chapterForm.originalNo == null ? 'Chapter added.' : 'Chapter updated.')) setChapterForm(null);
   };
 
@@ -110,18 +108,28 @@ export default function Master() {
     }
   };
 
+  const closeBatchRequest = async (r, status) => {
+    if (status === 'Dismissed' && !(await confirm({ title: 'Dismiss request', message: `Dismiss ${r.requestedByName}'s Batch No request for ${r.courseId}?`, confirmLabel: 'Dismiss' }))) return;
+    try {
+      await api.setBatchRequestStatus(r.id, status);
+      toast.success(status === 'Done' ? 'Batch request marked done.' : 'Batch request dismissed.');
+      batchRequests.reload();
+    } catch (e) {
+      toast.error(e.message);
+    }
+  };
+
   const nextNo = chapters.reduce((m, c) => Math.max(m, c.no), 0) + 1;
   const columns = [
     { key: 'no', header: 'No', className: 'w-16' },
-    { key: 'type', header: 'Type', className: 'w-36' },
-    { key: 'details', header: 'Chapter / Session Details', className: 'whitespace-normal' },
+    { key: 'name', header: 'Chapter Name', className: 'whitespace-normal' },
     {
       key: 'actions',
       header: '',
       align: 'right',
       render: (c) => (
         <div className="flex justify-end gap-1">
-          <Button size="sm" variant="ghost" icon={Pencil} aria-label={`Edit chapter ${c.no}`} onClick={() => { setErrors({}); setChapterForm({ ...c, originalNo: c.no }); }} />
+          <Button size="sm" variant="ghost" icon={Pencil} aria-label={`Edit chapter ${c.no}`} onClick={() => { setErrors({}); setChapterForm({ no: String(c.no), name: c.name || '', originalNo: c.no }); }} />
           <Button size="sm" variant="ghost" icon={Trash2} aria-label={`Delete chapter ${c.no}`} onClick={() => removeChapter(c)} />
         </div>
       ),
@@ -131,7 +139,7 @@ export default function Master() {
 
   return (
     <>
-      <PageHeader title="Courses & Chapters" description="Courses and their chapter / session details. The Class entry fills these in automatically." breadcrumb={[{ label: 'Master', to: '/master' }, { label: 'Course' }]} />
+      <PageHeader title="Courses & Chapters" description="Courses (Course ID, Course Name) and their chapters (Chapter No, Chapter Name). The Class entry fills these in automatically." breadcrumb={[{ label: 'Master', to: '/master' }, { label: 'Course' }]} />
       {requests.data?.length > 0 && (
         <Card className="mb-5" title={`Course requests (${requests.data.length})`} description="Sent by faculty and employees from the Class entry. Add the course, or dismiss the request.">
           <ul className="divide-y divide-ink-100">
@@ -153,6 +161,29 @@ export default function Master() {
                 <Button size="sm" variant="secondary" onClick={() => dismissRequest(r)}>
                   Dismiss
                 </Button>
+              </li>
+            ))}
+          </ul>
+        </Card>
+      )}
+      {batchRequests.data?.length > 0 && (
+        <Card className="mb-5" title={`Batch No requests (${batchRequests.data.length})`} description="Sent by faculty from the Class entry. Create the batch in Master › Batch or Batch Import, then mark the request Done.">
+          <ul className="divide-y divide-ink-100">
+            {batchRequests.data.map((r) => (
+              <li key={r.id} className="flex flex-wrap items-center gap-3 py-2.5">
+                <Mail className="size-4 shrink-0 text-brand-600" aria-hidden />
+                <div className="min-w-[220px] flex-1">
+                  <p className="text-[13px] font-medium text-ink-900">
+                    {r.courseId}{r.courseName ? ` – ${r.courseName}` : ''}
+                    {[r.startDate && `start ${r.startDate}`, r.batchTime, r.students != null && `${r.students} students`].filter(Boolean).map((t) => <span key={t} className="text-xs text-ink-500"> · {t}</span>)}
+                  </p>
+                  <p className="text-xs text-ink-500">
+                    {r.requestedByName} ({r.requestedByCode}) · {formatDateTime(r.createdAt)}
+                    {r.notes ? ` · ${r.notes}` : ''}
+                  </p>
+                </div>
+                <Button size="sm" onClick={() => closeBatchRequest(r, 'Done')}>Done</Button>
+                <Button size="sm" variant="secondary" onClick={() => closeBatchRequest(r, 'Dismissed')}>Dismiss</Button>
               </li>
             ))}
           </ul>
@@ -189,16 +220,6 @@ export default function Master() {
             )
           }
         >
-          {current && (
-            <dl className="mb-3 grid grid-cols-2 gap-x-4 gap-y-1 rounded-lg bg-ink-50 px-3 py-2 text-[13px] sm:grid-cols-4">
-              {COURSE_FIELDS.slice(2).map((f) => (
-                <div key={f.key} className="flex gap-1.5">
-                  <dt className="text-ink-500">{f.label}:</dt>
-                  <dd className="font-medium text-ink-900">{current[f.key] == null || current[f.key] === '' ? '-' : String(current[f.key])}</dd>
-                </div>
-              ))}
-            </dl>
-          )}
           {current ? <DataTable columns={columns} rows={chapters} rowKey="no" caption="Chapters" empty={<EmptyState icon={BookOpen} title="No chapters yet" message="Add the chapters / sessions for this course." />} /> : <p className="text-sm text-ink-500">Add a course to start.</p>}
         </Card>
       </div>
@@ -214,9 +235,8 @@ export default function Master() {
         footer={<><Button variant="secondary" onClick={() => setChapterForm(null)}>Cancel</Button><Button loading={saving} onClick={saveChapter}>Save</Button></>}>
         {chapterForm && (
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <Input label="Chapter / Session No" required inputMode="numeric" value={chapterForm.no} error={errors.no} onChange={(e) => setChapterForm({ ...chapterForm, no: e.target.value })} />
-            <Select label="Chap / Session Type" required options={lookups.chapterTypes} value={chapterForm.type} error={errors.type} onChange={(e) => setChapterForm({ ...chapterForm, type: e.target.value })} />
-            <Textarea label="Chap / Session Details" required className="sm:col-span-2" rows={4} maxLength={300} value={chapterForm.details} error={errors.details} onChange={(e) => setChapterForm({ ...chapterForm, details: e.target.value })} placeholder="What this chapter / session covers" />
+            <Input label="Chapter No" required inputMode="numeric" value={chapterForm.no} error={errors.no} onChange={(e) => setChapterForm({ ...chapterForm, no: e.target.value })} />
+            <Input label="Chapter Name" required className="sm:col-span-2" maxLength={300} value={chapterForm.name} error={errors.name} onChange={(e) => setChapterForm({ ...chapterForm, name: e.target.value })} placeholder="e.g. Introduction to Networking" />
           </div>
         )}
       </Modal>

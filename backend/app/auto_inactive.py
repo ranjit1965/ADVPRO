@@ -4,7 +4,7 @@ Rules (all set in backend/.env, see AUTO_INACTIVE_* in .env.example):
 * Only employees with the FACULTY role are checked (AUTO_INACTIVE_ROLES). Manager, Admin, HR and
   Staff are never made inactive by this job.
 * Working days are Monday to Saturday (AUTO_INACTIVE_WEEKLY_OFF=6 means Sunday is off) minus the
-  dates in AUTO_INACTIVE_HOLIDAYS and minus that employee's own approved leave days.
+  dates in AUTO_INACTIVE_HOLIDAYS.
 * Today is never counted (the employee may still enter it). The job looks at the 3 most recent
   working days before today; if none of them has a single entry, the employee is set inactive.
 * Only days on or after the day this feature went live are counted, and only days AFTER the
@@ -74,19 +74,6 @@ def _local_date(iso: str | None) -> date | None:
     return (dt.astimezone(timezone.utc) + timedelta(minutes=settings.utc_offset_minutes)).date()
 
 
-def _leave_days(user_id: str, frm: date, to: date) -> set[str]:
-    days: set[str] = set()
-    q = {"userId": user_id, "status": "Approved", "kind": "Leave", "dateFrom": {"$lte": to.isoformat()}}
-    for r in db.leave_requests.find(q):
-        start = date.fromisoformat(r["dateFrom"])
-        end = date.fromisoformat(r.get("dateTo") or r["dateFrom"])
-        d = max(start, frm)
-        while d <= min(end, to):
-            days.add(d.isoformat())
-            d += timedelta(days=1)
-    return days
-
-
 def check_user(u: dict, today: date, start_date: date, off: set[int], hol: set[str]) -> dict | None:
     """Return the missed working days if this employee should be made inactive, else None."""
     first = start_date
@@ -98,12 +85,11 @@ def check_user(u: dict, today: date, start_date: date, off: set[int], hol: set[s
     if first > last:
         return None
     first = max(first, last - timedelta(days=MAX_LOOKBACK_DAYS))
-    leave = _leave_days(u["userId"], first, last)
     working: list[str] = []
     d = last
     while d >= first and len(working) < settings.auto_inactive_days:
         iso = d.isoformat()
-        if d.weekday() not in off and iso not in hol and iso not in leave:
+        if d.weekday() not in off and iso not in hol:
             working.append(iso)
         d -= timedelta(days=1)
     if len(working) < settings.auto_inactive_days:

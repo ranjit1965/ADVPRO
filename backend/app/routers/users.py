@@ -23,9 +23,7 @@ def people_view(user: dict = Depends(current_user)) -> dict:
 # (collection, field in that collection, field of the employee it matches)
 OWNED = (
     ("daily_entries", "facultyCode", "code"),
-    ("leave_requests", "userId", "userId"),
     ("halfyearly_reports", "employeeCode", "code"),
-    ("work_assignments", "assignedTo", "userId"),
     ("biometric_days", "code", "code"),
 )
 
@@ -195,7 +193,7 @@ def deleted_detail(user_id: str, _: dict = Depends(manager_only)):
     if not rec:
         raise HTTPException(404, "Deleted employee not found")
     out: dict = {"employee": public_user(rec), "entries": [], "leave": [], "work": [], "halfyearly": [], "biometricDays": 0}
-    names = {"daily_entries": "entries", "leave_requests": "leave", "work_assignments": "work", "halfyearly_reports": "halfyearly"}
+    names = {"daily_entries": "entries", "halfyearly_reports": "halfyearly", "leave_requests": "leave", "work_assignments": "work"}  # leave / work: older deletes only
     for r in db.db.deleted_records.find({"owner": rec["userIdLower"]}):
         d = {k: v for k, v in r["doc"].items() if k not in ("_id", "searchText")}
         if r["coll"] == "biometric_days":

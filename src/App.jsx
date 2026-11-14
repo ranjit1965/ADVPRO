@@ -20,15 +20,11 @@ import Users from './pages/Users';
 import Master from './pages/Master';
 import MasterHome from './pages/master/MasterHome';
 import MasterList from './pages/master/MasterList';
-import Scheduling from './pages/master/Scheduling';
 import Biometric from './pages/master/Biometric';
 import BatchImport from './pages/master/BatchImport';
 import DataUpload from './pages/admin/DataUpload';
-import MyWork from './pages/MyWork';
 import HrPolicy from './pages/hr/HrPolicy';
 import YourInfo from './pages/hr/YourInfo';
-import BatchCompletion from './pages/hr/BatchCompletion';
-import LeaveForm from './pages/hr/LeaveForm';
 import HalfyearlyReport from './pages/hr/HalfyearlyReport';
 import NotFound from './pages/NotFound';
 import RoleAccess from './pages/master/RoleAccess';
@@ -76,7 +72,6 @@ export default function App() {
               <Route path="master" element={<MasterHome />} />
               <Route path="master/courses" element={<Master />} />
               <Route path="master/employees" element={<Users />} />
-              <Route path="master/scheduling" element={<Scheduling />} />
               <Route path="master/biometric" element={<Biometric />} />
               <Route path="master/batch-import" element={<BatchImport />} />
               <Route path="master/role-access" element={<RoleAccess />} />
@@ -84,12 +79,9 @@ export default function App() {
               <Route path="master/deleted-employees/:userId" element={<DeletedEmployees />} />
               <Route path="master/:key" element={<MasterList />} />
               <Route path="admin/data-upload" element={<DataUpload />} />
-              <Route path="my-work" element={<MyWork />} />
               <Route path="hr-report" element={<Navigate to="/hr-report/policy" replace />} />
               <Route path="hr-report/policy" element={<HrPolicy />} />
               <Route path="hr-report/your-info" element={<YourInfo />} />
-              <Route path="hr-report/batch-paper-completion" element={<BatchCompletion />} />
-              <Route path="hr-report/leave-permission" element={<LeaveForm />} />
               <Route path="hr-report/halfyearly" element={<HalfyearlyReport />} />
               <Route path="users" element={<Navigate to="/master/employees" replace />} />
               <Route path="settings" element={<Settings />} />

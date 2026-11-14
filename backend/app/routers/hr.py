@@ -1,14 +1,11 @@
-"""HR_Report: HR Policy, Your Info, Batch Paper Completion and Leave/Permission Form."""
+"""HR_Report: HR Policy and Your Info (Batch Paper Completion and Leave/Permission Form were removed in v46)."""
 from datetime import date, datetime, timezone
-from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel, EmailStr, Field, model_validator
+from pydantic import BaseModel, Field
 
 from .. import db
-from ..schemas import Form
-from ..security import require_section, current_user, public_user, require_roles
-from .entries import minutes_between
+from ..security import require_section, current_user, public_user
 
 router = APIRouter(prefix="/hr", tags=["hr report"])
 HR_ROLES = ("HR", "MANAGER", "ADMIN")
@@ -19,7 +16,7 @@ DEFAULT_POLICY = (
     "# Working hours\n- Office hours are 9:30 AM to 6:30 PM, Monday to Saturday.\n"
     "- Record every activity in Faculty › Daily Activity › Entry on the same day.\n\n"
     "# Leave\n- Earned Leave (EL) and Casual Leave (CL) are allotted each financial year (April to March).\n"
-    "- Apply through HR_Report › Leave/Permission Form before the leave (Pre) or on return (Post).\n"
+    "- Inform HR and your Manager before the leave.\n"
     "- Sanction or rejection is at the respective Manager's / Director's discretion.\n\n"
     "# Note\nThis is sample text. HR can replace it with the company policy using the Edit button."
 )
@@ -80,8 +77,6 @@ def get_info(userId: str | None = None, me: dict = Depends(current_user)):
             raise HTTPException(404, "Employee not found")
     hr = u.get("hr", {})
     label, frm, to = financial_year()
-    approved = list(db.leave_requests.find({"userId": u["userId"], "status": "Approved", "dateFrom": {"$gte": frm, "$lte": to}}))
-    taken = lambda t: sum(float(r.get("days", 0)) for r in approved if r["kind"] == "Leave" and r.get("leaveType") == t)  # noqa: E731
     el, cl = hr.get("elAllotted", 12), hr.get("clAllotted", 12)
     return {
         "user": public_user(u),
@@ -90,9 +85,6 @@ def get_info(userId: str | None = None, me: dict = Depends(current_user)):
         "financialYear": label,
         "elAllotted": el,
         "clAllotted": cl,
-        "el": {"allotted": el, "taken": taken("EL"), "available": el - taken("EL")},
-        "cl": {"allotted": cl, "taken": taken("CL"), "available": cl - taken("CL")},
-        "permissions": sum(r["kind"] == "Permission" for r in approved),
         "absentDays": hr.get("absentDays", 0),
         "ratings": hr.get("ratings", []),
     }
@@ -104,87 +96,3 @@ def save_info(user_id: str, body: InfoIn, _: dict = Depends(hr_only)):
     if not res.matched_count:
         raise HTTPException(404, "Employee not found")
     return True
-
-
-# ------------------------------------------------- batch paper completion
-@router.get("/batch-completion")
-def batch_completion(facultyCode: str | None = None, me: dict = Depends(current_user)):
-    if me["role"] not in HR_ROLES:
-        facultyCode = me["code"]  # faculty see their own batches
-    q = {"activityType": "class", "details.batchNo": {"$nin": [None, ""]}}
-    if facultyCode:
-        q["facultyCode"] = facultyCode
-    groups: dict[str, dict] = {}
-    for e in db.entries.find(q):
-        d = e["details"]
-        k = f"{e['facultyCode']}|{d['batchNo']}|{d.get('courseId', '')}"
-        g = groups.setdefault(k, {"key": k, "facultyCode": e["facultyCode"], "facultyName": e["facultyName"], "batchNo": d["batchNo"], "courseId": d.get("courseId", ""), "startDate": e["activityDate"], "endDate": e["activityDate"], "sessions": 0, "minutes": 0})
-        g["sessions"] += 1
-        g["minutes"] += minutes_between(e["timeFrom"], e["timeTo"])
-        g["startDate"] = min(g["startDate"], e["activityDate"])
-        g["endDate"] = max(g["endDate"], e["activityDate"])
-    return sorted(groups.values(), key=lambda g: (g["facultyName"], g["startDate"]))
-
-
-# ------------------------------------------------- leave / permission
-class LeaveIn(Form):
-    kind: Literal["Leave", "Permission"]
-    type: Literal["Pre", "Post"]
-    email: EmailStr
-    reason: str = Field(min_length=1, max_length=500)
-    dateFrom: date
-    dateTo: date | None = None
-    days: float | None = Field(default=None, gt=0, le=60)
-    leaveType: Literal["EL", "CL", "LOP"] | None = None
-    timeFrom: str | None = Field(default=None, pattern=TIME_RE)
-    timeTo: str | None = Field(default=None, pattern=TIME_RE)
-
-    @model_validator(mode="after")
-    def check(self):
-        if self.kind == "Leave":
-            if not (self.dateTo and self.days and self.leaveType):
-                raise ValueError("Leave needs days, leave type and the To date")
-            if self.dateTo < self.dateFrom:
-                raise ValueError("To date must be on or after From date")
-        elif not (self.timeFrom and self.timeTo) or self.timeTo <= self.timeFrom:
-            raise ValueError("Permission needs Time From before Time To")
-        return self
-
-
-class DecisionIn(BaseModel):
-    status: Literal["Approved", "Rejected"]
-
-
-def _clean(r: dict) -> dict:
-    r.pop("_id", None)
-    return r
-
-
-@router.get("/leave-requests")
-def list_leave(scope: Literal["mine", "all"] = "mine", me: dict = Depends(current_user)):
-    q = {} if scope == "all" and me["role"] in HR_ROLES else {"userId": me["userId"]}
-    return [_clean(r) for r in db.leave_requests.find(q).sort("createdAt", -1)]
-
-
-@router.post("/leave-requests", status_code=201)
-def create_leave(body: LeaveIn, me: dict = Depends(current_user)):
-    doc = {
-        **body.model_dump(mode="json", exclude_none=True),
-        "id": f"LR-{db.next_seq('leave_request'):04d}",
-        "userId": me["userId"],
-        "employeeCode": me["code"],
-        "employeeName": me["name"],
-        "designation": me.get("designation", ""),
-        "status": "Pending",
-        "createdAt": now(),
-    }
-    db.leave_requests.insert_one(doc)
-    return _clean(doc)
-
-
-@router.post("/leave-requests/{req_id}/decision")
-def decide_leave(req_id: str, body: DecisionIn, me: dict = Depends(require_roles("MANAGER", "ADMIN"))):
-    res = db.leave_requests.find_one_and_update({"id": req_id}, {"$set": {"status": body.status, "decidedBy": me["name"], "decidedAt": now()}}, return_document=True)
-    if not res:
-        raise HTTPException(404, "Request not found")
-    return _clean(res)

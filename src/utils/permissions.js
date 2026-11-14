@@ -15,7 +15,7 @@ export const PEOPLE_VIEW_ROLES = [ROLES.HR, ROLES.ADMIN, ROLES.MANAGER];
 
 /**
  * Menu (tab) access set by the Manager in Master › Role Access. The server sends `user.sections`
- * ({ master, admin, hr, faculty, myWork }); the Manager always has every menu.
+ * ({ master, admin, hr, faculty, labSupport, ... }); the Manager always has every menu.
  */
 const SECTION_DEFAULTS = { master: MASTER_ROLES, admin: MASTER_ROLES };
 export const hasSection = (user, key) => {
@@ -32,6 +32,5 @@ export const sectionForPath = (path) => {
   if (path.startsWith('/admin')) return 'admin';
   if (path.startsWith('/hr-report')) return 'hr';
   if (path.startsWith('/faculty') || path.startsWith('/entries')) return 'faculty';
-  if (path.startsWith('/my-work')) return 'myWork';
   return null;
 };

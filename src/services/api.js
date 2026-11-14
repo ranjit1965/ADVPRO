@@ -76,13 +76,13 @@ export async function deleteUser(userId) {
   return request(`/users/${encodeURIComponent(userId)}`, { method: 'DELETE' });
 }
 
-/** Roles for the Employee form (built-in + added by the Manager). */
+/** Roles for the Employee form, from the roles table: [{ key, label }]. */
 export async function getRoles() {
   return request('/access/roles');
 }
 
-export async function addRole(name) {
-  return request('/access/roles', { method: 'POST', body: { name } });
+export async function addRole(name, description = '') {
+  return request('/access/roles', { method: 'POST', body: { name, description } });
 }
 
 export async function deleteRole(role) {
@@ -142,6 +142,20 @@ export async function addLookupValue(kind, value) {
 /** "Add course" on the Learning tab: any signed-in user can add a missing course. Returns { id, name }. */
 export async function addCourse(course) {
   return request('/lookups/courses', { method: 'POST', body: course });
+}
+
+/** Class tab "Request Batch No": saved, emailed and sent on WhatsApp to Manager / Admin. Returns { id, emailedTo, whatsappTo }. */
+export async function requestBatch(body) {
+  return request('/batch-requests', { method: 'POST', body });
+}
+
+/** Master › Course: pending Batch No requests. */
+export async function getBatchRequests(status = 'Pending') {
+  return request('/batch-requests', { params: { status } });
+}
+
+export async function setBatchRequestStatus(id, status) {
+  return request(`/batch-requests/${encodeURIComponent(id)}`, { method: 'PATCH', body: { status } });
 }
 
 /** Class tab "Request new course": saved and emailed to every Manager and Admin. Returns { id, emailedTo }. */
@@ -211,31 +225,8 @@ export async function deleteMasterRecords(key, ids) {
   return request(`/masters/${key}/delete-many`, { method: 'POST', body: { ids } });
 }
 
-/* -------------------------------------------- Scheduling (work assignment) */
-// Admin and Manager assign work to employees and faculty; each person sees and
-// updates the progress of their own work under My Work.
-
-/** GET /api/work-assignments?scope=mine|all */
-export async function getWorkAssignments(scope = 'mine') {
-  return request('/work-assignments', { params: { scope } });
-}
-
-/** POST /api/work-assignments: one assignment per person in `assignees` (user IDs). */
-export async function createWorkAssignments({ assignees, ...work }) {
-  return request('/work-assignments', { method: 'POST', body: { assignees, ...work } });
-}
-
-/** PUT /api/work-assignments/{id}: Admin/Manager edit everything; the assignee updates status and note. */
-export async function updateWorkAssignment(id, patch) {
-  return request(`/work-assignments/${id}`, { method: 'PUT', body: patch });
-}
-
-export async function deleteWorkAssignment(id) {
-  return request(`/work-assignments/${id}`, { method: 'DELETE' });
-}
-
 /* ------------------------------------------------------------ HR_Report */
-// HR Policy, Your Info, Batch Paper Completion and Leave/Permission Form.
+// HR Policy and Your Info.
 
 export const HR_ROLES = ['HR', 'MANAGER', 'ADMIN'];
 
@@ -258,26 +249,6 @@ export async function getEmployeeInfo(userId) {
 /** PUT /api/hr/info/{userId} (HR, Manager, Admin) */
 export async function saveEmployeeInfo(userId, patch) {
   return request(`/hr/info/${encodeURIComponent(userId)}`, { method: 'PUT', body: patch });
-}
-
-/** GET /api/hr/batch-completion?facultyCode= : first and last class date per faculty, batch and course. */
-export async function getBatchCompletion({ facultyCode } = {}) {
-  return request('/hr/batch-completion', { params: { facultyCode } });
-}
-
-/** GET /api/hr/leave-requests?scope=mine|all */
-export async function getLeaveRequests(scope = 'mine') {
-  return request('/hr/leave-requests', { params: { scope } });
-}
-
-/** POST /api/hr/leave-requests */
-export async function createLeaveRequest(body) {
-  return request('/hr/leave-requests', { method: 'POST', body });
-}
-
-/** POST /api/hr/leave-requests/{id}/decision (Manager): sanction or reject. */
-export async function decideLeaveRequest(id, status) {
-  return request(`/hr/leave-requests/${id}/decision`, { method: 'POST', body: { status } });
 }
 
 /* ------------------------------------------------------- Daily activity */

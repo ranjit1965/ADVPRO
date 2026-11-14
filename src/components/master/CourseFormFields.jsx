@@ -1,20 +1,12 @@
 import Input from '../ui/Input';
 
 /**
- * Course form in the CourseMaster column order: CourseId, CourseName, InstalmentAmt, LumpsumAmt,
- * Status, TotalHrs, InsAmt, LumpAmt, CourseStatus. The first three are required.
- * Used by Master › Course and by "Add course" on the Learning tab.
+ * Course form: Course ID and Course Name only (both required). Chapters (Chapter No, Chapter Name)
+ * are added per course in Master › Course. Used by Master › Course and "Add course" on the Learning tab.
  */
 export const COURSE_FIELDS = [
   { key: 'id', label: 'Course ID', required: true, placeholder: 'e.g. ADCH&N', wide: false },
   { key: 'name', label: 'Course Name', required: true, placeholder: 'e.g. ADVANCED DIPLOMA IN COMPUTER HARDWARE & NETWORKING', wide: true },
-  { key: 'instalmentAmt', label: 'Instalment Amt', required: true, number: true },
-  { key: 'lumpsumAmt', label: 'Lumpsum Amt', number: true },
-  { key: 'status', label: 'Status' },
-  { key: 'totalHrs', label: 'Total Hrs', number: true },
-  { key: 'insAmt', label: 'Ins Amt', number: true },
-  { key: 'lumpAmt', label: 'Lump Amt', number: true },
-  { key: 'courseStatus', label: 'Course Status' },
 ];
 
 export const EMPTY_COURSE = Object.fromEntries(COURSE_FIELDS.map((f) => [f.key, '']));

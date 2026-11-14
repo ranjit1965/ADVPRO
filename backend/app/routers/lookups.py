@@ -49,11 +49,8 @@ def get_lookups(_: dict = Depends(current_user)):
         }
         for b in db.db.master_batches.find({"batchNo": {"$nin": [None, ""]}, "$or": [{"status": {"$ne": "Completed"}}, {"startDate": {"$gte": recent}}]}, {"_id": 0})
     ]
-    out["advproNos"] = [a["advproNo"] for a in db.db.master_assets.find({}, {"advproNo": 1}).sort("advproNo")]
-    out["registerNos"] = [r["regNo"] for r in db.db.master_registrations.find({}, {"regNo": 1}).sort("regNo")]
-    out["vendors"] = [v["vendorName"] for v in db.db.master_vendors.find({}, {"vendorName": 1}).sort("vendorName")]
     out["courses"] = list(db.courses.find({}, {"_id": 0, "createdBy": 0, "createdAt": 0}).sort("id"))
-    out["chapters"] = list(db.chapters.find({}, {"_id": 0}).sort([("courseId", 1), ("no", 1)]))
+    out["chapters"] = [{**c, "name": c.get("name") or c.get("details", "")} for c in db.chapters.find({}, {"_id": 0}).sort([("courseId", 1), ("no", 1)])]
     return out
 
 

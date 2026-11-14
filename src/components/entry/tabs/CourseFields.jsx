@@ -50,7 +50,7 @@ export default function CourseFields({ f, values, set, setMany, lookups, onAddCo
           className={chapterClass}
           sort={false}
           placeholder={values.courseId ? 'Select' : 'Course first'}
-          options={courseChapters.map((c) => ({ value: String(c.no), label: `Chapter ${c.no}` }))}
+          options={courseChapters.map((c) => ({ value: String(c.no), label: c.name ? `${c.no} · ${c.name}` : `Chapter ${c.no}` }))}
           {...f('chapterNo')}
         />
       )}

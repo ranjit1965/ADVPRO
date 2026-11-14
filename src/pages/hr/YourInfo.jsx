@@ -23,7 +23,7 @@ const Row = ({ label, children }) => (
   </tr>
 );
 
-/** HR_Report › Your Info: PF / bank account, leave balance, permissions, absent days and monthly ratings. */
+/** HR_Report › Your Info: PF / bank account, leave allotted, absent days and monthly ratings. */
 export default function YourInfo() {
   const { user } = useAuth();
   const toast = useToast();
@@ -98,15 +98,10 @@ export default function YourInfo() {
                 <tr><th /><th className="w-20 pb-1 font-semibold">EL</th><th className="w-20 pb-1 font-semibold">CL</th></tr>
               </thead>
               <tbody>
-                <Row label="No of Days Leave Available">
-                  <td className="border border-danger-500/60 text-center font-bold text-success-700">{d.el.available}</td>
-                  <td className="border border-danger-500/60 text-center font-bold text-success-700">{d.cl.available}</td>
+                <Row label="No of Days Leave Allotted">
+                  <td className="border border-danger-500/60 text-center font-bold text-success-700">{d.elAllotted}</td>
+                  <td className="border border-danger-500/60 text-center font-bold text-success-700">{d.clAllotted}</td>
                 </Row>
-                <Row label="No of Days Leave Taken">
-                  <td className="border border-danger-500/60 text-center font-bold text-danger-700">{d.el.taken}</td>
-                  <td className="border border-danger-500/60 text-center font-bold text-danger-700">{d.cl.taken}</td>
-                </Row>
-                <Row label="No of Days Permissions"><td colSpan={2} className="border border-danger-500/60 text-center font-bold text-success-700">{d.permissions}</td></Row>
                 <Row label="No of Days Absent"><td colSpan={2} className="border border-danger-500/60 text-center font-bold text-success-700">{d.absentDays}</td></Row>
               </tbody>
             </table>

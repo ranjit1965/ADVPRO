@@ -97,11 +97,8 @@ class MarksIn(BaseModel):
 @router.get("/student-marks")
 def get_marks(batchNo: str, courseId: str, examType: str, _: dict = Depends(current_user)):
     saved = (db.marks.find_one({"batchNo": batchNo, "courseId": courseId, "examType": examType}) or {}).get("marks", {})
-    # Students are the Master › Registration records of the batch.
-    students = [
-        {"regNo": r["regNo"], "name": r.get("studentName", "")}
-        for r in db.db.master_registrations.find({"batchNo": batchNo, "status": {"$ne": "Dropped"}}).sort("regNo")
-    ]
+    # Master › Registration was removed (v46): only students whose marks were saved before are listed.
+    students = [{"regNo": reg, "name": ""} for reg in sorted(saved)]
     return [{**s, "marks": saved.get(s["regNo"], ""), "absent": saved.get(s["regNo"]) == "AB"} for s in students]
 
 

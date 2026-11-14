@@ -10,7 +10,7 @@ export default function SystemFaultTab({ values, errors, set, lookups }) {
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-12">
       <Select label="Product Type" className="lg:col-span-3" options={lookups.productTypes} {...f('productType')} />
       <Select label="Location" className="lg:col-span-3" options={lookups.locations} {...f('location')} />
-      <Select label="Advpro No" className="lg:col-span-3" options={lookups.advproNos} {...f('advproNo')} />
+      <Select label="Advpro No" className="lg:col-span-3" options={lookups.advproNos || []} {...f('advproNo')} />
       <Input label="Product No" className="lg:col-span-3" placeholder="Serial / asset number" {...f('productNo')} />
       <Input label="Fault / Error" className="lg:col-span-9" {...f('faultError')} />
       <Select label="Status" className="lg:col-span-3" options={FAULT_STATUS} {...f('faultStatus')} />
