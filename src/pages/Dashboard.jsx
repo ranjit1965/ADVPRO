@@ -1,5 +1,5 @@
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { AlarmClock, CheckCircle2, ClipboardList, Clock3, FilePlus2, FileText, ListChecks, Printer, CalendarRange, AlertTriangle, ArrowRight } from 'lucide-react';
+import { AlarmClock, CheckCircle2, ClipboardList, Clock3, FilePlus2, FileText, ListChecks, Printer, AlertTriangle, ArrowRight } from 'lucide-react';
 import PageHeader from '../components/ui/PageHeader';
 import StatCard from '../components/ui/StatCard';
 import Card from '../components/ui/Card';
@@ -25,7 +25,6 @@ const QUICK_ACTIONS = [
   { label: 'New daily entry', icon: FilePlus2, to: '/faculty/daily-activity/entry' },
   { label: 'My entries', icon: ListChecks, to: '/faculty/daily-activity/history' },
   { label: 'Print activity', icon: Printer, to: '/faculty/daily-activity/print' },
-  { label: 'Monthly plan', icon: CalendarRange, to: '/faculty/monthly-plan' },
   { label: 'Monthly report', icon: FileText, to: '/faculty/reports/monthly' },
 ];
 

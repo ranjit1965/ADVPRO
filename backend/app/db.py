@@ -8,14 +8,13 @@ db = client[settings.mongodb_db]
 users = db.users
 entries = db.daily_entries
 lookups = db.lookups  # one document per list: {_id: "colleges", values: [...]}
-plans = db.monthly_plans
 marks = db.student_marks
 otps = db.manager_otps
 counters = db.counters
 notifications = db.notifications
 courses = db.courses
-leave_requests = db.leave_requests
 chapters = db.chapters
+deleted_users = db.deleted_users  # employees deleted in Master › Employees, can be restored
 
 
 def ensure_indexes() -> None:
@@ -26,24 +25,17 @@ def ensure_indexes() -> None:
     entries.create_index("activityDate")
     db.biometric_days.create_index([("code", ASCENDING), ("date", ASCENDING)])
     db.biometric_days.create_index("date")
-    plans.create_index("id", unique=True)
-    plans.create_index("month")
-    plans.create_index("assignedTo")
     marks.create_index([("batchNo", ASCENDING), ("courseId", ASCENDING), ("examType", ASCENDING)], unique=True)
-    for key in ("registrations", "batches", "attendance", "products", "oldRegistrations", "vendors", "assets"):
+    for key in ("batches",):
         db[f"master_{key}"].create_index("id", unique=True)
-    db.work_assignments.create_index("id", unique=True)
-    db.work_assignments.create_index("assignedTo")
-    leave_requests.create_index("id", unique=True)
     db.halfyearly_reports.create_index("id", unique=True)
     db.halfyearly_reports.create_index("employeeCode")
-    for key in ("registrations", "batches", "attendance", "products", "oldRegistrations", "vendors", "assets"):
+    for key in ("batches",):
         db[f"master_{key}"].create_index("id", unique=True)
-    db.work_assignments.create_index("id", unique=True)
-    db.work_assignments.create_index("assignedTo")
-    leave_requests.create_index([("userId", ASCENDING), ("createdAt", ASCENDING)])
     courses.create_index("id", unique=True)
     chapters.create_index([("courseId", ASCENDING), ("no", ASCENDING)], unique=True)
+    db.deleted_records.create_index("owner")
+    db.batch_requests.create_index("id", unique=True)
     otps.create_index("expiresAt", expireAfterSeconds=0)  # Mongo removes expired codes
 
 

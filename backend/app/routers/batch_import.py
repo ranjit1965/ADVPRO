@@ -18,10 +18,10 @@ from .. import db
 from ..batch_files import BatchRow, read_rows
 from ..biometric_files import rows_from_upload
 from ..config import settings
-from ..security import require_roles
+from ..security import require_section, require_roles
 
 router = APIRouter(prefix="/batch-import", tags=["batch-import"])
-master_roles = require_roles("MANAGER", "ADMIN")
+master_roles = require_section("master", "admin")  # Master or Admin (Data Upload) menu
 SETTINGS_ID = "batchImport"
 CLOSE_AFTER_DAYS = 60  # a batch whose end date is older than this is counted as Completed
 CLASS_TYPES = {"weekdays": "WeekDays", "weekday": "WeekDays", "weekend": "WeekEnd", "weekends": "WeekEnd"}

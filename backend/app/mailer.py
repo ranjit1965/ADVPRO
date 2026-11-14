@@ -43,6 +43,17 @@ def send_mail(to: list[str] | str, subject: str, text: str, reply_to: str | None
     log.info("Mail '%s' sent to %s", subject, ", ".join(recipients))
 
 
+def send_reset_otp(to: str, name: str, code: str) -> None:
+    """Emails the 6-digit code for the manager's Forgot password."""
+    send_mail(
+        to,
+        "Daily Entry Report: password reset code",
+        f"Hello {name},\n\nYour password reset code is {code}.\n"
+        f"It expires in {settings.otp_expire_minutes} minutes.\n\n"
+        "If you did not ask to reset your password, ignore this email; your password stays the same.",
+    )
+
+
 def send_otp(to: str, name: str, code: str) -> None:
     """Emails the 6-digit manager sign-up code."""
     send_mail(

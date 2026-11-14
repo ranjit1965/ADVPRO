@@ -12,7 +12,6 @@ import EntryHistory from './pages/EntryHistory';
 import EntryDetails from './pages/EntryDetails';
 import DailyActivityPrint from './pages/DailyActivityPrint';
 import Reports from './pages/Reports';
-import MonthlyPlan from './pages/MonthlyPlan';
 import StudentsMarkEntry from './pages/StudentsMarkEntry';
 import Settings from './pages/Settings';
 import ManagerSetup from './pages/ManagerSetup';
@@ -20,23 +19,25 @@ import Users from './pages/Users';
 import Master from './pages/Master';
 import MasterHome from './pages/master/MasterHome';
 import MasterList from './pages/master/MasterList';
-import Scheduling from './pages/master/Scheduling';
 import Biometric from './pages/master/Biometric';
 import BatchImport from './pages/master/BatchImport';
 import DataUpload from './pages/admin/DataUpload';
-import MyWork from './pages/MyWork';
 import HrPolicy from './pages/hr/HrPolicy';
 import YourInfo from './pages/hr/YourInfo';
-import BatchCompletion from './pages/hr/BatchCompletion';
-import LeaveForm from './pages/hr/LeaveForm';
 import HalfyearlyReport from './pages/hr/HalfyearlyReport';
 import NotFound from './pages/NotFound';
+import RoleAccess from './pages/master/RoleAccess';
+import DeletedEmployees from './pages/master/DeletedEmployees';
+import { hasSection, sectionForPath } from './utils/permissions';
 
 function RequireAuth({ children }) {
   const { user, checking } = useAuth();
   const location = useLocation();
   if (checking) return <PageLoader label="Checking session…" />;
   if (!user) return <Navigate to="/login" replace state={{ from: location }} />;
+  // A menu the Manager turned off for this role (Master › Role Access) cannot be opened by its address either.
+  const section = sectionForPath(location.pathname);
+  if (section && ![].concat(section).some((s) => hasSection(user, s))) return <Navigate to="/" replace />;
   return children;
 }
 
@@ -63,24 +64,22 @@ export default function App() {
               <Route path="faculty/daily-activity/history" element={<EntryHistory />} />
               <Route path="faculty/daily-activity/print" element={<DailyActivityPrint />} />
               <Route path="entries/:id" element={<EntryDetails />} />
-              <Route path="faculty/monthly-plan" element={<MonthlyPlan />} />
               <Route path="faculty/students-mark-entry" element={<StudentsMarkEntry />} />
               <Route path="faculty/reports/:type" element={<Reports />} />
               <Route path="faculty/others" element={<Navigate to="/faculty/daily-activity/entry?type=others" replace />} />
               <Route path="master" element={<MasterHome />} />
               <Route path="master/courses" element={<Master />} />
               <Route path="master/employees" element={<Users />} />
-              <Route path="master/scheduling" element={<Scheduling />} />
               <Route path="master/biometric" element={<Biometric />} />
               <Route path="master/batch-import" element={<BatchImport />} />
+              <Route path="master/role-access" element={<RoleAccess />} />
+              <Route path="master/deleted-employees" element={<DeletedEmployees />} />
+              <Route path="master/deleted-employees/:userId" element={<DeletedEmployees />} />
               <Route path="master/:key" element={<MasterList />} />
               <Route path="admin/data-upload" element={<DataUpload />} />
-              <Route path="my-work" element={<MyWork />} />
               <Route path="hr-report" element={<Navigate to="/hr-report/policy" replace />} />
               <Route path="hr-report/policy" element={<HrPolicy />} />
               <Route path="hr-report/your-info" element={<YourInfo />} />
-              <Route path="hr-report/batch-paper-completion" element={<BatchCompletion />} />
-              <Route path="hr-report/leave-permission" element={<LeaveForm />} />
               <Route path="hr-report/halfyearly" element={<HalfyearlyReport />} />
               <Route path="users" element={<Navigate to="/master/employees" replace />} />
               <Route path="settings" element={<Settings />} />

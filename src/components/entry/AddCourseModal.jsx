@@ -1,38 +1,29 @@
 import { useEffect, useState } from 'react';
 import Modal from '../ui/Modal';
-import Input from '../ui/Input';
 import Button from '../ui/Button';
-
-const EMPTY = { id: '', name: '' };
+import CourseFormFields, { EMPTY_COURSE, courseBody, validateCourse } from '../master/CourseFormFields';
 
 /** "Add course" from the Learning tab. The course is saved to the Master course list and selected in the form. */
 export default function AddCourseModal({ open, onClose, onSubmit }) {
-  const [form, setForm] = useState(EMPTY);
+  const [form, setForm] = useState(EMPTY_COURSE);
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (open) {
-      setForm(EMPTY);
+      setForm(EMPTY_COURSE);
       setErrors({});
     }
   }, [open]);
 
-  const change = (k) => (e) => {
-    setForm((p) => ({ ...p, [k]: k === 'id' ? e.target.value.toUpperCase().replace(/\s/g, '') : e.target.value }));
-    setErrors((x) => ({ ...x, [k]: undefined, form: undefined }));
-  };
-
   const submit = async (e) => {
     e?.preventDefault();
-    const errs = {};
-    if (!/^[A-Z0-9+#._-]{2,20}$/.test(form.id)) errs.id = '2 to 20 letters or numbers, no spaces';
-    if (!form.name.trim()) errs.name = 'Enter the course name';
+    const errs = validateCourse(form);
     setErrors(errs);
     if (Object.keys(errs).length) return;
     setSaving(true);
     try {
-      await onSubmit({ id: form.id, name: form.name.trim() });
+      await onSubmit(courseBody(form));
     } catch (err) {
       setErrors({ form: err.message });
     } finally {
@@ -45,8 +36,8 @@ export default function AddCourseModal({ open, onClose, onSubmit }) {
       open={open}
       onClose={onClose}
       title="Add course"
-      description="The course is added to the course list and selected in the form."
-      size="sm"
+      description="Course ID, Course Name and Instalment Amt are required. The course is added to the course list and selected in the form."
+      size="lg"
       footer={
         <>
           <Button variant="secondary" onClick={onClose}>
@@ -59,8 +50,7 @@ export default function AddCourseModal({ open, onClose, onSubmit }) {
       }
     >
       <form onSubmit={submit} className="space-y-4">
-        <Input label="Course ID" required placeholder="e.g. DEVOPS" maxLength={20} value={form.id} error={errors.id} onChange={change('id')} hint="Short code shown in reports" />
-        <Input label="Course Name" required placeholder="e.g. DevOps with AWS" maxLength={120} value={form.name} error={errors.name} onChange={change('name')} />
+        <CourseFormFields form={form} errors={errors} onChange={(f) => { setForm(f); setErrors({}); }} />
         {errors.form && <p className="text-[13px] text-danger-600">{errors.form}</p>}
         <button type="submit" className="hidden" aria-hidden tabIndex={-1} />
       </form>

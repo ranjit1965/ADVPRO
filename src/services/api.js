@@ -48,6 +48,16 @@ export async function verifyManagerOtp({ email, otp, name, userId, password }) {
   return request('/auth/manager/verify', { method: 'POST', body: { email, otp, name, userId, password } });
 }
 
+/** POST /api/auth/forgot-password/request-otp: emails a reset code to the manager's email on record. -> { email (masked) } */
+export async function requestPasswordResetOtp(userId) {
+  return request('/auth/forgot-password/request-otp', { method: 'POST', body: { userId } });
+}
+
+/** POST /api/auth/forgot-password/reset: checks the code and sets the manager's new password. */
+export async function resetPasswordWithOtp({ userId, otp, newPassword }) {
+  return request('/auth/forgot-password/reset', { method: 'POST', body: { userId, otp, newPassword } });
+}
+
 /* --------------------------------------------------- Employees (Master › Employees: Manager and Admin) */
 
 export async function getUsers() {
@@ -64,6 +74,53 @@ export async function updateUser(userId, patch) {
 
 export async function deleteUser(userId) {
   return request(`/users/${encodeURIComponent(userId)}`, { method: 'DELETE' });
+}
+
+/** Roles for the Employee form, from the roles table: [{ key, label }]. */
+export async function getRoles() {
+  return request('/access/roles');
+}
+
+export async function addRole(name, description = '') {
+  return request('/access/roles', { method: 'POST', body: { name, description } });
+}
+
+export async function deleteRole(role) {
+  return request(`/access/roles/${encodeURIComponent(role)}`, { method: 'DELETE' });
+}
+
+/** One deleted employee with their saved entries, leave, work and halfyearly records. */
+export async function getDeletedUser(userId) {
+  return request(`/users/deleted/${encodeURIComponent(userId)}`);
+}
+
+/** Deleted employees (moved here by Delete), newest first. */
+export async function getDeletedUsers() {
+  return request('/users/deleted/list');
+}
+
+/** Bring a deleted employee back (active again). */
+export async function restoreUser(userId) {
+  return request(`/users/deleted/${encodeURIComponent(userId)}/restore`, { method: 'POST' });
+}
+
+/** Master › Role Access (Manager): which menus each role may open. */
+export async function getRoleAccess() {
+  return request('/access');
+}
+
+export async function saveRoleAccess(roles) {
+  return request('/access', { method: 'PUT', body: { roles } });
+}
+
+/** Missing-entry check: who would be made inactive now, its settings and last run. */
+export async function getAutoInactive() {
+  return request('/users/auto-inactive');
+}
+
+/** Run the missing-entry check now (it also runs by itself every day). */
+export async function runAutoInactive() {
+  return request('/users/auto-inactive/run', { method: 'POST' });
 }
 
 export async function getNotifications() {
@@ -85,6 +142,20 @@ export async function addLookupValue(kind, value) {
 /** "Add course" on the Learning tab: any signed-in user can add a missing course. Returns { id, name }. */
 export async function addCourse(course) {
   return request('/lookups/courses', { method: 'POST', body: course });
+}
+
+/** Class tab "Request Batch No": saved, emailed and sent on WhatsApp to Manager / Admin. Returns { id, emailedTo, whatsappTo }. */
+export async function requestBatch(body) {
+  return request('/batch-requests', { method: 'POST', body });
+}
+
+/** Master › Course: pending Batch No requests. */
+export async function getBatchRequests(status = 'Pending') {
+  return request('/batch-requests', { params: { status } });
+}
+
+export async function setBatchRequestStatus(id, status) {
+  return request(`/batch-requests/${encodeURIComponent(id)}`, { method: 'PATCH', body: { status } });
 }
 
 /** Class tab "Request new course": saved and emailed to every Manager and Admin. Returns { id, emailedTo }. */
@@ -154,31 +225,8 @@ export async function deleteMasterRecords(key, ids) {
   return request(`/masters/${key}/delete-many`, { method: 'POST', body: { ids } });
 }
 
-/* -------------------------------------------- Scheduling (work assignment) */
-// Admin and Manager assign work to employees and faculty; each person sees and
-// updates the progress of their own work under My Work.
-
-/** GET /api/work-assignments?scope=mine|all */
-export async function getWorkAssignments(scope = 'mine') {
-  return request('/work-assignments', { params: { scope } });
-}
-
-/** POST /api/work-assignments: one assignment per person in `assignees` (user IDs). */
-export async function createWorkAssignments({ assignees, ...work }) {
-  return request('/work-assignments', { method: 'POST', body: { assignees, ...work } });
-}
-
-/** PUT /api/work-assignments/{id}: Admin/Manager edit everything; the assignee updates status and note. */
-export async function updateWorkAssignment(id, patch) {
-  return request(`/work-assignments/${id}`, { method: 'PUT', body: patch });
-}
-
-export async function deleteWorkAssignment(id) {
-  return request(`/work-assignments/${id}`, { method: 'DELETE' });
-}
-
 /* ------------------------------------------------------------ HR_Report */
-// HR Policy, Your Info, Batch Paper Completion and Leave/Permission Form.
+// HR Policy and Your Info.
 
 export const HR_ROLES = ['HR', 'MANAGER', 'ADMIN'];
 
@@ -201,26 +249,6 @@ export async function getEmployeeInfo(userId) {
 /** PUT /api/hr/info/{userId} (HR, Manager, Admin) */
 export async function saveEmployeeInfo(userId, patch) {
   return request(`/hr/info/${encodeURIComponent(userId)}`, { method: 'PUT', body: patch });
-}
-
-/** GET /api/hr/batch-completion?facultyCode= : first and last class date per faculty, batch and course. */
-export async function getBatchCompletion({ facultyCode } = {}) {
-  return request('/hr/batch-completion', { params: { facultyCode } });
-}
-
-/** GET /api/hr/leave-requests?scope=mine|all */
-export async function getLeaveRequests(scope = 'mine') {
-  return request('/hr/leave-requests', { params: { scope } });
-}
-
-/** POST /api/hr/leave-requests */
-export async function createLeaveRequest(body) {
-  return request('/hr/leave-requests', { method: 'POST', body });
-}
-
-/** POST /api/hr/leave-requests/{id}/decision (Manager): sanction or reject. */
-export async function decideLeaveRequest(id, status) {
-  return request(`/hr/leave-requests/${id}/decision`, { method: 'POST', body: { status } });
 }
 
 /* ------------------------------------------------------- Daily activity */
@@ -318,26 +346,6 @@ export async function getMonthlyReport({ month, facultyCode, activityType, facul
 /** GET /api/reports/working-hours?month=YYYY-MM */
 export async function getWorkingHoursReport({ month, facultyCode }) {
   return request('/reports/working-hours', { params: { month, facultyCode } });
-}
-
-/* ----------------------------------------------------- Monthly plan */
-// Admin and Manager assign monthly plans to employees and faculty. Everyone else
-// sees only the plans assigned to them and updates the status and a note.
-
-export const PLAN_STATUS = ['Pending', 'In Progress', 'Completed'];
-
-/** GET /api/monthly-plans?month=YYYY-MM&scope=mine|all */
-export async function getMonthlyPlans(month, scope = 'mine') {
-  return request('/monthly-plans', { params: { month, scope } });
-}
-
-/** POST /api/monthly-plans (one plan per user in `assignees`) or PUT /api/monthly-plans/{id}. */
-export async function saveMonthlyPlan({ assignees, ...plan }) {
-  return plan.id ? request(`/monthly-plans/${plan.id}`, { method: 'PUT', body: plan }) : request('/monthly-plans', { method: 'POST', body: { ...plan, assignees } });
-}
-
-export async function deleteMonthlyPlan(id) {
-  return request(`/monthly-plans/${id}`, { method: 'DELETE' });
 }
 
 /* -------------------------------------------------- Students mark entry */

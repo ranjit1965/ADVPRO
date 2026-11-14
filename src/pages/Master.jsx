@@ -5,8 +5,6 @@ import PageHeader from '../components/ui/PageHeader';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
-import Select from '../components/ui/Select';
-import Textarea from '../components/ui/Textarea';
 import Modal from '../components/ui/Modal';
 import DataTable from '../components/ui/DataTable';
 import EmptyState from '../components/ui/EmptyState';
@@ -15,12 +13,13 @@ import { useAuth } from '../context/AuthContext';
 import { useLookups } from '../context/LookupsContext';
 import { useToast } from '../context/ToastContext';
 import { useConfirm } from '../context/ConfirmContext';
-import { canAccess, MASTER_ROLES } from '../utils/permissions';
+import { canManage } from '../utils/permissions';
 import { cn } from '../utils/cn';
 import { useAsync } from '../hooks/useAsync';
 import { formatDateTime } from '../utils/format';
+import CourseFormFields, { EMPTY_COURSE, courseBody, courseToForm, validateCourse } from '../components/master/CourseFormFields';
 
-const EMPTY_CHAPTER = { no: '', type: '', details: '' };
+const EMPTY_CHAPTER = { no: '', name: '' };
 
 /** Master › Courses & Chapters: the course list and the chapter / session details the Class tab fills in. */
 export default function Master() {
@@ -34,12 +33,13 @@ export default function Master() {
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
 
-  const requests = useAsync(() => (canAccess(user, MASTER_ROLES) ? api.getCourseRequests() : Promise.resolve([])), []);
+  const requests = useAsync(() => (canManage(user) ? api.getCourseRequests() : Promise.resolve([])), []);
+  const batchRequests = useAsync(() => (canManage(user) ? api.getBatchRequests() : Promise.resolve([])), []);
   const courses = lookups?.courses ?? [];
   const courseId = selected || courses[0]?.id || '';
   const chapters = useMemo(() => (lookups?.chapters ?? []).filter((c) => c.courseId === courseId).sort((a, b) => a.no - b.no), [lookups, courseId]);
 
-  if (!canAccess(user, MASTER_ROLES)) {
+  if (!canManage(user)) {
     return (
       <>
         <PageHeader title="Master" />
@@ -65,13 +65,12 @@ export default function Master() {
   };
 
   const saveCourse = async () => {
-    const errs = {};
-    if (!/^[A-Za-z0-9+#._-]{2,20}$/.test(courseForm.id)) errs.id = '2 to 20 letters or digits';
-    if (!courseForm.name.trim()) errs.name = 'Required';
+    const errs = validateCourse(courseForm);
     setErrors(errs);
     if (Object.keys(errs).length) return;
-    const id = courseForm.id.trim().toUpperCase();
-    if (await run(() => api.saveCourse({ id, name: courseForm.name.trim() }, courseForm.isNew), courseForm.isNew ? 'Course added.' : 'Course updated.')) {
+    const body = courseBody(courseForm);
+    const id = body.id;
+    if (await run(() => api.saveCourse(body, courseForm.isNew), courseForm.isNew ? 'Course added.' : 'Course updated.')) {
       setSelected(id);
       setCourseForm(null);
       requests.reload(); // a matching request is closed as Added by the server
@@ -86,11 +85,10 @@ export default function Master() {
   const saveChapter = async () => {
     const errs = {};
     if (!/^\d{1,3}$/.test(String(chapterForm.no)) || Number(chapterForm.no) < 1) errs.no = 'Enter a number';
-    if (!chapterForm.type) errs.type = 'Required';
-    if (!chapterForm.details.trim()) errs.details = 'Required';
+    if (!chapterForm.name.trim()) errs.name = 'Enter the chapter name';
     setErrors(errs);
     if (Object.keys(errs).length) return;
-    const ch = { courseId, no: Number(chapterForm.no), type: chapterForm.type, details: chapterForm.details.trim() };
+    const ch = { courseId, no: Number(chapterForm.no), name: chapterForm.name.trim() };
     if (await run(() => api.saveChapter(ch, chapterForm.originalNo), chapterForm.originalNo == null ? 'Chapter added.' : 'Chapter updated.')) setChapterForm(null);
   };
 
@@ -110,18 +108,28 @@ export default function Master() {
     }
   };
 
+  const closeBatchRequest = async (r, status) => {
+    if (status === 'Dismissed' && !(await confirm({ title: 'Dismiss request', message: `Dismiss ${r.requestedByName}'s Batch No request for ${r.courseId}?`, confirmLabel: 'Dismiss' }))) return;
+    try {
+      await api.setBatchRequestStatus(r.id, status);
+      toast.success(status === 'Done' ? 'Batch request marked done.' : 'Batch request dismissed.');
+      batchRequests.reload();
+    } catch (e) {
+      toast.error(e.message);
+    }
+  };
+
   const nextNo = chapters.reduce((m, c) => Math.max(m, c.no), 0) + 1;
   const columns = [
     { key: 'no', header: 'No', className: 'w-16' },
-    { key: 'type', header: 'Type', className: 'w-36' },
-    { key: 'details', header: 'Chapter / Session Details', className: 'whitespace-normal' },
+    { key: 'name', header: 'Chapter Name', className: 'whitespace-normal' },
     {
       key: 'actions',
       header: '',
       align: 'right',
       render: (c) => (
         <div className="flex justify-end gap-1">
-          <Button size="sm" variant="ghost" icon={Pencil} aria-label={`Edit chapter ${c.no}`} onClick={() => { setErrors({}); setChapterForm({ ...c, originalNo: c.no }); }} />
+          <Button size="sm" variant="ghost" icon={Pencil} aria-label={`Edit chapter ${c.no}`} onClick={() => { setErrors({}); setChapterForm({ no: String(c.no), name: c.name || '', originalNo: c.no }); }} />
           <Button size="sm" variant="ghost" icon={Trash2} aria-label={`Delete chapter ${c.no}`} onClick={() => removeChapter(c)} />
         </div>
       ),
@@ -131,7 +139,7 @@ export default function Master() {
 
   return (
     <>
-      <PageHeader title="Courses & Chapters" description="Courses and their chapter / session details. The Class entry fills these in automatically." breadcrumb={[{ label: 'Master', to: '/master' }, { label: 'Course' }]} />
+      <PageHeader title="Courses & Chapters" description="Courses (Course ID, Course Name) and their chapters (Chapter No, Chapter Name). The Class entry fills these in automatically." breadcrumb={[{ label: 'Master', to: '/master' }, { label: 'Course' }]} />
       {requests.data?.length > 0 && (
         <Card className="mb-5" title={`Course requests (${requests.data.length})`} description="Sent by faculty and employees from the Class entry. Add the course, or dismiss the request.">
           <ul className="divide-y divide-ink-100">
@@ -147,7 +155,7 @@ export default function Master() {
                     {r.notes ? ` · ${r.notes}` : ''}
                   </p>
                 </div>
-                <Button size="sm" icon={Plus} onClick={() => { setErrors({}); setCourseForm({ id: r.courseId || '', name: r.courseName, isNew: true }); }}>
+                <Button size="sm" icon={Plus} onClick={() => { setErrors({}); setCourseForm({ ...EMPTY_COURSE, id: r.courseId || '', name: r.courseName, isNew: true }); }}>
                   Add course
                 </Button>
                 <Button size="sm" variant="secondary" onClick={() => dismissRequest(r)}>
@@ -158,8 +166,31 @@ export default function Master() {
           </ul>
         </Card>
       )}
+      {batchRequests.data?.length > 0 && (
+        <Card className="mb-5" title={`Batch No requests (${batchRequests.data.length})`} description="Sent by faculty from the Class entry. Create the batch in Master › Batch or Batch Import, then mark the request Done.">
+          <ul className="divide-y divide-ink-100">
+            {batchRequests.data.map((r) => (
+              <li key={r.id} className="flex flex-wrap items-center gap-3 py-2.5">
+                <Mail className="size-4 shrink-0 text-brand-600" aria-hidden />
+                <div className="min-w-[220px] flex-1">
+                  <p className="text-[13px] font-medium text-ink-900">
+                    {r.courseId}{r.courseName ? ` – ${r.courseName}` : ''}
+                    {[r.startDate && `start ${r.startDate}`, r.batchTime, r.students != null && `${r.students} students`].filter(Boolean).map((t) => <span key={t} className="text-xs text-ink-500"> · {t}</span>)}
+                  </p>
+                  <p className="text-xs text-ink-500">
+                    {r.requestedByName} ({r.requestedByCode}) · {formatDateTime(r.createdAt)}
+                    {r.notes ? ` · ${r.notes}` : ''}
+                  </p>
+                </div>
+                <Button size="sm" onClick={() => closeBatchRequest(r, 'Done')}>Done</Button>
+                <Button size="sm" variant="secondary" onClick={() => closeBatchRequest(r, 'Dismissed')}>Dismiss</Button>
+              </li>
+            ))}
+          </ul>
+        </Card>
+      )}
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-[300px_1fr]">
-        <Card title="Courses" actions={<Button size="sm" icon={Plus} onClick={() => { setErrors({}); setCourseForm({ id: '', name: '', isNew: true }); }}>Add course</Button>} bodyClassName="p-2">
+        <Card title="Courses" actions={<Button size="sm" icon={Plus} onClick={() => { setErrors({}); setCourseForm({ ...EMPTY_COURSE, isNew: true }); }}>Add course</Button>} bodyClassName="p-2">
           {courses.length === 0 ? (
             <EmptyState icon={BookOpen} title="No courses yet" message="Add the first course." />
           ) : (
@@ -182,7 +213,7 @@ export default function Master() {
           actions={
             current && (
               <div className="flex flex-wrap gap-2">
-                <Button size="sm" variant="secondary" icon={Pencil} onClick={() => { setErrors({}); setCourseForm({ ...current, isNew: false }); }}>Edit course</Button>
+                <Button size="sm" variant="secondary" icon={Pencil} onClick={() => { setErrors({}); setCourseForm({ ...courseToForm(current), isNew: false }); }}>Edit course</Button>
                 <Button size="sm" variant="secondary" icon={Trash2} onClick={() => removeCourse(current)}>Delete course</Button>
                 <Button size="sm" icon={Plus} onClick={() => { setErrors({}); setChapterForm({ ...EMPTY_CHAPTER, no: String(nextNo), originalNo: null }); }}>Add chapter</Button>
               </div>
@@ -193,13 +224,10 @@ export default function Master() {
         </Card>
       </div>
 
-      <Modal open={!!courseForm} onClose={() => setCourseForm(null)} title={courseForm?.isNew ? 'Add course' : 'Edit course'}
+      <Modal open={!!courseForm} onClose={() => setCourseForm(null)} size="lg" title={courseForm?.isNew ? 'Add course' : 'Edit course'}
         footer={<><Button variant="secondary" onClick={() => setCourseForm(null)}>Cancel</Button><Button loading={saving} onClick={saveCourse}>Save</Button></>}>
         {courseForm && (
-          <div className="grid gap-4">
-            <Input label="Course ID" required value={courseForm.id} error={errors.id} readOnly={!courseForm.isNew} onChange={(e) => setCourseForm({ ...courseForm, id: e.target.value })} />
-            <Input label="Course name" required value={courseForm.name} error={errors.name} onChange={(e) => setCourseForm({ ...courseForm, name: e.target.value })} />
-          </div>
+          <CourseFormFields form={courseForm} errors={errors} idReadOnly={!courseForm.isNew} onChange={(f) => { setCourseForm(f); setErrors({}); }} />
         )}
       </Modal>
 
@@ -207,9 +235,8 @@ export default function Master() {
         footer={<><Button variant="secondary" onClick={() => setChapterForm(null)}>Cancel</Button><Button loading={saving} onClick={saveChapter}>Save</Button></>}>
         {chapterForm && (
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <Input label="Chapter / Session No" required inputMode="numeric" value={chapterForm.no} error={errors.no} onChange={(e) => setChapterForm({ ...chapterForm, no: e.target.value })} />
-            <Select label="Chap / Session Type" required options={lookups.chapterTypes} value={chapterForm.type} error={errors.type} onChange={(e) => setChapterForm({ ...chapterForm, type: e.target.value })} />
-            <Textarea label="Chap / Session Details" required className="sm:col-span-2" rows={4} maxLength={300} value={chapterForm.details} error={errors.details} onChange={(e) => setChapterForm({ ...chapterForm, details: e.target.value })} placeholder="What this chapter / session covers" />
+            <Input label="Chapter No" required inputMode="numeric" value={chapterForm.no} error={errors.no} onChange={(e) => setChapterForm({ ...chapterForm, no: e.target.value })} />
+            <Input label="Chapter Name" required className="sm:col-span-2" maxLength={300} value={chapterForm.name} error={errors.name} onChange={(e) => setChapterForm({ ...chapterForm, name: e.target.value })} placeholder="e.g. Introduction to Networking" />
           </div>
         )}
       </Modal>

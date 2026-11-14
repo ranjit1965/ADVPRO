@@ -13,6 +13,7 @@ import EntriesGrid from '../components/entry/EntriesGrid';
 import AddLookupModal from '../components/entry/AddLookupModal';
 import AddCourseModal from '../components/entry/AddCourseModal';
 import RequestCourseModal from '../components/entry/RequestCourseModal';
+import RequestBatchModal from '../components/entry/RequestBatchModal';
 import { TAB_COMPONENTS } from '../components/entry/tabs';
 import { useAuth } from '../context/AuthContext';
 import { usePreferences } from '../hooks/usePreferences';
@@ -56,6 +57,7 @@ export default function DailyEntry() {
   const [lookupModal, setLookupModal] = useState(null); // { kind, apply }
   const [courseModal, setCourseModal] = useState(null); // { apply }
   const [requestCourseOpen, setRequestCourseOpen] = useState(false);
+  const [requestBatch, setRequestBatch] = useState(null); // { courseId } while the Request Batch No form is open
   const [loadingEntry, setLoadingEntry] = useState(!!routeId);
   const formRef = useRef(null);
   // Time From of a new entry = Time To of the day's last entry. Remember what was auto-filled
@@ -354,6 +356,7 @@ export default function DailyEntry() {
               onAddLookup={openLookupModal}
               onAddCourse={openCourseModal}
               onRequestCourse={() => setRequestCourseOpen(true)}
+              onRequestBatch={(courseId) => setRequestBatch({ courseId })}
             />
           </div>
           <div className="border-t border-ink-100 bg-ink-50/60 px-5 py-3">
@@ -395,6 +398,7 @@ export default function DailyEntry() {
       <AddLookupModal kind={lookupModal?.kind} onClose={() => setLookupModal(null)} onSubmit={submitLookup} />
       <AddCourseModal open={!!courseModal} onClose={() => setCourseModal(null)} onSubmit={submitCourse} />
       <RequestCourseModal open={requestCourseOpen} onClose={() => setRequestCourseOpen(false)} />
+      {lookups && <RequestBatchModal open={!!requestBatch} courseId={requestBatch?.courseId} lookups={lookups} onClose={() => setRequestBatch(null)} />}
     </>
   );
 }

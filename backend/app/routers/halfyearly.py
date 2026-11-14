@@ -14,11 +14,11 @@ from pydantic import BaseModel, Field, model_validator
 
 from .. import db
 from ..schemas import Form
-from ..security import current_user, require_roles
+from ..security import require_section, current_user, require_roles
 from .hr import HR_ROLES
 
 router = APIRouter(prefix="/hr/halfyearly", tags=["halfyearly program report"])
-hr_only = require_roles(*HR_ROLES)
+hr_only = require_section("hr", roles=("HR", "ADMIN"))
 MONTH_RE = r"^\d{4}-(0[1-9]|1[0-2])$"
 QUARTERS = ("H1", "H2", "H3", "H4", "H5", "H6")
 col = db.db.halfyearly_reports

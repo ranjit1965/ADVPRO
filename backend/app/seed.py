@@ -7,6 +7,7 @@ from pathlib import Path
 from . import db
 from .mailer import smtp_configured
 from .routers.hr import DEFAULT_POLICY
+from .security import ensure_roles
 
 log = logging.getLogger("der.seed")
 DATA = json.loads((Path(__file__).parent / "seed_data.json").read_text())
@@ -32,6 +33,7 @@ def run() -> None:
         upsert=True,
     )
     migrate()
+    ensure_roles()  # roles collection (built-in roles + roles the Manager creates)
     if not smtp_configured():
         log.warning("SMTP is not configured: manager sign-up codes cannot be emailed until backend/.env has the SMTP_* settings.")
 

@@ -1,4 +1,4 @@
-"""Generic Master screens (Registration, Batch, Attendence, Product, Old Registrations, Vendor, Assest).
+"""Generic Master screens: Batch (Registration, Attendence, Product, Old Registrations, Vendor and Assest were removed in v46).
 
 Each master is described in masters.json (same file as src/config/masters.json) and stored in
 its own collection, master_<key>. Admin and Manager maintain them.
@@ -13,10 +13,10 @@ from fastapi import APIRouter, Body, Depends, HTTPException
 from pydantic import BaseModel, Field
 
 from .. import db
-from ..security import require_roles
+from ..security import require_section, require_roles
 
 router = APIRouter(prefix="/masters", tags=["masters"])
-master_roles = require_roles("MANAGER", "ADMIN")
+master_roles = require_section("master", "admin")  # Master or Admin menu ticked for the role
 MASTERS = {m["key"]: m for m in json.loads((Path(__file__).parent.parent / "masters.json").read_text())["masters"]}
 SYSTEM = {"id", "createdBy", "createdAt", "updatedBy", "updatedAt"}
 

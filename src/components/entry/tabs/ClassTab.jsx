@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { Mail } from 'lucide-react';
+import { Hash, Mail } from 'lucide-react';
 import Select from '../../ui/Select';
 import Input from '../../ui/Input';
 import RadioGroup from '../../ui/RadioGroup';
@@ -9,7 +9,7 @@ import OutstationFields from '../OutstationFields';
 import { makeField, courseOptions } from '../fieldProps';
 import { CLASS_CHECKS, DAY_ORDERS } from '../../../utils/entryForm';
 
-export default function ClassTab({ values, errors, set, setMany, lookups, facultyCode, facultyIn, outstation, outstationErrors, setOutstation, onAddLookup, onRequestCourse }) {
+export default function ClassTab({ values, errors, set, setMany, lookups, facultyCode, facultyIn, outstation, outstationErrors, setOutstation, onAddLookup, onRequestCourse, onRequestBatch }) {
   const f = makeField('class', values, errors, set);
   const outstationMode = facultyIn === 'Outstation';
 
@@ -63,9 +63,16 @@ export default function ClassTab({ values, errors, set, setMany, lookups, facult
             options={batchOptions}
             {...f('batchNo')}
             onChange={onBatch}
+            aside={
+              onRequestBatch && (
+                <button type="button" onClick={() => onRequestBatch(values.courseId)} className="inline-flex items-center gap-1 text-[12px] font-medium text-brand-700 hover:underline" title="Batch not in the list? Ask the Manager / Admin to create it">
+                  <Hash className="size-3.5" aria-hidden /> Request Batch No
+                </button>
+              )
+            }
           />
         )}
-        <Select label={<ShortLabel full="Chapter / Session No" short="Chapter No" />} className="lg:col-span-3" placeholder={values.courseId ? (courseChapters.length ? 'Select' : 'No chapters in Master') : 'Pick a course'} options={courseChapters.map((c) => ({ value: String(c.no), label: `Chapter ${c.no}` }))} {...f('chapterNo')} />
+        <Select label={<ShortLabel full="Chapter / Session No" short="Chapter No" />} className="lg:col-span-3" placeholder={values.courseId ? (courseChapters.length ? 'Select' : 'No chapters in Master') : 'Pick a course'} options={courseChapters.map((c) => ({ value: String(c.no), label: c.name ? `${c.no} · ${c.name}` : `Chapter ${c.no}` }))} {...f('chapterNo')} />
         <Select label="Day Order" className="lg:col-span-2" placeholder="Select" options={DAY_ORDERS} {...f('dayOrder')} />
         <Input label="No of Students" className="lg:col-span-2" inputMode="numeric" maxLength={4} placeholder="0" {...f('noOfStudents')} />
         <Select label={<ShortLabel full="Today's Session Type" short="Session Type" />} className="lg:col-span-4" options={lookups.sessionTypes} {...f('todaySessionType')} />

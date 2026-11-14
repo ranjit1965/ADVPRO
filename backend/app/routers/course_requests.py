@@ -18,10 +18,10 @@ from .. import whatsapp
 from ..mailer import MailNotConfigured, send_mail
 from ..config import settings
 from ..schemas import Form
-from ..security import current_user, require_roles
+from ..security import require_section, current_user, require_roles
 
 router = APIRouter(prefix="/course-requests", tags=["course requests"])
-master_roles = require_roles("MANAGER", "ADMIN")
+master_roles = require_section("master", "admin")  # Master or Admin menu ticked for the role
 
 
 class RequestIn(Form):

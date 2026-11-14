@@ -8,7 +8,7 @@ import Select from '../../components/ui/Select';
 import FileSaveField from '../../components/ui/FileSaveField';
 import { useAuth } from '../../context/AuthContext';
 import { useLookups } from '../../context/LookupsContext';
-import { canAccess, MASTER_ROLES } from '../../utils/permissions';
+import { canAccess, hasSection, MASTER_ROLES } from '../../utils/permissions';
 import { useToast } from '../../context/ToastContext';
 import { useAsync } from '../../hooks/useAsync';
 import { formatDateTime } from '../../utils/format';
@@ -59,7 +59,7 @@ export const UPLOAD_TYPES = {
  */
 export default function DataUpload() {
   const { user } = useAuth();
-  if (!canAccess(user, MASTER_ROLES)) {
+  if (!(hasSection(user, 'admin') || hasSection(user, 'master'))) {
     return (
       <>
         <PageHeader title="Data Upload" />
