@@ -31,12 +31,17 @@ import BatchCompletion from './pages/hr/BatchCompletion';
 import LeaveForm from './pages/hr/LeaveForm';
 import HalfyearlyReport from './pages/hr/HalfyearlyReport';
 import NotFound from './pages/NotFound';
+import RoleAccess from './pages/master/RoleAccess';
+import { hasSection, sectionForPath } from './utils/permissions';
 
 function RequireAuth({ children }) {
   const { user, checking } = useAuth();
   const location = useLocation();
   if (checking) return <PageLoader label="Checking session…" />;
   if (!user) return <Navigate to="/login" replace state={{ from: location }} />;
+  // A menu the Manager turned off for this role (Master › Role Access) cannot be opened by its address either.
+  const section = sectionForPath(location.pathname);
+  if (section && !hasSection(user, section)) return <Navigate to="/" replace />;
   return children;
 }
 
@@ -73,6 +78,7 @@ export default function App() {
               <Route path="master/scheduling" element={<Scheduling />} />
               <Route path="master/biometric" element={<Biometric />} />
               <Route path="master/batch-import" element={<BatchImport />} />
+              <Route path="master/role-access" element={<RoleAccess />} />
               <Route path="master/:key" element={<MasterList />} />
               <Route path="admin/data-upload" element={<DataUpload />} />
               <Route path="my-work" element={<MyWork />} />

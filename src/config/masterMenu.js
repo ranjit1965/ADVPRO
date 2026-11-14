@@ -14,6 +14,7 @@ export const MASTER_MENU = [
   { key: 'monthlyStaffReport', label: 'MontlyStaffReport', to: '/faculty/reports/working-hours', description: 'Working hours per faculty for a month.' },
   { key: 'vendors', label: 'Vendor' },
   { key: 'assets', label: 'Assest' },
+  { key: 'roleAccess', label: 'Role Access', to: '/master/role-access', roles: ['MANAGER'], description: 'Manager only: tick which menus Admin, HR, Faculty and Staff can open.' },
   { key: 'biometric', label: 'Biometric', to: '/master/biometric', description: 'Upload the biometric file; Time In / Time Out are compared with the entries.' },
 ].map((m) => {
   const def = masters.find((d) => d.key === m.key);

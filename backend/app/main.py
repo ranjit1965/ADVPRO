@@ -4,9 +4,9 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from . import seed
+from . import auto_inactive, seed
 from .config import settings
-from .routers import auth, batch_import, biometric, course_requests, entries, halfyearly, hr, lookups, master, masters, misc, reports, users, work
+from .routers import access, auth, batch_import, biometric, course_requests, entries, halfyearly, hr, lookups, master, masters, misc, reports, users, work
 
 logging.basicConfig(level=logging.INFO)
 
@@ -14,6 +14,7 @@ logging.basicConfig(level=logging.INFO)
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     seed.run()
+    auto_inactive.start_scheduler()
     yield
 
 
@@ -26,7 +27,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-for r in (auth, users, lookups, master, masters, work, entries, reports, halfyearly, hr, misc, biometric, course_requests, batch_import):
+for r in (access, auth, users, lookups, master, masters, work, entries, reports, halfyearly, hr, misc, biometric, course_requests, batch_import):
     app.include_router(r.router, prefix="/api")
 
 

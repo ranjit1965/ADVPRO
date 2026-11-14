@@ -48,6 +48,16 @@ export async function verifyManagerOtp({ email, otp, name, userId, password }) {
   return request('/auth/manager/verify', { method: 'POST', body: { email, otp, name, userId, password } });
 }
 
+/** POST /api/auth/forgot-password/request-otp: emails a reset code to the manager's email on record. -> { email (masked) } */
+export async function requestPasswordResetOtp(userId) {
+  return request('/auth/forgot-password/request-otp', { method: 'POST', body: { userId } });
+}
+
+/** POST /api/auth/forgot-password/reset: checks the code and sets the manager's new password. */
+export async function resetPasswordWithOtp({ userId, otp, newPassword }) {
+  return request('/auth/forgot-password/reset', { method: 'POST', body: { userId, otp, newPassword } });
+}
+
 /* --------------------------------------------------- Employees (Master › Employees: Manager and Admin) */
 
 export async function getUsers() {
@@ -64,6 +74,35 @@ export async function updateUser(userId, patch) {
 
 export async function deleteUser(userId) {
   return request(`/users/${encodeURIComponent(userId)}`, { method: 'DELETE' });
+}
+
+/** Deleted employees (moved here by Delete), newest first. */
+export async function getDeletedUsers() {
+  return request('/users/deleted/list');
+}
+
+/** Bring a deleted employee back (active again). */
+export async function restoreUser(userId) {
+  return request(`/users/deleted/${encodeURIComponent(userId)}/restore`, { method: 'POST' });
+}
+
+/** Master › Role Access (Manager): which menus each role may open. */
+export async function getRoleAccess() {
+  return request('/access');
+}
+
+export async function saveRoleAccess(roles) {
+  return request('/access', { method: 'PUT', body: { roles } });
+}
+
+/** Missing-entry check: who would be made inactive now, its settings and last run. */
+export async function getAutoInactive() {
+  return request('/users/auto-inactive');
+}
+
+/** Run the missing-entry check now (it also runs by itself every day). */
+export async function runAutoInactive() {
+  return request('/users/auto-inactive/run', { method: 'POST' });
 }
 
 export async function getNotifications() {

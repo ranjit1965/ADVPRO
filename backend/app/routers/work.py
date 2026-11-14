@@ -7,7 +7,7 @@ from pydantic import BaseModel, Field
 
 from .. import db
 from ..schemas import Form
-from ..security import current_user, require_roles
+from ..security import current_user, require_roles, require_section, sections_for
 
 router = APIRouter(prefix="/work-assignments", tags=["scheduling"])
 BOSS = ("MANAGER", "ADMIN")
@@ -45,12 +45,12 @@ def clean(w: dict) -> dict:
 
 @router.get("")
 def list_work(scope: Literal["mine", "all"] = "mine", me: dict = Depends(current_user)):
-    q = {} if scope == "all" and me["role"] in BOSS else {"assignedTo": me["userId"]}
+    q = {} if scope == "all" and sections_for(me)["master"] else {"assignedTo": me["userId"]}
     return [clean(w) for w in db.db.work_assignments.find(q).sort([("dueDate", 1), ("createdAt", -1)])]
 
 
 @router.post("", status_code=201)
-def create_work(body: WorkIn, me: dict = Depends(require_roles(*BOSS))):
+def create_work(body: WorkIn, me: dict = Depends(require_section("master"))):
     if body.startDate and body.dueDate and body.dueDate < body.startDate:
         raise HTTPException(422, "Due date must be on or after the start date")
     docs = []
@@ -84,6 +84,6 @@ def update_work(work_id: str, body: WorkPatch, me: dict = Depends(current_user))
 
 
 @router.delete("/{work_id}")
-def delete_work(work_id: str, _: dict = Depends(require_roles(*BOSS))):
+def delete_work(work_id: str, _: dict = Depends(require_section("master"))):
     db.db.work_assignments.delete_one({"id": work_id})
     return True

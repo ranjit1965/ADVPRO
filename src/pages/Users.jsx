@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { LayoutDashboard, Pencil, Plus, ShieldCheck, ShieldOff, Trash2, UserCheck, UserX } from 'lucide-react';
+import { ArchiveRestore, CalendarX, LayoutDashboard, Pencil, Plus, ShieldCheck, ShieldOff, Trash2, UserCheck, UserX } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import * as api from '../services/api';
 import PageHeader from '../components/ui/PageHeader';
@@ -13,10 +13,11 @@ import ErrorState from '../components/ui/ErrorState';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { useConfirm } from '../context/ConfirmContext';
-import { canAccess, MASTER_ROLES, PEOPLE_VIEW_ROLES, ROLES } from '../utils/permissions';
+import { canAccess, hasSection, MASTER_ROLES, PEOPLE_VIEW_ROLES, ROLES } from '../utils/permissions';
 import { formatDuration, monthLabel, toISODate } from '../utils/format';
 
 const ROLE_OPTIONS = [ROLES.FACULTY, ROLES.HR, ROLES.ADMIN, 'STAFF'];
+const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const EMPTY = { userId: '', code: '', name: '', email: '', role: 'FACULTY', designation: 'FACULTY', grade: 'E1', department: '', branch: 'Chennai Center', password: '' };
 
 /**
@@ -26,7 +27,7 @@ const EMPTY = { userId: '', code: '', name: '', email: '', role: 'FACULTY', desi
 export default function Users() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const canEdit = canAccess(user, MASTER_ROLES);
+  const canEdit = hasSection(user, 'master');
   const month = toISODate().slice(0, 7);
   const [hours, setHours] = useState({});
   const toast = useToast();
@@ -39,6 +40,11 @@ export default function Users() {
   const [form, setForm] = useState(EMPTY);
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
+  const [check, setCheck] = useState(null); // missing-entry check: { settings, preview }
+  const [checkOpen, setCheckOpen] = useState(false);
+  const [running, setRunning] = useState(false);
+  const [deleted, setDeleted] = useState(null); // Deleted employees list, null = closed
+  const [restoring, setRestoring] = useState('');
 
   const load = useCallback(() => {
     setLoading(true);
@@ -56,7 +62,7 @@ export default function Users() {
     return s ? rows.filter((r) => [r.userId, r.code, r.name, r.email, r.role, r.department].some((v) => String(v || '').toLowerCase().includes(s))) : rows;
   }, [rows, q]);
 
-  if (!canAccess(user, PEOPLE_VIEW_ROLES)) {
+  if (!(hasSection(user, 'master') || (hasSection(user, 'hr') && canAccess(user, PEOPLE_VIEW_ROLES)))) {
     return (
       <>
         <PageHeader title="Employees" />
@@ -101,10 +107,64 @@ export default function Users() {
   const toggleActive = async (r) => {
     try {
       await api.updateUser(r.userId, { active: !r.active });
-      toast.success(r.active ? `${r.name} can no longer sign in.` : `${r.name} can sign in again.`);
+      toast.success(
+        r.active
+          ? `${r.name} can no longer sign in.`
+          : `${r.name} is active again.${r.autoInactive ? ' The missing-entry check counts only the working days from tomorrow.' : ''}`,
+      );
       load();
     } catch (e) {
       toast.error(e.message);
+    }
+  };
+
+  const openDeleted = async () => {
+    setDeleted([]);
+    try {
+      setDeleted(await api.getDeletedUsers());
+    } catch (e) {
+      toast.error(e.message);
+      setDeleted(null);
+    }
+  };
+
+  const restore = async (r) => {
+    setRestoring(r.userId);
+    try {
+      await api.restoreUser(r.userId);
+      toast.success(`${r.name} restored and active again.`);
+      setDeleted((list) => list.filter((d) => d.userId !== r.userId));
+      load();
+    } catch (e) {
+      toast.error(e.message);
+    } finally {
+      setRestoring('');
+    }
+  };
+
+  // Missing-entry check: preview who would be made inactive, then run it now if wanted.
+  const openCheck = async () => {
+    setCheck(null);
+    setCheckOpen(true);
+    try {
+      setCheck(await api.getAutoInactive());
+    } catch (e) {
+      toast.error(e.message);
+      setCheckOpen(false);
+    }
+  };
+
+  const runCheck = async () => {
+    setRunning(true);
+    try {
+      const res = await api.runAutoInactive();
+      toast.success(res.count ? `${res.count} employee(s) made inactive.` : 'Everyone has entries. Nobody was made inactive.');
+      setCheckOpen(false);
+      load();
+    } catch (e) {
+      toast.error(e.message);
+    } finally {
+      setRunning(false);
     }
   };
 
@@ -122,10 +182,10 @@ export default function Users() {
   };
 
   const remove = async (r) => {
-    if (!(await confirm({ title: 'Delete employee', message: `Delete ${r.name} (${r.userId})? Their saved entries stay in the reports.`, confirmLabel: 'Delete', tone: 'danger' }))) return;
+    if (!(await confirm({ title: 'Delete employee', message: `Delete ${r.name} (${r.userId})? They move to Deleted employees and can no longer sign in. You can restore them from there. Their saved entries stay in the reports.`, confirmLabel: 'Delete', tone: 'danger' }))) return;
     try {
       await api.deleteUser(r.userId);
-      toast.success('Employee deleted.');
+      toast.success(`${r.name} moved to Deleted employees.`);
       load();
     } catch (e) {
       toast.error(e.message);
@@ -150,7 +210,19 @@ export default function Users() {
     { key: 'email', header: 'Email', hideOnMobile: true },
     { key: 'hours', header: `Hours, ${monthLabel(month)}`, align: 'right', render: (r) => (hours[r.code] ? <span className="tabular-nums">{formatDuration(hours[r.code].totalMinutes)}</span> : <span className="text-ink-400">-</span>) },
     { key: 'days', header: 'Days', align: 'right', hideOnMobile: true, render: (r) => hours[r.code]?.days ?? '-' },
-    { key: 'active', header: 'Status', render: (r) => (r.active ? <span className="text-success-700">Active</span> : <span className="text-ink-400">Disabled</span>) },
+    {
+      key: 'active',
+      header: 'Status',
+      render: (r) =>
+        r.active ? (
+          <span className="text-success-700">Active</span>
+        ) : (
+          <span title={r.inactiveReason || ''}>
+            <span className="text-danger-700">Inactive</span>
+            {r.autoInactive && <span className="ml-1.5 whitespace-nowrap rounded-full bg-warning-50 px-1.5 py-0.5 text-[11px] font-semibold text-warning-700">no entries</span>}
+          </span>
+        ),
+    },
     {
       key: 'actions',
       header: '',
@@ -171,7 +243,7 @@ export default function Users() {
           {canEdit && r.role !== ROLES.MANAGER && (
             <>
             <Button size="sm" variant="ghost" icon={Pencil} onClick={() => openEdit(r)} aria-label={`Edit ${r.name}`} />
-            <Button size="sm" variant="ghost" icon={r.active ? UserX : UserCheck} onClick={() => toggleActive(r)} aria-label={r.active ? `Disable ${r.name}` : `Enable ${r.name}`} />
+            <Button size="sm" variant="ghost" icon={r.active ? UserX : UserCheck} onClick={() => toggleActive(r)} aria-label={r.active ? `Make ${r.name} inactive` : `Make ${r.name} active`} title={r.active ? 'Make inactive' : 'Make active'} />
             <Button size="sm" variant="ghost" icon={Trash2} onClick={() => remove(r)} aria-label={`Delete ${r.name}`} />
             </>
           )}
@@ -186,14 +258,98 @@ export default function Users() {
         title="Employees"
         description={canEdit ? 'Add faculty, HR, admin and other staff logins.' : 'Every employee with their work hours this month. Open a dashboard to see that person\'s details.'}
         breadcrumb={canEdit ? [{ label: 'Master', to: '/master' }, { label: 'Employees' }] : [{ label: 'Employees' }]}
-        actions={canEdit && <Button icon={Plus} onClick={openNew}>Add employee</Button>}
+        actions={
+          canEdit && (
+            <div className="flex flex-wrap gap-2">
+              <Button variant="secondary" icon={ArchiveRestore} onClick={openDeleted}>Deleted employees</Button>
+              <Button variant="secondary" icon={CalendarX} onClick={openCheck}>Missing entries check</Button>
+              <Button icon={Plus} onClick={openNew}>Add employee</Button>
+            </div>
+          )
+        }
       />
       <Card>
         <div className="mb-4 max-w-xs">
           <Input label="Search" placeholder="Name, user ID, role…" value={q} onChange={(e) => setQ(e.target.value)} />
         </div>
+        {canEdit && rows.some((r) => r.autoInactive && !r.active) && (
+          <p className="mb-4 rounded-lg bg-warning-50 px-3 py-2 text-sm text-warning-700">
+            Employees marked <b>no entries</b> were made inactive automatically because they saved no daily entry on {check?.settings?.days ?? 3} working days in a row. Click the <UserCheck className="inline size-4 align-text-bottom" aria-hidden /> button on their row to make them active again.
+          </p>
+        )}
         {error ? <ErrorState message={error} onRetry={load} /> : <DataTable columns={columns} rows={filtered} rowKey="userId" loading={loading} caption="Employees" />}
       </Card>
+
+      <Modal
+        open={deleted !== null}
+        onClose={() => setDeleted(null)}
+        title="Deleted employees"
+        size="lg"
+        footer={<Button variant="secondary" onClick={() => setDeleted(null)}>Close</Button>}
+      >
+        {deleted?.length ? (
+          <ul className="divide-y divide-ink-100 rounded-lg border border-ink-100 text-sm">
+            {deleted.map((d) => (
+              <li key={d.userId} className="flex flex-wrap items-center justify-between gap-3 px-3 py-2.5">
+                <div>
+                  <p className="font-medium text-ink-900">{d.name} ({d.code})</p>
+                  <p className="text-ink-500">
+                    {d.userId} · {d.role}{d.department ? ` · ${d.department}` : ''}{d.email ? ` · ${d.email}` : ''}
+                  </p>
+                  <p className="text-xs text-ink-400">Deleted {d.deletedAt ? new Date(d.deletedAt).toLocaleString() : ''}{d.deletedBy ? ` by ${d.deletedBy}` : ''}</p>
+                </div>
+                <Button size="sm" icon={ArchiveRestore} loading={restoring === d.userId} onClick={() => restore(d)}>Restore</Button>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-sm text-ink-600">No deleted employees.</p>
+        )}
+      </Modal>
+
+      <Modal
+        open={checkOpen}
+        onClose={() => setCheckOpen(false)}
+        title="Missing entries check"
+        size="lg"
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setCheckOpen(false)}>Close</Button>
+            <Button variant="danger" loading={running} disabled={!check?.preview?.count} onClick={runCheck}>Make them inactive now</Button>
+          </>
+        }
+      >
+        {!check ? (
+          <p className="text-sm text-ink-600">Checking…</p>
+        ) : (
+          <div className="space-y-4 text-sm text-ink-700">
+            <p>
+              {check.settings.roles.join(' and ')} with no daily entry on their last <b>{check.settings.days} working days</b> (today not counted) are made inactive{' '}
+              {check.settings.enabled ? <>automatically every day at <b>{check.settings.time}</b></> : 'by the scheduled task on the server'}. Weekly off: {check.settings.weeklyOff.map((d) => WEEKDAYS[d]).join(', ') || 'none'}; holidays and approved leave are skipped. Days before {check.settings.startDate}, and days up to the day someone was made active again, are not counted.
+            </p>
+            {check.settings.lastRunAt && (
+              <p className="text-ink-500">
+                Last run {new Date(check.settings.lastRunAt).toLocaleString()} by {check.settings.lastRunBy}: {check.settings.lastRunCount} made inactive{check.settings.lastRunNames?.length ? ` (${check.settings.lastRunNames.join(', ')})` : ''}.
+              </p>
+            )}
+            {check.preview.count ? (
+              <div>
+                <p className="mb-2 font-medium text-ink-900">Would be made inactive now ({check.preview.count}):</p>
+                <ul className="divide-y divide-ink-100 rounded-lg border border-ink-100">
+                  {check.preview.employees.map((e) => (
+                    <li key={e.userId} className="flex flex-wrap justify-between gap-2 px-3 py-2">
+                      <span className="font-medium text-ink-900">{e.name} ({e.code})</span>
+                      <span className="text-ink-500">No entry on {e.missedDays.join(', ')}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : (
+              <p className="text-success-700">Everyone checked has an entry on at least one of their last {check.settings.days} working days.</p>
+            )}
+          </div>
+        )}
+      </Modal>
 
       <Modal
         open={!!editing}

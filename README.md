@@ -329,6 +329,77 @@ missed), the Dashboard and this page remind Admin / Manager until each file is u
 * The page shows the last upload (file, who, rows, batches, assigned, status counts), short
   names not matched, and course codes not yet in **Master › Course**.
 
+### Course (Master › Course and "Add course" on the Learning tab)
+
+* The course form has the CourseMaster columns in order: **Course ID**, **Course Name**,
+  **Instalment Amt** (these three are required), then Lumpsum Amt, Status, Total Hrs, Ins Amt,
+  Lump Amt and Course Status (optional).
+* Course ID can be any letters, digits or symbols (for example `ADCH&N`, `C/C++`), up to 40
+  characters; it is saved in capitals. The selected course in Master › Course shows all the values.
+
+### Role Access (Master › Role Access, Manager only)
+
+* The Manager ticks which menus **Admin, HR, Faculty and Staff** can open: **Master**, **Admin**
+  (Data Upload), **HR**, **Faculty** (Daily Activity and reports) and **My Work**. Unticking hides the
+  menu for that role, blocks its page addresses and the server refuses its data. Ticking gives it,
+  for example Master to HR.
+* Defaults are the old rules: Master and Admin for Admin only; HR, Faculty and My Work for everyone.
+  **Default access** puts these back. The Manager always has every menu.
+* HR and Admin can edit HR Policy, employee info and Halfyearly reports only while their HR menu is ticked.
+* Changes apply to each person the next time they open or refresh the app. Saved in `settings`
+  (`_id: roleAccess`); `GET/PUT /api/access`.
+
+### Missing daily entries: automatic Inactive (Faculty only)
+
+* Every day the backend checks each employee with the **FACULTY** role. If they saved **no daily
+  entry on their last 3 working days** (today is not counted), their login is set **Inactive** and
+  they cannot sign in. The login page tells them why. Manager, Admin, HR and Staff are never checked.
+* Working days are Monday to Saturday. Sundays (`AUTO_INACTIVE_WEEKLY_OFF=6`), the dates in
+  `AUTO_INACTIVE_HOLIDAYS` and that person's **approved leave** are skipped, not counted as missed.
+* In **Master › Employees** these rows show **Inactive · no entries** (hover to see the missed
+  dates). The Manager or Admin clicks the person-tick button on the row to make them **Active**
+  again. Only the working days **after** the day they were made active count, so the next run does
+  not switch them off again; they get 3 fresh working days.
+* Days before this version was first started are never counted (or set `AUTO_INACTIVE_START_DATE`).
+  A newly added employee is checked only from the day after they were added.
+* **Missing entries check** on the Employees page shows the rules, the last run and who would be made
+  inactive right now, with **Make them inactive now** to run it immediately.
+
+**How it runs (pick one):**
+
+1. **Inside the API (default).** `AUTO_INACTIVE_ENABLED=true` and `AUTO_INACTIVE_TIME=06:00` in
+   `backend/.env`: the running uvicorn server runs the check once a day after 06:00 local time
+   (`UTC_OFFSET_MINUTES=330` = India). Nothing else to set up, as long as the backend keeps running.
+   With several uvicorn workers it still runs only once a day.
+2. **Scheduled task on the server.** Set `AUTO_INACTIVE_ENABLED=false` and schedule the command:
+   ```bash
+   cd backend && python -m app.auto_inactive            # makes them inactive
+   cd backend && python -m app.auto_inactive --dry-run  # only lists who would be
+   ```
+   * Linux cron (06:00 daily): `0 6 * * * cd /path/to/backend && /path/to/backend/.venv/bin/python -m app.auto_inactive >> auto_inactive.log 2>&1`
+   * Windows Task Scheduler: Create Basic Task › Daily 06:00 › Start a program:
+     Program `C:\path\to\backend\.venv\Scripts\python.exe`, Arguments `-m app.auto_inactive`,
+     Start in `C:\path\to\backend`.
+
+   It reads the same `backend/.env`, so run it from the `backend` folder. Running it twice a day is harmless.
+
+### Deleted employees and restore
+
+* **Delete** in Master › Employees no longer removes the record for good: the employee moves to
+  **Deleted employees** (`deleted_users` collection) with who deleted them and when, and can no longer sign in.
+* **Deleted employees** (button on the Employees page) lists them; **Restore** brings the employee
+  back with the same User ID, code, details and password, as Active. Their entries were never removed.
+  If another employee now uses the same User ID or code, change that one first.
+
+### Forgot password (Manager only)
+
+* The login page has **Forgot password? (Manager)**. Enter the manager User ID, click **Send code
+  to email**: a 6-digit code goes to the **email saved on the manager account** (SMTP settings in
+  `backend/.env` are needed). Enter the code and the new password twice. The code expires after
+  `OTP_EXPIRE_MINUTES` (10), allows 5 attempts, and a new one can be sent after a minute.
+* Faculty, Staff, HR and Admin cannot reset here; the Manager or Admin sets their new password in
+  Master › Employees.
+
 ### Assumptions to confirm
 
 The screenshots did not show these, so sensible defaults were used and are easy to change:
@@ -401,6 +472,10 @@ Every page reads and writes data only through `src/services/api.js`, which calls
 | `getBatchImportSettings`, `uploadBatches`, `saveBatchFacultyMap` (manager, admin) | `GET /api/batch-import/settings`, `POST /api/batch-import/upload?name=` (raw file body), `PUT /api/batch-import/map` |
 | `getBiometricSettings`, `saveBiometricSettings`, `uploadBiometric`, `saveBiometricMap`, `getBiometricRecords` | `GET/PUT /api/biometric/settings` (tolerance), `POST /api/biometric/upload?name=` (raw file body), `PUT /api/biometric/map`, `GET /api/biometric/records` |
 | `requestCourse`, `getCourseRequests`, `setCourseRequestStatus` | `POST/GET /api/course-requests`, `PATCH /api/course-requests/{id}` |
+| `getRoleAccess`, `saveRoleAccess` (Manager) | `GET/PUT /api/access` |
+| `getAutoInactive`, `runAutoInactive` (manager, admin) | `GET /api/users/auto-inactive` (settings, last run, preview), `POST /api/users/auto-inactive/run` |
+| `getDeletedUsers`, `restoreUser` (manager, admin) | `GET /api/users/deleted/list`, `POST /api/users/deleted/{userId}/restore` |
+| `requestPasswordResetOtp`, `resetPasswordWithOtp` (manager account only) | `POST /api/auth/forgot-password/request-otp`, `POST /api/auth/forgot-password/reset` |
 
 Frontend `.env`:
 
@@ -446,7 +521,7 @@ passwords) and the same Gmail address as `SMTP_FROM`.
 
 MongoDB collections: `users` (bcrypt password hashes, roles FACULTY / HR / ADMIN / STAFF / MANAGER),
 `daily_entries`, `courses`, `chapters` (chapter / session details per course), `lookups` (one document per dropdown list), `monthly_plans`, `student_marks`,
-`master_registrations`, `master_batches`, `master_attendance`, `master_products`, `master_oldRegistrations`, `master_vendors`, `master_assets`, `work_assignments`, `settings` (HR policy), `leave_requests`, `halfyearly_reports`, `course_requests`, `manager_otps` (expire automatically), `notifications`, `counters` (entry numbers DAE-0001…).
+`master_registrations`, `master_batches`, `master_attendance`, `master_products`, `master_oldRegistrations`, `master_vendors`, `master_assets`, `work_assignments`, `settings` (HR policy), `leave_requests`, `halfyearly_reports`, `course_requests`, `deleted_users` (deleted employees, restorable), `manager_otps` (expire automatically), `notifications`, `counters` (entry numbers DAE-0001…).
 
 Rules enforced on the server: one manager only, created after the emailed 6-digit code is verified
 (10 minutes, 5 attempts) and is never returned by the API or written to the log; Admin and Manager

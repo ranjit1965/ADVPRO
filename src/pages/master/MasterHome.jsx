@@ -3,14 +3,17 @@ import { ChevronRight } from 'lucide-react';
 import PageHeader from '../../components/ui/PageHeader';
 import Card from '../../components/ui/Card';
 import { MASTER_MENU } from '../../config/masterMenu';
+import { useAuth } from '../../context/AuthContext';
+import { canAccess } from '../../utils/permissions';
 
 /** Master: the same items as the legacy Master menu. */
 export default function MasterHome() {
+  const { user } = useAuth();
   return (
     <>
       <PageHeader title="Master" description="Master data maintained by the Admin and Manager. Each item is stored in its own collection." />
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-        {MASTER_MENU.map((m) => (
+        {MASTER_MENU.filter((m) => canAccess(user, m.roles)).map((m) => (
           <Link key={m.key} to={m.to} className="group">
             <Card className="h-full transition group-hover:border-brand-300 group-hover:shadow-pop">
               <div className="flex items-start justify-between gap-3">

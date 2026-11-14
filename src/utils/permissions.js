@@ -12,3 +12,26 @@ export const MASTER_ROLES = [ROLES.MANAGER, ROLES.ADMIN];
 
 /** Roles that can see every employee's details, dashboard and work hours (HR view-only). */
 export const PEOPLE_VIEW_ROLES = [ROLES.HR, ROLES.ADMIN, ROLES.MANAGER];
+
+/**
+ * Menu (tab) access set by the Manager in Master › Role Access. The server sends `user.sections`
+ * ({ master, admin, hr, faculty, myWork }); the Manager always has every menu.
+ */
+const SECTION_DEFAULTS = { master: MASTER_ROLES, admin: MASTER_ROLES };
+export const hasSection = (user, key) => {
+  if (!user) return false;
+  if (user.role === ROLES.MANAGER) return true;
+  if (user.sections && key in user.sections) return !!user.sections[key];
+  return SECTION_DEFAULTS[key] ? SECTION_DEFAULTS[key].includes(user.role) : true;
+};
+
+/** Which menu a page address belongs to (for blocking typed-in addresses of a hidden menu). */
+export const sectionForPath = (path) => {
+  if (path === '/master/employees') return null; // also under HR; the page checks itself
+  if (path.startsWith('/master')) return 'master';
+  if (path.startsWith('/admin')) return 'admin';
+  if (path.startsWith('/hr-report')) return 'hr';
+  if (path.startsWith('/faculty') || path.startsWith('/entries')) return 'faculty';
+  if (path.startsWith('/my-work')) return 'myWork';
+  return null;
+};

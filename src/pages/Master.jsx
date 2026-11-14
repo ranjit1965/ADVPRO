@@ -15,10 +15,11 @@ import { useAuth } from '../context/AuthContext';
 import { useLookups } from '../context/LookupsContext';
 import { useToast } from '../context/ToastContext';
 import { useConfirm } from '../context/ConfirmContext';
-import { canAccess, MASTER_ROLES } from '../utils/permissions';
+import { canAccess, hasSection, MASTER_ROLES } from '../utils/permissions';
 import { cn } from '../utils/cn';
 import { useAsync } from '../hooks/useAsync';
 import { formatDateTime } from '../utils/format';
+import CourseFormFields, { COURSE_FIELDS, EMPTY_COURSE, courseBody, courseToForm, validateCourse } from '../components/master/CourseFormFields';
 
 const EMPTY_CHAPTER = { no: '', type: '', details: '' };
 
@@ -34,12 +35,12 @@ export default function Master() {
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
 
-  const requests = useAsync(() => (canAccess(user, MASTER_ROLES) ? api.getCourseRequests() : Promise.resolve([])), []);
+  const requests = useAsync(() => (hasSection(user, 'master') ? api.getCourseRequests() : Promise.resolve([])), []);
   const courses = lookups?.courses ?? [];
   const courseId = selected || courses[0]?.id || '';
   const chapters = useMemo(() => (lookups?.chapters ?? []).filter((c) => c.courseId === courseId).sort((a, b) => a.no - b.no), [lookups, courseId]);
 
-  if (!canAccess(user, MASTER_ROLES)) {
+  if (!hasSection(user, 'master')) {
     return (
       <>
         <PageHeader title="Master" />
@@ -65,13 +66,12 @@ export default function Master() {
   };
 
   const saveCourse = async () => {
-    const errs = {};
-    if (!/^[A-Za-z0-9+#._-]{2,20}$/.test(courseForm.id)) errs.id = '2 to 20 letters or digits';
-    if (!courseForm.name.trim()) errs.name = 'Required';
+    const errs = validateCourse(courseForm);
     setErrors(errs);
     if (Object.keys(errs).length) return;
-    const id = courseForm.id.trim().toUpperCase();
-    if (await run(() => api.saveCourse({ id, name: courseForm.name.trim() }, courseForm.isNew), courseForm.isNew ? 'Course added.' : 'Course updated.')) {
+    const body = courseBody(courseForm);
+    const id = body.id;
+    if (await run(() => api.saveCourse(body, courseForm.isNew), courseForm.isNew ? 'Course added.' : 'Course updated.')) {
       setSelected(id);
       setCourseForm(null);
       requests.reload(); // a matching request is closed as Added by the server
@@ -147,7 +147,7 @@ export default function Master() {
                     {r.notes ? ` · ${r.notes}` : ''}
                   </p>
                 </div>
-                <Button size="sm" icon={Plus} onClick={() => { setErrors({}); setCourseForm({ id: r.courseId || '', name: r.courseName, isNew: true }); }}>
+                <Button size="sm" icon={Plus} onClick={() => { setErrors({}); setCourseForm({ ...EMPTY_COURSE, id: r.courseId || '', name: r.courseName, isNew: true }); }}>
                   Add course
                 </Button>
                 <Button size="sm" variant="secondary" onClick={() => dismissRequest(r)}>
@@ -159,7 +159,7 @@ export default function Master() {
         </Card>
       )}
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-[300px_1fr]">
-        <Card title="Courses" actions={<Button size="sm" icon={Plus} onClick={() => { setErrors({}); setCourseForm({ id: '', name: '', isNew: true }); }}>Add course</Button>} bodyClassName="p-2">
+        <Card title="Courses" actions={<Button size="sm" icon={Plus} onClick={() => { setErrors({}); setCourseForm({ ...EMPTY_COURSE, isNew: true }); }}>Add course</Button>} bodyClassName="p-2">
           {courses.length === 0 ? (
             <EmptyState icon={BookOpen} title="No courses yet" message="Add the first course." />
           ) : (
@@ -182,24 +182,31 @@ export default function Master() {
           actions={
             current && (
               <div className="flex flex-wrap gap-2">
-                <Button size="sm" variant="secondary" icon={Pencil} onClick={() => { setErrors({}); setCourseForm({ ...current, isNew: false }); }}>Edit course</Button>
+                <Button size="sm" variant="secondary" icon={Pencil} onClick={() => { setErrors({}); setCourseForm({ ...courseToForm(current), isNew: false }); }}>Edit course</Button>
                 <Button size="sm" variant="secondary" icon={Trash2} onClick={() => removeCourse(current)}>Delete course</Button>
                 <Button size="sm" icon={Plus} onClick={() => { setErrors({}); setChapterForm({ ...EMPTY_CHAPTER, no: String(nextNo), originalNo: null }); }}>Add chapter</Button>
               </div>
             )
           }
         >
+          {current && (
+            <dl className="mb-3 grid grid-cols-2 gap-x-4 gap-y-1 rounded-lg bg-ink-50 px-3 py-2 text-[13px] sm:grid-cols-4">
+              {COURSE_FIELDS.slice(2).map((f) => (
+                <div key={f.key} className="flex gap-1.5">
+                  <dt className="text-ink-500">{f.label}:</dt>
+                  <dd className="font-medium text-ink-900">{current[f.key] == null || current[f.key] === '' ? '-' : String(current[f.key])}</dd>
+                </div>
+              ))}
+            </dl>
+          )}
           {current ? <DataTable columns={columns} rows={chapters} rowKey="no" caption="Chapters" empty={<EmptyState icon={BookOpen} title="No chapters yet" message="Add the chapters / sessions for this course." />} /> : <p className="text-sm text-ink-500">Add a course to start.</p>}
         </Card>
       </div>
 
-      <Modal open={!!courseForm} onClose={() => setCourseForm(null)} title={courseForm?.isNew ? 'Add course' : 'Edit course'}
+      <Modal open={!!courseForm} onClose={() => setCourseForm(null)} size="lg" title={courseForm?.isNew ? 'Add course' : 'Edit course'}
         footer={<><Button variant="secondary" onClick={() => setCourseForm(null)}>Cancel</Button><Button loading={saving} onClick={saveCourse}>Save</Button></>}>
         {courseForm && (
-          <div className="grid gap-4">
-            <Input label="Course ID" required value={courseForm.id} error={errors.id} readOnly={!courseForm.isNew} onChange={(e) => setCourseForm({ ...courseForm, id: e.target.value })} />
-            <Input label="Course name" required value={courseForm.name} error={errors.name} onChange={(e) => setCourseForm({ ...courseForm, name: e.target.value })} />
-          </div>
+          <CourseFormFields form={courseForm} errors={errors} idReadOnly={!courseForm.isNew} onChange={(f) => { setCourseForm(f); setErrors({}); }} />
         )}
       </Modal>
 

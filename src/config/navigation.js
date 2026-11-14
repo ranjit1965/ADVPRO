@@ -14,7 +14,7 @@ import {
   ClipboardCheck,
 } from 'lucide-react';
 import { MASTER_MENU } from './masterMenu';
-import { MASTER_ROLES, PEOPLE_VIEW_ROLES, WORKING_HOURS_ROLES } from '../utils/permissions';
+import { PEOPLE_VIEW_ROLES, WORKING_HOURS_ROLES } from '../utils/permissions';
 
 /**
  * Sidebar navigation: Dashboard, My Work, Master, then the department menus in the agreed
@@ -24,19 +24,20 @@ import { MASTER_ROLES, PEOPLE_VIEW_ROLES, WORKING_HOURS_ROLES } from '../utils/p
  */
 export const NAVIGATION = [
   { key: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, to: '/' },
-  { key: 'my-work', label: 'My Work', icon: ClipboardCheck, to: '/my-work' },
+  { key: 'my-work', label: 'My Work', icon: ClipboardCheck, to: '/my-work', section: 'myWork' },
   {
     key: 'master',
     label: 'Master',
     icon: Database,
-    roles: MASTER_ROLES,
-    children: MASTER_MENU.map((m) => ({ key: `master-${m.key}`, label: m.label, to: m.to })),
+    section: 'master',
+    children: MASTER_MENU.map((m) => ({ key: `master-${m.key}`, label: m.label, to: m.to, roles: m.roles })),
   },
   // Department menus in the agreed order: Faculty, Lab Support, MIS, Digital Marketing, Admin, Marketing, HR.
   {
     key: 'faculty',
     label: 'Faculty',
     icon: GraduationCap,
+    section: 'faculty',
     children: [
       {
         key: 'daily-activity',
@@ -61,7 +62,7 @@ export const NAVIGATION = [
     key: 'admin',
     label: 'Admin',
     icon: ShieldCheck,
-    roles: MASTER_ROLES,
+    section: 'admin',
     children: [{ key: 'data-upload', label: 'Data Upload', to: '/admin/data-upload' }],
   },
   { key: 'marketing', label: 'Marketing', icon: Megaphone, restricted: true },
@@ -69,6 +70,7 @@ export const NAVIGATION = [
     key: 'hr-report',
     label: 'HR',
     icon: FileBarChart,
+    section: 'hr',
     children: [
       { key: 'employees', label: 'Employees', to: '/master/employees', roles: PEOPLE_VIEW_ROLES },
       { key: 'hr-policy', label: 'HR Policy', to: '/hr-report/policy' },

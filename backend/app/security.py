@@ -59,3 +59,49 @@ def require_roles(*roles: str):
         return user
 
     return dep
+
+
+# ------------------------------------------------------------------ menu (tab) access per role
+# The Manager ticks which menus each role may open (Master › Role Access). Not ticked = hidden in the
+# menu and refused by the server. The Manager always has every menu. Defaults = the old fixed rules.
+ALL_ROLES = ("ADMIN", "HR", "FACULTY", "STAFF")
+SECTIONS = {
+    "master": {"label": "Master", "default": ("ADMIN",)},
+    "admin": {"label": "Admin (Data Upload)", "default": ("ADMIN",)},
+    "hr": {"label": "HR", "default": ALL_ROLES},
+    "faculty": {"label": "Faculty (Daily Activity, reports)", "default": ALL_ROLES},
+    "myWork": {"label": "My Work", "default": ALL_ROLES},
+}
+
+
+def role_access() -> dict:
+    """Saved ticks: {role: {section: bool}}; missing ones use the default."""
+    doc = db.db.settings.find_one({"_id": "roleAccess"}) or {}
+    return doc.get("roles", {})
+
+
+def sections_for(user: dict) -> dict:
+    role = user.get("role")
+    if role == "MANAGER":
+        return {s: True for s in SECTIONS}
+    saved = role_access().get(role, {})
+    return {s: bool(saved.get(s, role in cfg["default"])) for s, cfg in SECTIONS.items()}
+
+
+def me_view(user: dict) -> dict:
+    """The signed-in user as the frontend sees it, with the menus they may open."""
+    return {**public_user(user), "sections": sections_for(user)}
+
+
+def require_section(*sections: str, roles: tuple[str, ...] | None = None):
+    """Allowed when any of `sections` is ticked for the user's role (and, if given, the role is in `roles`)."""
+
+    def dep(user: dict = Depends(current_user)) -> dict:
+        if user["role"] == "MANAGER":
+            return user
+        access = sections_for(user)
+        if not any(access.get(s) for s in sections) or (roles and user["role"] not in roles):
+            raise HTTPException(status.HTTP_403_FORBIDDEN, "You do not have access to this menu. Ask the Manager.")
+        return user
+
+    return dep

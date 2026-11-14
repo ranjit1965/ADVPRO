@@ -14,7 +14,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useLookups } from '../../context/LookupsContext';
 import { useToast } from '../../context/ToastContext';
 import { useAsync } from '../../hooks/useAsync';
-import { canAccess, MASTER_ROLES } from '../../utils/permissions';
+import { canAccess, hasSection, MASTER_ROLES } from '../../utils/permissions';
 import { formatDateTime, monthLabel, toISODate } from '../../utils/format';
 
 /**
@@ -24,7 +24,7 @@ import { formatDateTime, monthLabel, toISODate } from '../../utils/format';
  */
 export default function Biometric() {
   const { user } = useAuth();
-  const canEdit = canAccess(user, MASTER_ROLES);
+  const canEdit = hasSection(user, 'master') || hasSection(user, 'admin');
   const { lookups } = useLookups();
   const toast = useToast();
   const settings = useAsync(() => api.getBiometricSettings(), []);

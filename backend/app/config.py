@@ -33,5 +33,14 @@ class Settings(BaseSettings):
     # courseId, remarks, date, email. Must match the number of variables in the approved template.
     wa_template_params: str = "employee,code,course,courseId,remarks"
 
+    # Missing daily entries: make an employee inactive after N working days with no entry (app/auto_inactive.py).
+    auto_inactive_enabled: bool = True  # run once a day inside the API; false = use cron / Task Scheduler only
+    auto_inactive_time: str = "06:00"  # local time (UTC_OFFSET_MINUTES) of the daily run
+    auto_inactive_days: int = 3  # consecutive working days without any entry
+    auto_inactive_roles: str = "FACULTY"  # only Faculty; Manager, Admin, HR and Staff are never checked
+    auto_inactive_weekly_off: str = "6"  # weekday numbers that are off: 0=Mon ... 6=Sun ("5,6" = Sat and Sun)
+    auto_inactive_holidays: str = ""  # YYYY-MM-DD dates, comma separated
+    auto_inactive_start_date: str = ""  # first day that counts; empty = the day the feature first started
+
 
 settings = Settings()

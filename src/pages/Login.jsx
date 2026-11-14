@@ -5,6 +5,7 @@ import { Eye, EyeOff, LogIn } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import Button from '../components/ui/Button';
+import ForgotPasswordModal from '../components/ForgotPasswordModal';
 
 const LAST_UPDATE = '10/Oct/2026';
 
@@ -19,6 +20,7 @@ export default function Login() {
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState('');
   const [setup, setSetup] = useState(null);
+  const [forgotOpen, setForgotOpen] = useState(false);
 
   useEffect(() => {
     api.getSetupStatus().then(setSetup).catch(() => {});
@@ -79,6 +81,14 @@ export default function Login() {
               <Button type="submit" icon={LogIn} loading={submitting} className="w-full">
                 Sign in
               </Button>
+              {setup?.managerExists && (
+                <>
+                  <div className="hidden sm:block" />
+                  <button type="button" onClick={() => setForgotOpen(true)} className="justify-self-end text-sm font-medium text-brand-700 hover:underline">
+                    Forgot password? (Manager)
+                  </button>
+                </>
+              )}
             </div>
           </form>
 
@@ -89,6 +99,17 @@ export default function Login() {
           )}
         </div>
       </main>
+
+      <ForgotPasswordModal
+        open={forgotOpen}
+        onClose={() => setForgotOpen(false)}
+        initialUserId={form.userId}
+        onDone={(userId) => {
+          setForm({ userId, password: '' });
+          setFormError('');
+          toast.success('Password changed. Sign in with the new password.');
+        }}
+      />
 
       <footer className="px-4 pb-6 sm:px-2">
         <p className="text-lg font-bold text-[#1a1aa6]">Last update on : {LAST_UPDATE}</p>

@@ -7,12 +7,12 @@ from pydantic import BaseModel, EmailStr, Field, model_validator
 
 from .. import db
 from ..schemas import Form
-from ..security import current_user, public_user, require_roles
+from ..security import require_section, current_user, public_user, require_roles
 from .entries import minutes_between
 
 router = APIRouter(prefix="/hr", tags=["hr report"])
 HR_ROLES = ("HR", "MANAGER", "ADMIN")
-hr_only = require_roles(*HR_ROLES)
+hr_only = require_section("hr", roles=("HR", "ADMIN"))  # HR / Admin with the HR menu ticked; Manager always
 TIME_RE = r"^([01]\d|2[0-3]):[0-5]\d$"
 
 DEFAULT_POLICY = (

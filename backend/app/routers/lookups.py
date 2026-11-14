@@ -6,6 +6,7 @@ from pydantic import BaseModel, Field
 
 from .. import db
 from ..security import current_user
+from .master import CourseIn  # same CourseMaster columns as Master › Course
 
 router = APIRouter(prefix="/lookups", tags=["lookups"])
 EDITABLE = {"colleges", "departments", "othersHeadings", "travelModes", "sessionTypes", "slMaterialTheory", "slMaterialPractical"}  # any logged-in user can add
@@ -15,9 +16,6 @@ class ValueIn(BaseModel):
     value: str = Field(min_length=1, max_length=200)
 
 
-class CourseIn(BaseModel):
-    id: str = Field(pattern=r"^[A-Za-z0-9+#._-]{2,20}$")
-    name: str = Field(min_length=1, max_length=120)
 
 
 def natural_key(text) -> list:
@@ -54,7 +52,7 @@ def get_lookups(_: dict = Depends(current_user)):
     out["advproNos"] = [a["advproNo"] for a in db.db.master_assets.find({}, {"advproNo": 1}).sort("advproNo")]
     out["registerNos"] = [r["regNo"] for r in db.db.master_registrations.find({}, {"regNo": 1}).sort("regNo")]
     out["vendors"] = [v["vendorName"] for v in db.db.master_vendors.find({}, {"vendorName": 1}).sort("vendorName")]
-    out["courses"] = list(db.courses.find({}, {"_id": 0, "id": 1, "name": 1}).sort("id"))
+    out["courses"] = list(db.courses.find({}, {"_id": 0, "createdBy": 0, "createdAt": 0}).sort("id"))
     out["chapters"] = list(db.chapters.find({}, {"_id": 0}).sort([("courseId", 1), ("no", 1)]))
     return out
 
@@ -65,13 +63,15 @@ def add_course(body: CourseIn, user: dict = Depends(current_user)):
     It goes into the same `courses` collection Master › Courses & Chapters uses."""
     cid = body.id.strip().upper()
     name = body.name.strip()
+    if not cid or not name:
+        raise HTTPException(422, "Enter the Course ID and course name")
     if db.courses.find_one({"id": cid}):
         raise HTTPException(409, f"Course {cid} already exists")
     if db.courses.find_one({"name": {"$regex": f"^{re.escape(name)}$", "$options": "i"}}):
         raise HTTPException(409, f'A course named "{name}" already exists')
-    doc = {"id": cid, "name": name, "createdBy": user["userId"], "createdAt": datetime.now(timezone.utc)}
+    doc = {"id": cid, **body.fields(), "createdBy": user["userId"], "createdAt": datetime.now(timezone.utc).isoformat()}
     db.courses.insert_one(doc)
-    return {"id": cid, "name": name}
+    return {"id": cid, **body.fields()}
 
 
 @router.post("/{kind}", status_code=201)

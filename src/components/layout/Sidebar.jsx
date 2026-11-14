@@ -6,7 +6,7 @@ import { NAVIGATION, FOOTER_NAVIGATION } from '../../config/navigation';
 import { cn } from '../../utils/cn';
 import Logo from './Logo';
 import { useAuth } from '../../context/AuthContext';
-import { canAccess } from '../../utils/permissions';
+import { canAccess, hasSection } from '../../utils/permissions';
 
 const containsPath = (item, path) => (item.to && (item.to === '/' ? path === '/' : path.startsWith(item.to))) || item.children?.some((c) => containsPath(c, path));
 
@@ -188,7 +188,7 @@ function NavGroup({ item, depth, onNavigate }) {
 
 function NavItem({ item, depth = 0, collapsed, flyoutMode, flyout, setFlyout, onNavigate, onAction }) {
   const { user } = useAuth();
-  if (!canAccess(user, item.roles)) return null;
+  if (!canAccess(user, item.roles) || (item.section && !hasSection(user, item.section))) return null;
   if (item.children) {
     if (flyoutMode && depth === 0) return <FlyoutGroup item={item} collapsed={collapsed} flyout={flyout} setFlyout={setFlyout} />;
     return <NavGroup item={item} depth={depth} onNavigate={onNavigate} />;

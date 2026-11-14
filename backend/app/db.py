@@ -16,6 +16,7 @@ notifications = db.notifications
 courses = db.courses
 leave_requests = db.leave_requests
 chapters = db.chapters
+deleted_users = db.deleted_users  # employees deleted in Master › Employees, can be restored
 
 
 def ensure_indexes() -> None:

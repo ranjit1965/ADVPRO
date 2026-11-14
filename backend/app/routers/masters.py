@@ -13,10 +13,10 @@ from fastapi import APIRouter, Body, Depends, HTTPException
 from pydantic import BaseModel, Field
 
 from .. import db
-from ..security import require_roles
+from ..security import require_section, require_roles
 
 router = APIRouter(prefix="/masters", tags=["masters"])
-master_roles = require_roles("MANAGER", "ADMIN")
+master_roles = require_section("master")  # Master menu ticked for the role (Master › Role Access)
 MASTERS = {m["key"]: m for m in json.loads((Path(__file__).parent.parent / "masters.json").read_text())["masters"]}
 SYSTEM = {"id", "createdBy", "createdAt", "updatedBy", "updatedAt"}
 

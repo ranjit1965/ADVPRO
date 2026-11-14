@@ -17,11 +17,11 @@ from pymongo import UpdateOne
 
 from .. import db
 from ..biometric_files import ReadResult, read_rows, rows_from_upload
-from ..security import current_user, require_roles
+from ..security import require_section, current_user, require_roles
 
 router = APIRouter(prefix="/biometric", tags=["biometric"])
-master_roles = require_roles("MANAGER", "ADMIN")
-view_roles = require_roles("MANAGER", "ADMIN", "HR")
+master_roles = require_section("master", "admin")  # Master or Admin (Data Upload) menu
+view_roles = require_section("master", "admin", "hr", roles=("ADMIN", "HR"))
 SETTINGS_ID = "biometric"
 DEFAULT_TOLERANCE = 15  # minutes of difference still counted as matching
 
