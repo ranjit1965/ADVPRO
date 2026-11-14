@@ -337,17 +337,20 @@ missed), the Dashboard and this page remind Admin / Manager until each file is u
 * Course ID can be any letters, digits or symbols (for example `ADCH&N`, `C/C++`), up to 40
   characters; it is saved in capitals. The selected course in Master › Course shows all the values.
 
-### Role Access (Master › Role Access, Manager only)
+### Role Access and roles (Master › Role Access, Manager only)
 
-* The Manager ticks which menus **Admin, HR, Faculty and Staff** can open: **Master**, **Admin**
-  (Data Upload), **HR**, **Faculty** (Daily Activity and reports) and **My Work**. Unticking hides the
-  menu for that role, blocks its page addresses and the server refuses its data. Ticking gives it,
-  for example Master to HR.
-* Defaults are the old rules: Master and Admin for Admin only; HR, Faculty and My Work for everyone.
-  **Default access** puts these back. The Manager always has every menu.
-* HR and Admin can edit HR Policy, employee info and Halfyearly reports only while their HR menu is ticked.
+* **Roles**: Admin, HR, Faculty and Staff are built in. The Manager can **add a role** (for example
+  ACCOUNTS or LAB ASSISTANT) and pick it as the Role in Master › Employees. A role can be removed when
+  no employee has it. An added role works like Staff (own entries and reports) and starts with Staff's menus.
+* **Menus**: one checkbox per side-pane tab per role: My Work, Master, Faculty, Lab Support, MIS,
+  Digital Marketing, Admin (Data Upload), Marketing, HR and Transaction. Unticking hides the tab for
+  that role, blocks its page addresses and the server refuses its data; ticking gives it (for
+  example Master to HR). Dashboard and Settings are always shown. The Manager always has every tab.
+* Defaults are the old rules: Master and Admin for Admin only, everything else for everyone.
+  **Default access** puts these back.
+* HR and Admin can edit HR Policy, employee info and Halfyearly reports only while their HR tab is ticked.
 * Changes apply to each person the next time they open or refresh the app. Saved in `settings`
-  (`_id: roleAccess`); `GET/PUT /api/access`.
+  (`_id: roleAccess`: `roles`, `customRoles`).
 
 ### Missing daily entries: automatic Inactive (Faculty only)
 
@@ -383,13 +386,17 @@ missed), the Dashboard and this page remind Admin / Manager until each file is u
 
    It reads the same `backend/.env`, so run it from the `backend` folder. Running it twice a day is harmless.
 
-### Deleted employees and restore
+### Deleted employees and restore (Master › Deleted Employees)
 
-* **Delete** in Master › Employees no longer removes the record for good: the employee moves to
-  **Deleted employees** (`deleted_users` collection) with who deleted them and when, and can no longer sign in.
-* **Deleted employees** (button on the Employees page) lists them; **Restore** brings the employee
-  back with the same User ID, code, details and password, as Active. Their entries were never removed.
-  If another employee now uses the same User ID or code, change that one first.
+* **Delete** in Master › Employees moves the employee to **Deleted Employees** (`deleted_users`)
+  with who deleted them and when; they can no longer sign in. Their records move with them to
+  `deleted_records`: daily entries, leave / permission requests, halfyearly reports, work
+  assignments and biometric days. Reports no longer count them while they are deleted.
+* **Master › Deleted Employees** (also the **Deleted employees** button on the Employees page) lists
+  them. Click one to see their details, how many records were saved, all their daily entries (date,
+  time, hours, activity) and their leave and work items.
+* **Restore** brings the employee back as Active with the same User ID, code, details and password,
+  and puts every record back. If another employee now uses the same User ID or code, change that one first.
 
 ### Forgot password (Manager only)
 
@@ -472,9 +479,9 @@ Every page reads and writes data only through `src/services/api.js`, which calls
 | `getBatchImportSettings`, `uploadBatches`, `saveBatchFacultyMap` (manager, admin) | `GET /api/batch-import/settings`, `POST /api/batch-import/upload?name=` (raw file body), `PUT /api/batch-import/map` |
 | `getBiometricSettings`, `saveBiometricSettings`, `uploadBiometric`, `saveBiometricMap`, `getBiometricRecords` | `GET/PUT /api/biometric/settings` (tolerance), `POST /api/biometric/upload?name=` (raw file body), `PUT /api/biometric/map`, `GET /api/biometric/records` |
 | `requestCourse`, `getCourseRequests`, `setCourseRequestStatus` | `POST/GET /api/course-requests`, `PATCH /api/course-requests/{id}` |
-| `getRoleAccess`, `saveRoleAccess` (Manager) | `GET/PUT /api/access` |
+| `getRoleAccess`, `saveRoleAccess`, `addRole`, `deleteRole` (Manager), `getRoles` | `GET/PUT /api/access`, `POST /api/access/roles`, `DELETE /api/access/roles/{role}`, `GET /api/access/roles` |
 | `getAutoInactive`, `runAutoInactive` (manager, admin) | `GET /api/users/auto-inactive` (settings, last run, preview), `POST /api/users/auto-inactive/run` |
-| `getDeletedUsers`, `restoreUser` (manager, admin) | `GET /api/users/deleted/list`, `POST /api/users/deleted/{userId}/restore` |
+| `getDeletedUsers`, `getDeletedUser`, `restoreUser` (Master menu) | `GET /api/users/deleted/list`, `GET /api/users/deleted/{userId}`, `POST /api/users/deleted/{userId}/restore` |
 | `requestPasswordResetOtp`, `resetPasswordWithOtp` (manager account only) | `POST /api/auth/forgot-password/request-otp`, `POST /api/auth/forgot-password/reset` |
 
 Frontend `.env`:
@@ -521,7 +528,7 @@ passwords) and the same Gmail address as `SMTP_FROM`.
 
 MongoDB collections: `users` (bcrypt password hashes, roles FACULTY / HR / ADMIN / STAFF / MANAGER),
 `daily_entries`, `courses`, `chapters` (chapter / session details per course), `lookups` (one document per dropdown list), `monthly_plans`, `student_marks`,
-`master_registrations`, `master_batches`, `master_attendance`, `master_products`, `master_oldRegistrations`, `master_vendors`, `master_assets`, `work_assignments`, `settings` (HR policy), `leave_requests`, `halfyearly_reports`, `course_requests`, `deleted_users` (deleted employees, restorable), `manager_otps` (expire automatically), `notifications`, `counters` (entry numbers DAE-0001…).
+`master_registrations`, `master_batches`, `master_attendance`, `master_products`, `master_oldRegistrations`, `master_vendors`, `master_assets`, `work_assignments`, `settings` (HR policy), `leave_requests`, `halfyearly_reports`, `course_requests`, `deleted_users` (deleted employees, restorable), `deleted_records` (their entries and records), `manager_otps` (expire automatically), `notifications`, `counters` (entry numbers DAE-0001…).
 
 Rules enforced on the server: one manager only, created after the emailed 6-digit code is verified
 (10 minutes, 5 attempts) and is never returned by the API or written to the log; Admin and Manager

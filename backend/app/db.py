@@ -45,6 +45,7 @@ def ensure_indexes() -> None:
     leave_requests.create_index([("userId", ASCENDING), ("createdAt", ASCENDING)])
     courses.create_index("id", unique=True)
     chapters.create_index([("courseId", ASCENDING), ("no", ASCENDING)], unique=True)
+    db.deleted_records.create_index("owner")
     otps.create_index("expiresAt", expireAfterSeconds=0)  # Mongo removes expired codes
 
 

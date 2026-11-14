@@ -32,6 +32,7 @@ import LeaveForm from './pages/hr/LeaveForm';
 import HalfyearlyReport from './pages/hr/HalfyearlyReport';
 import NotFound from './pages/NotFound';
 import RoleAccess from './pages/master/RoleAccess';
+import DeletedEmployees from './pages/master/DeletedEmployees';
 import { hasSection, sectionForPath } from './utils/permissions';
 
 function RequireAuth({ children }) {
@@ -79,6 +80,8 @@ export default function App() {
               <Route path="master/biometric" element={<Biometric />} />
               <Route path="master/batch-import" element={<BatchImport />} />
               <Route path="master/role-access" element={<RoleAccess />} />
+              <Route path="master/deleted-employees" element={<DeletedEmployees />} />
+              <Route path="master/deleted-employees/:userId" element={<DeletedEmployees />} />
               <Route path="master/:key" element={<MasterList />} />
               <Route path="admin/data-upload" element={<DataUpload />} />
               <Route path="my-work" element={<MyWork />} />

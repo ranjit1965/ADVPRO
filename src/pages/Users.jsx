@@ -43,8 +43,7 @@ export default function Users() {
   const [check, setCheck] = useState(null); // missing-entry check: { settings, preview }
   const [checkOpen, setCheckOpen] = useState(false);
   const [running, setRunning] = useState(false);
-  const [deleted, setDeleted] = useState(null); // Deleted employees list, null = closed
-  const [restoring, setRestoring] = useState('');
+  const [roleOptions, setRoleOptions] = useState(ROLE_OPTIONS);
 
   const load = useCallback(() => {
     setLoading(true);
@@ -56,6 +55,9 @@ export default function Users() {
       .catch(() => setHours({}));
   }, [month]);
   useEffect(load, [load]);
+  useEffect(() => {
+    if (canEdit) api.getRoles().then(setRoleOptions).catch(() => {});
+  }, [canEdit]);
 
   const filtered = useMemo(() => {
     const s = q.trim().toLowerCase();
@@ -118,30 +120,6 @@ export default function Users() {
     }
   };
 
-  const openDeleted = async () => {
-    setDeleted([]);
-    try {
-      setDeleted(await api.getDeletedUsers());
-    } catch (e) {
-      toast.error(e.message);
-      setDeleted(null);
-    }
-  };
-
-  const restore = async (r) => {
-    setRestoring(r.userId);
-    try {
-      await api.restoreUser(r.userId);
-      toast.success(`${r.name} restored and active again.`);
-      setDeleted((list) => list.filter((d) => d.userId !== r.userId));
-      load();
-    } catch (e) {
-      toast.error(e.message);
-    } finally {
-      setRestoring('');
-    }
-  };
-
   // Missing-entry check: preview who would be made inactive, then run it now if wanted.
   const openCheck = async () => {
     setCheck(null);
@@ -182,7 +160,7 @@ export default function Users() {
   };
 
   const remove = async (r) => {
-    if (!(await confirm({ title: 'Delete employee', message: `Delete ${r.name} (${r.userId})? They move to Deleted employees and can no longer sign in. You can restore them from there. Their saved entries stay in the reports.`, confirmLabel: 'Delete', tone: 'danger' }))) return;
+    if (!(await confirm({ title: 'Delete employee', message: `Delete ${r.name} (${r.userId})? They can no longer sign in, and their daily entries, leave, work and halfyearly records move with them to Deleted Employees (no longer counted in reports). Restore there brings everything back.`, confirmLabel: 'Delete', tone: 'danger' }))) return;
     try {
       await api.deleteUser(r.userId);
       toast.success(`${r.name} moved to Deleted employees.`);
@@ -261,7 +239,7 @@ export default function Users() {
         actions={
           canEdit && (
             <div className="flex flex-wrap gap-2">
-              <Button variant="secondary" icon={ArchiveRestore} onClick={openDeleted}>Deleted employees</Button>
+              <Button variant="secondary" icon={ArchiveRestore} onClick={() => navigate('/master/deleted-employees')}>Deleted employees</Button>
               <Button variant="secondary" icon={CalendarX} onClick={openCheck}>Missing entries check</Button>
               <Button icon={Plus} onClick={openNew}>Add employee</Button>
             </div>
@@ -279,33 +257,6 @@ export default function Users() {
         )}
         {error ? <ErrorState message={error} onRetry={load} /> : <DataTable columns={columns} rows={filtered} rowKey="userId" loading={loading} caption="Employees" />}
       </Card>
-
-      <Modal
-        open={deleted !== null}
-        onClose={() => setDeleted(null)}
-        title="Deleted employees"
-        size="lg"
-        footer={<Button variant="secondary" onClick={() => setDeleted(null)}>Close</Button>}
-      >
-        {deleted?.length ? (
-          <ul className="divide-y divide-ink-100 rounded-lg border border-ink-100 text-sm">
-            {deleted.map((d) => (
-              <li key={d.userId} className="flex flex-wrap items-center justify-between gap-3 px-3 py-2.5">
-                <div>
-                  <p className="font-medium text-ink-900">{d.name} ({d.code})</p>
-                  <p className="text-ink-500">
-                    {d.userId} · {d.role}{d.department ? ` · ${d.department}` : ''}{d.email ? ` · ${d.email}` : ''}
-                  </p>
-                  <p className="text-xs text-ink-400">Deleted {d.deletedAt ? new Date(d.deletedAt).toLocaleString() : ''}{d.deletedBy ? ` by ${d.deletedBy}` : ''}</p>
-                </div>
-                <Button size="sm" icon={ArchiveRestore} loading={restoring === d.userId} onClick={() => restore(d)}>Restore</Button>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="text-sm text-ink-600">No deleted employees.</p>
-        )}
-      </Modal>
 
       <Modal
         open={checkOpen}
@@ -368,7 +319,7 @@ export default function Users() {
           <Input label="Employee code" required value={form.code} error={errors.code} onChange={set('code')} hint="Shown as NAME (CODE) in dropdowns" />
           <Input label="Name" required value={form.name} error={errors.name} onChange={set('name')} />
           <Input label="Email" type="email" value={form.email} error={errors.email} onChange={set('email')} />
-          <Select label="Role" required options={ROLE_OPTIONS} value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value, designation: e.target.value })} />
+          <Select label="Role" required options={roleOptions} value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value, designation: e.target.value })} />
           <Input label="Designation" value={form.designation} onChange={set('designation')} />
           <Input label="Department" value={form.department} onChange={set('department')} />
           <Input label="Grade" value={form.grade} onChange={set('grade')} />

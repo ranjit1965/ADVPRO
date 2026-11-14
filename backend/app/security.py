@@ -64,20 +64,45 @@ def require_roles(*roles: str):
 # ------------------------------------------------------------------ menu (tab) access per role
 # The Manager ticks which menus each role may open (Master › Role Access). Not ticked = hidden in the
 # menu and refused by the server. The Manager always has every menu. Defaults = the old fixed rules.
-ALL_ROLES = ("ADMIN", "HR", "FACULTY", "STAFF")
+BUILT_IN_ROLES = ("ADMIN", "HR", "FACULTY", "STAFF")
+ALL_ROLES = BUILT_IN_ROLES  # kept for older imports; use all_roles() for the full list with added roles
+# Every tab of the left side pane, in menu order (Dashboard is always shown: it is the home page).
 SECTIONS = {
+    "myWork": {"label": "My Work", "default": BUILT_IN_ROLES},
     "master": {"label": "Master", "default": ("ADMIN",)},
+    "faculty": {"label": "Faculty (Daily Activity, reports)", "default": BUILT_IN_ROLES},
+    "labSupport": {"label": "Lab Support", "default": BUILT_IN_ROLES},
+    "mis": {"label": "MIS", "default": BUILT_IN_ROLES},
+    "digitalMarketing": {"label": "Digital Marketing", "default": BUILT_IN_ROLES},
     "admin": {"label": "Admin (Data Upload)", "default": ("ADMIN",)},
-    "hr": {"label": "HR", "default": ALL_ROLES},
-    "faculty": {"label": "Faculty (Daily Activity, reports)", "default": ALL_ROLES},
-    "myWork": {"label": "My Work", "default": ALL_ROLES},
+    "marketing": {"label": "Marketing", "default": BUILT_IN_ROLES},
+    "hr": {"label": "HR", "default": BUILT_IN_ROLES},
+    "transaction": {"label": "Transaction", "default": BUILT_IN_ROLES},
 }
+
+
+def _access_doc() -> dict:
+    return db.db.settings.find_one({"_id": "roleAccess"}) or {}
 
 
 def role_access() -> dict:
     """Saved ticks: {role: {section: bool}}; missing ones use the default."""
-    doc = db.db.settings.find_one({"_id": "roleAccess"}) or {}
-    return doc.get("roles", {})
+    return _access_doc().get("roles", {})
+
+
+def custom_roles() -> list[str]:
+    """Roles the Manager added in Master › Role Access (for example ACCOUNTS)."""
+    return list(_access_doc().get("customRoles", []))
+
+
+def all_roles() -> list[str]:
+    return [*BUILT_IN_ROLES, *custom_roles()]
+
+
+def default_access(role: str, section: str) -> bool:
+    # An added role starts with the same menus as Staff until the Manager ticks otherwise.
+    base = role if role in BUILT_IN_ROLES else "STAFF"
+    return base in SECTIONS[section]["default"]
 
 
 def sections_for(user: dict) -> dict:
@@ -85,7 +110,7 @@ def sections_for(user: dict) -> dict:
     if role == "MANAGER":
         return {s: True for s in SECTIONS}
     saved = role_access().get(role, {})
-    return {s: bool(saved.get(s, role in cfg["default"])) for s, cfg in SECTIONS.items()}
+    return {s: bool(saved.get(s, default_access(role, s))) for s in SECTIONS}
 
 
 def me_view(user: dict) -> dict:

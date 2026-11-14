@@ -55,9 +55,9 @@ export const NAVIGATION = [
       { key: 'monthly-working-hrs-report', label: 'Monthly Working Hrs Report', to: '/faculty/reports/working-hours', roles: WORKING_HOURS_ROLES },
     ],
   },
-  { key: 'lab-support', label: 'Lab Support', icon: LifeBuoy, restricted: true },
-  { key: 'mis', label: 'MIS', icon: BarChart3, restricted: true },
-  { key: 'digital-marketing', label: 'Digital Marketing', icon: MonitorSmartphone, restricted: true },
+  { key: 'lab-support', label: 'Lab Support', icon: LifeBuoy, restricted: true, section: 'labSupport' },
+  { key: 'mis', label: 'MIS', icon: BarChart3, restricted: true, section: 'mis' },
+  { key: 'digital-marketing', label: 'Digital Marketing', icon: MonitorSmartphone, restricted: true, section: 'digitalMarketing' },
   {
     key: 'admin',
     label: 'Admin',
@@ -65,7 +65,7 @@ export const NAVIGATION = [
     section: 'admin',
     children: [{ key: 'data-upload', label: 'Data Upload', to: '/admin/data-upload' }],
   },
-  { key: 'marketing', label: 'Marketing', icon: Megaphone, restricted: true },
+  { key: 'marketing', label: 'Marketing', icon: Megaphone, restricted: true, section: 'marketing' },
   {
     key: 'hr-report',
     label: 'HR',
@@ -80,7 +80,7 @@ export const NAVIGATION = [
       { key: 'halfyearly', label: 'Halfyearly Program Report', to: '/hr-report/halfyearly' },
     ],
   },
-  { key: 'transaction', label: 'Transaction', icon: ArrowLeftRight, restricted: true },
+  { key: 'transaction', label: 'Transaction', icon: ArrowLeftRight, restricted: true, section: 'transaction' },
 ];
 
 export const FOOTER_NAVIGATION = [

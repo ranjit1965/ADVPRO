@@ -76,6 +76,24 @@ export async function deleteUser(userId) {
   return request(`/users/${encodeURIComponent(userId)}`, { method: 'DELETE' });
 }
 
+/** Roles for the Employee form (built-in + added by the Manager). */
+export async function getRoles() {
+  return request('/access/roles');
+}
+
+export async function addRole(name) {
+  return request('/access/roles', { method: 'POST', body: { name } });
+}
+
+export async function deleteRole(role) {
+  return request(`/access/roles/${encodeURIComponent(role)}`, { method: 'DELETE' });
+}
+
+/** One deleted employee with their saved entries, leave, work and halfyearly records. */
+export async function getDeletedUser(userId) {
+  return request(`/users/deleted/${encodeURIComponent(userId)}`);
+}
+
 /** Deleted employees (moved here by Delete), newest first. */
 export async function getDeletedUsers() {
   return request('/users/deleted/list');
