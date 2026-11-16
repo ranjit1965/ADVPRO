@@ -8,13 +8,19 @@ import { facultyOptions } from './fieldProps';
 import { formatDuration, minutesBetween, toISODate } from '../../utils/format';
 import { cn } from '../../utils/cn';
 import { DAY_START } from '../../utils/constants';
+import { useAuth } from '../../context/AuthContext';
+import { seesAllEntries } from '../../utils/permissions';
 
 /** Faculty Name and Activity Date (top card). */
 export default function EntryHeaderFields({ header, errors, onChange, lookups }) {
+  const { user } = useAuth();
   const set = (k) => (e) => onChange({ [k]: e?.target ? e.target.value : e });
+  // Faculty and Staff enter only for themselves: the list holds just their own name.
+  const all = seesAllEntries(user);
+  const options = all ? facultyOptions(lookups) : [{ value: user.code, label: `${user.name} (${user.code})` }];
   return (
     <div className="grid grid-cols-2 gap-x-3 gap-y-4 sm:gap-4 lg:grid-cols-12">
-      <SearchableSelect id="facultyCode" label="Faculty Name" required className="col-span-2 lg:col-span-8" options={facultyOptions(lookups)} value={header.facultyCode} onChange={set('facultyCode')} error={errors.facultyCode} placeholder="Search faculty" />
+      <SearchableSelect id="facultyCode" label="Faculty Name" required disabled={!all} className="col-span-2 lg:col-span-8" options={options} value={header.facultyCode} onChange={set('facultyCode')} error={errors.facultyCode} placeholder="Search faculty" />
       <DatePicker id="activityDate" label="Activity Date" required className="col-span-2 lg:col-span-4" value={header.activityDate} max={toISODate()} onChange={set('activityDate')} error={errors.activityDate} />
     </div>
   );

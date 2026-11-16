@@ -2,10 +2,10 @@ import re
 from datetime import date, datetime, timezone
 from typing import Any, Literal
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
 from pydantic import BaseModel, Field, field_validator, model_validator
 
-from .. import db
+from .. import db, issue_alerts
 from ..security import current_user
 
 router = APIRouter(prefix="/daily-entries", tags=["daily entries"])
@@ -57,6 +57,30 @@ class EntryIn(BaseModel):
         if self.timeTo <= self.timeFrom:
             raise ValueError("Time To must be after Time From")
         return self
+
+    @model_validator(mode="after")
+    def class_issue(self):
+        """Class "Issue faced? Yes" needs the issue type and the minutes lost (not more than the class)."""
+        d = self.details or {}
+        if self.activityType != "class" or d.get("issueFaced") != "Yes":
+            return self
+        if not str(d.get("issueType") or "").strip():
+            raise ValueError("Choose the issue type")
+        try:
+            mins = int(str(d.get("issueMinutes") or "").strip())
+        except ValueError:
+            raise ValueError("Enter the minutes lost by the issue") from None
+        if mins <= 0 or mins > minutes_between(self.timeFrom, self.timeTo):
+            raise ValueError("Minutes lost must be between 1 and the class duration")
+        return self
+
+
+VIEW_ALL = ("HR", "ADMIN", "MANAGER")  # see everyone's entries; everyone else sees only their own
+
+
+def can_see(user: dict, faculty_code: str) -> None:
+    if user["role"] not in VIEW_ALL and user["code"] != faculty_code:
+        raise HTTPException(403, "You can only see your own entries")
 
 
 def can_touch(user: dict, faculty_code: str) -> None:
@@ -114,6 +138,8 @@ def list_entries(
     page: int = Query(1, ge=1),
     pageSize: int = Query(0, ge=0, le=500),
 ):
+    if user["role"] not in VIEW_ALL:
+        facultyCode = user["code"]  # faculty and staff: only their own entries, whatever is asked
     f = build_query(q, facultyCode, activityType, facultyIn, dateFrom, dateTo)
     total = db.entries.count_documents(f)
     d = 1 if sortDir == "asc" else -1
@@ -128,10 +154,11 @@ def list_entries(
 
 
 @router.get("/{entry_id}")
-def get_entry(entry_id: str, _: dict = Depends(current_user)):
+def get_entry(entry_id: str, user: dict = Depends(current_user)):
     e = db.entries.find_one({"id": entry_id}, {"searchText": 0})
     if not e:
         raise HTTPException(404, "Entry not found")
+    can_see(user, e["facultyCode"])
     return with_minutes(e)
 
 
@@ -143,7 +170,7 @@ def faculty_or_404(code: str) -> dict:
 
 
 @router.post("", status_code=201)
-def create_entry(body: EntryIn, user: dict = Depends(current_user)):
+def create_entry(body: EntryIn, tasks: BackgroundTasks, user: dict = Depends(current_user)):
     p = body.model_dump(mode="json")
     can_touch(user, p["facultyCode"])
     check_overlap(p)
@@ -162,11 +189,13 @@ def create_entry(body: EntryIn, user: dict = Depends(current_user)):
     }
     db.entries.insert_one(doc)
     doc.pop("searchText")
+    if issue_alerts.has_issue(doc):
+        tasks.add_task(issue_alerts.send, doc["id"])  # email + WhatsApp after the reply; never blocks the save
     return with_minutes(doc)
 
 
 @router.put("/{entry_id}")
-def update_entry(entry_id: str, body: EntryIn, user: dict = Depends(current_user)):
+def update_entry(entry_id: str, body: EntryIn, tasks: BackgroundTasks, user: dict = Depends(current_user)):
     old = db.entries.find_one({"id": entry_id})
     if not old:
         raise HTTPException(404, "Entry not found")
@@ -178,6 +207,8 @@ def update_entry(entry_id: str, body: EntryIn, user: dict = Depends(current_user
     fac = faculty_or_404(p["facultyCode"])
     p.update(facultyName=fac["name"], department=fac.get("department", ""), updatedBy=user["name"], updatedAt=datetime.now(timezone.utc).isoformat(), searchText=search_text(p))
     db.entries.update_one({"id": entry_id}, {"$set": p})
+    if issue_alerts.has_issue(p) and not old.get("issueAlert"):
+        tasks.add_task(issue_alerts.send, entry_id)  # issue added to an entry that had none
     return with_minutes(db.entries.find_one({"id": entry_id}, {"searchText": 0}))
 
 

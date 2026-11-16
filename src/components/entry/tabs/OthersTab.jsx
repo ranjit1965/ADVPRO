@@ -1,35 +1,34 @@
-import { Info, Plus } from 'lucide-react';
+import { Info } from 'lucide-react';
 import Textarea from '../../ui/Textarea';
+import Input from '../../ui/Input';
 import SearchableSelect from '../../ui/SearchableSelect';
 import { makeField } from '../fieldProps';
+import { OTHERS_CUSTOM } from '../../../utils/entryForm';
 
-/** Others: Heading and Remarks. An entry over 1 hour asks "Are you sure?" on Save. */
-export default function OthersTab({ values, errors, set, lookups, onAddLookup }) {
+/**
+ * Others: Heading and Remarks. Headings come from Master › Dropdown Values (Admin / Manager add them);
+ * "Others" at the end of the list asks for a heading typed by the faculty. An entry over 1 hour asks
+ * "Are you sure?" on Save.
+ */
+export default function OthersTab({ values, errors, set, setMany, lookups }) {
   const f = makeField('others', values, errors, set);
-  const addHeading = () => onAddLookup('othersHeadings', (v) => set('heading', v));
+  const headings = (lookups.othersHeadings || []).filter((h) => h.toLowerCase() !== OTHERS_CUSTOM.toLowerCase());
+  const custom = values.heading === OTHERS_CUSTOM;
+  const onHeading = (v) => (setMany ? setMany({ heading: v, otherHeading: v === OTHERS_CUSTOM ? values.otherHeading || '' : '' }) : set('heading', v));
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
         <SearchableSelect
           label="Heading"
           className="lg:col-span-4"
-          options={lookups.othersHeadings.map((h) => ({ value: h, label: h }))}
+          sort={false}
+          options={[...headings.map((h) => ({ value: h, label: h })), { value: OTHERS_CUSTOM, label: 'Others (type your own)' }]}
           placeholder="Select a heading"
-          onKeyDown={(e) => {
-            if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'a') {
-              e.preventDefault();
-              addHeading();
-            }
-          }}
-          aside={
-            <button type="button" onClick={addHeading} className="inline-flex items-center gap-1 text-[12px] font-medium text-brand-700 hover:underline">
-              <Plus className="size-3.5" aria-hidden /> Add new heading
-            </button>
-          }
           {...f('heading')}
-          onChange={(v) => set('heading', v)}
+          onChange={onHeading}
         />
-        <Textarea label="Remarks" className="lg:col-span-8" rows={2} maxLength={500} placeholder="Describe the activity (optional)" {...f('remarks')} />
+        {custom && <Input label="Other heading" required className="lg:col-span-4" maxLength={80} placeholder="Type the heading" {...f('otherHeading')} />}
+        <Textarea label="Remarks" className={custom ? 'lg:col-span-12' : 'lg:col-span-8'} rows={2} maxLength={500} placeholder="Describe the activity (optional)" {...f('remarks')} />
       </div>
       <p className="flex items-start gap-2 rounded-lg border border-info-600/20 bg-info-50 px-3 py-2.5 text-[13px] text-info-700">
         <Info className="mt-0.5 size-4 shrink-0" aria-hidden />

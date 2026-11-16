@@ -87,7 +87,8 @@
       "Theory Book",
       "Lab Manual",
       "Technical Video Taken / Generation",
-      "Digital Marketing Support"
+      "Digital Marketing Support",
+      "PDF for Advantage site"
     ],
     "softwareActivities": [
       "Installation",
@@ -139,6 +140,15 @@
       "Practical Exercise",
       "Coding in VS Code",
       "Cloud Lab"
+    ],
+    "issueTypes": [
+      "Power cut",
+      "Internet / network problem",
+      "System / lab problem",
+      "Projector / display problem",
+      "Software not working",
+      "Students not available",
+      "Others"
     ]
   }
 }

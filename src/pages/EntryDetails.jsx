@@ -8,6 +8,8 @@ import DescriptionList from '../components/ui/DescriptionList';
 import { PageLoader } from '../components/ui/Loading';
 import ErrorState from '../components/ui/ErrorState';
 import { useLookups } from '../context/LookupsContext';
+import { useAuth } from '../context/AuthContext';
+import { canEditEntry } from '../utils/permissions';
 import { useToast } from '../context/ToastContext';
 import { useConfirm } from '../context/ConfirmContext';
 import { useAsync } from '../hooks/useAsync';
@@ -20,6 +22,7 @@ export default function EntryDetails() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { lookups } = useLookups();
+  const { user } = useAuth();
   const toast = useToast();
   const confirm = useConfirm();
   const { data: entry, loading, error, reload } = useAsync(() => api.getDailyEntry(id), [id]);
@@ -63,12 +66,16 @@ export default function EntryDetails() {
             <Button variant="secondary" icon={Printer} onClick={() => window.print()}>
               Print
             </Button>
-            <Button variant="danger-outline" icon={Trash2} onClick={remove}>
-              Delete
-            </Button>
-            <Button icon={Pencil} onClick={() => navigate(`/faculty/daily-activity/entry/${entry.id}`)}>
-              Edit
-            </Button>
+            {canEditEntry(user, entry) && (
+              <>
+                <Button variant="danger-outline" icon={Trash2} onClick={remove}>
+                  Delete
+                </Button>
+                <Button icon={Pencil} onClick={() => navigate(`/faculty/daily-activity/entry/${entry.id}`)}>
+                  Edit
+                </Button>
+              </>
+            )}
           </>
         }
       />

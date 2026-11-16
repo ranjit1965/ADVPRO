@@ -31,7 +31,7 @@ export const canManage = (user) => hasSection(user, 'master') || hasSection(user
 /** Employees and Deleted Employees can also be viewed (read-only) by HR / Admin from the HR menu. */
 export const canViewPeople = (user) => canManage(user) || (hasSection(user, 'hr') && PEOPLE_VIEW_ROLES.includes(user?.role));
 
-const SHARED_PAGES = ['/master/batches', '/master/batch-import', '/master/courses', '/master/biometric'];
+const SHARED_PAGES = ['/master/batches', '/master/batch-import', '/master/courses', '/master/biometric', '/master/dropdown-values'];
 
 /** Which menu(s) a page address belongs to (for blocking typed-in addresses of a hidden menu). */
 export const sectionForPath = (path) => {
@@ -43,3 +43,9 @@ export const sectionForPath = (path) => {
   if (path.startsWith('/faculty') || path.startsWith('/entries')) return 'faculty';
   return null;
 };
+
+/** HR, Admin and Manager see everyone's daily entries; everyone else sees only their own. */
+export const ENTRY_VIEW_ALL_ROLES = [ROLES.HR, ROLES.ADMIN, ROLES.MANAGER];
+export const seesAllEntries = (user) => ENTRY_VIEW_ALL_ROLES.includes(user?.role);
+/** Admin and Manager can edit or delete anyone's entry; everyone else only their own (same rule as the server). */
+export const canEditEntry = (user, entry) => [ROLES.ADMIN, ROLES.MANAGER].includes(user?.role) || (!!entry && entry.facultyCode === user?.code);

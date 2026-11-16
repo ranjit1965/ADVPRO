@@ -18,7 +18,7 @@ OPTION_LISTS = (
     "classIn", "chapterTypes", "sessionTypes", "colleges", "departments", "sections", "yopOptions",
     "marketingTypes", "enquiryFormNos", "materialTypes", "softwareActivities",
     "travelModes", "othersHeadings", "productTypes", "locations",
-    "slMaterialTheory", "slMaterialPractical",
+    "slMaterialTheory", "slMaterialPractical", "issueTypes",
 )
 
 
@@ -92,6 +92,9 @@ def migrate() -> None:
 
     once("2026-11-batch-mode-online-offline", batch_modes)
     # Halfyearly Program Report: the Period field (6 Months / Quarter) was removed; H1 to H6 stays.
+    # v49: Course Preparation material "PDF for Advantage site"; Issue Type list of the Class entry.
+    once("2026-11-material-pdf-advantage-site", lambda: db.lookups.update_one({"_id": "materialTypes"}, {"$addToSet": {"values": "PDF for Advantage site"}}, upsert=True))
+    once("2026-11-issue-types", lambda: db.lookups.update_one({"_id": "issueTypes"}, {"$addToSet": {"values": {"$each": DATA["lookups"]["issueTypes"]}}}, upsert=True))
     once("2026-11-halfyearly-remove-period", lambda: db.db.halfyearly_reports.update_many({"period": {"$exists": True}}, {"$unset": {"period": ""}}))
 
 

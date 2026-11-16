@@ -344,6 +344,35 @@ missed), the Dashboard and this page remind Admin / Manager until each file is u
   creating the batch (Master › Batch or Batch Import) or **Dismiss** them. Saved in `batch_requests`;
   `POST/GET /api/batch-requests`, `PATCH /api/batch-requests/{id}`.
 
+### Entry form, dropdowns, issues and dashboard (v49)
+
+* **Own entries only.** Faculty and Staff see, open, edit and delete only their own entries (the
+  Faculty Name on the entry form is locked to them; My Entries has no Faculty filter). HR, Admin and
+  Manager see everyone's entries; Admin and Manager can also edit or delete them, HR only their own.
+* **Class (Center):** new **No of Absent** (not more than No of Students) and a required
+  **Class mode: Online / Offline**.
+* **Daily test = Yes** now asks **students attended the test** and the **average mark** (0 to 100).
+* **Issue faced in this class?** (Center and College / OD). Yes asks the issue type, minutes lost (up
+  to the class duration) and details. On save, an email goes to `COURSE_REQUEST_EMAILS` (Ranjit sir /
+  Admin) and to the managing person of the Center or that college, and the WhatsApp template goes to
+  `WA_NOTIFY_NUMBERS` plus that person's number. It is sent once per entry, after the save, and a mail or
+  WhatsApp failure never stops the entry (the result is kept on the entry as `issueAlert`).
+  The Monthly Report has a new **Issues faced in classes** section and an **Issues** sheet in the Excel;
+  issues of more than 1 hour are marked red.
+* **Master › Dropdown Values** (Master and Admin menus): Manager and Admin add, rename and remove the
+  values of every dropdown (colleges, departments, session types, issue types, material types, Others
+  headings and the rest) and set the **issue alert contacts** (name, email, WhatsApp) of the Center and
+  each college. Faculty and Staff only pick from the lists: the Ctrl + A / "Add new" links and "Add
+  course" show only for Manager and Admin, and the server refuses them for others.
+* **Others:** the "Add new heading" link is gone; the Heading list ends with **Others (type your own)**,
+  which asks for the heading in a text box.
+* Material Type has **PDF for Advantage site** (Course Preparation).
+* Marketing › Lab Creation - Check no longer asks **Utilization Check**.
+* **Dashboard:** the cards are now Days with entries, Total class taken (count and hours), Total course
+  preparation (count and hours) and Total Others time, for this month with the all-time figure below.
+* New API: `GET /api/lookups/lists`, `PUT /api/lookups/lists/{kind}`, `PUT /api/lookups/contacts`
+  (Master or Admin). `POST /api/lookups/{kind}` and `POST /api/lookups/courses` now need Master or Admin.
+
 ### Menus for Admin and HR (v48)
 
 * The **Admin** menu now holds Data Upload, **Employees, Deleted Employees, Batch, Batch Import,

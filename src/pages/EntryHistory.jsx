@@ -11,6 +11,8 @@ import EmptyState from '../components/ui/EmptyState';
 import ErrorState from '../components/ui/ErrorState';
 import EntryFilters from '../components/entry/EntryFilters';
 import { useLookups } from '../context/LookupsContext';
+import { useAuth } from '../context/AuthContext';
+import { canEditEntry, seesAllEntries } from '../utils/permissions';
 import { useToast } from '../context/ToastContext';
 import { useConfirm } from '../context/ConfirmContext';
 import { useAsync } from '../hooks/useAsync';
@@ -27,6 +29,7 @@ export default function EntryHistory() {
   const [params, setParams] = useSearchParams();
   const navigate = useNavigate();
   const { lookups } = useLookups();
+  const { user } = useAuth();
   const toast = useToast();
   const confirm = useConfirm();
 
@@ -130,8 +133,8 @@ export default function EntryHistory() {
       render: (r) => (
         <div className="flex justify-end gap-0.5" onClick={(e) => e.stopPropagation()}>
           <Button variant="ghost" size="icon" className="size-8" icon={Eye} aria-label={`View ${r.id}`} title="View" onClick={() => navigate(`/entries/${r.id}`)} />
-          <Button variant="ghost" size="icon" className="size-8" icon={Pencil} aria-label={`Edit ${r.id}`} title="Edit" onClick={() => navigate(`/faculty/daily-activity/entry/${r.id}`)} />
-          <Button variant="ghost" size="icon" className="size-8 hover:!bg-danger-50 hover:!text-danger-600" icon={Trash2} aria-label={`Delete entry of ${formatDate(r.activityDate)} ${r.timeFrom}`} title="Delete" onClick={() => remove(r)} />
+          {canEditEntry(user, r) && <Button variant="ghost" size="icon" className="size-8" icon={Pencil} aria-label={`Edit ${r.id}`} title="Edit" onClick={() => navigate(`/faculty/daily-activity/entry/${r.id}`)} />}
+          {canEditEntry(user, r) && <Button variant="ghost" size="icon" className="size-8 hover:!bg-danger-50 hover:!text-danger-600" icon={Trash2} aria-label={`Delete entry of ${formatDate(r.activityDate)} ${r.timeFrom}`} title="Delete" onClick={() => remove(r)} />}
         </div>
       ),
     },
@@ -164,6 +167,7 @@ export default function EntryHistory() {
             setPage(1);
           }}
           faculties={lookups?.faculties || []}
+          showFaculty={seesAllEntries(user)}
         />
       </Card>
       <Card bodyClassName="p-0">

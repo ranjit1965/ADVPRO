@@ -67,6 +67,7 @@ export const NAVIGATION = [
       { key: 'admin-batch-import', label: 'Batch Import', to: '/master/batch-import' },
       { key: 'admin-course', label: 'Course', to: '/master/courses' },
       { key: 'admin-biometric', label: 'Biometric', to: '/master/biometric' },
+      { key: 'admin-dropdown-values', label: 'Dropdown Values', to: '/master/dropdown-values' },
     ],
   },
   { key: 'marketing', label: 'Marketing', icon: Megaphone, restricted: true, section: 'marketing' },

@@ -53,6 +53,8 @@ const tooltipProps = { formatter: (v, n) => [`${v} h`, n], contentStyle: { fontS
 /** The monthly report, laid out like the September activity report sample. Printable (A4 landscape). */
 export default function MonthlyReportView({ report, faculty, courses, biometric }) {
   const { kpi, days, weeks, groups, topics, log } = report;
+  const issues = report.issues || [];
+  const longIssues = issues.filter((i) => i.over1h);
   const used = groups.filter((g) => g.minutes > 0);
   const series = used.length ? used : groups.slice(0, 1);
   const dayData = days.map((d) => ({ label: d.label, total: d.minutes ? hours1(d.minutes) : null, ...Object.fromEntries(REPORT_GROUPS.map((g) => [g.key, hours1(d.byGroup[g.key])])) }));
@@ -295,6 +297,37 @@ export default function MonthlyReportView({ report, faculty, courses, biometric 
       </Section>
 
       {biometric && <BiometricSection biometric={biometric} days={days} />}
+
+      <Section
+        title="Issues faced in classes"
+        note={issues.length ? `${issues.length} class issue(s) this month, ${hm(issues.reduce((t, i) => t + i.minutes, 0))} lost. ${longIssues.length} of them lasted more than 1 hour (marked red).` : 'No class had an issue this month.'}
+      >
+        {issues.length > 0 && (
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[760px] border-collapse text-[11px]">
+              <thead style={{ background: HEAD }}>
+                <tr>
+                  <Th className="text-left">Date</Th><Th>Class time</Th><Th className="text-left">Place</Th><Th className="text-left">Course / Batch</Th>
+                  <Th className="text-left">Issue type</Th><Th className="text-right">Minutes lost</Th><Th className="text-left">Details</Th>
+                </tr>
+              </thead>
+              <tbody>
+                {issues.map((i) => (
+                  <tr key={i.id} className={cn('border-b border-ink-100', i.over1h && 'bg-danger-50')}>
+                    <Td className="whitespace-nowrap">{dateLabel(i.activityDate)}</Td>
+                    <Td className="text-center whitespace-nowrap">{i.timeFrom}–{i.timeTo}</Td>
+                    <Td>{i.place}</Td>
+                    <Td>{i.course || '-'}</Td>
+                    <Td>{i.type}</Td>
+                    <Td className={cn('text-right tabular-nums', i.over1h && 'font-bold text-danger-700')}>{hm(i.minutes)}{i.over1h ? ' (over 1 hour)' : ''}</Td>
+                    <Td>{i.details}</Td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Section>
 
       <Section title="Activity log" note={`All ${log.length} entries of the month. Minutes and hours are Time To minus Time From.`} breakBefore>
         <div className="overflow-x-auto">

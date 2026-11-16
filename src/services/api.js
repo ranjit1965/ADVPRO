@@ -134,12 +134,27 @@ export async function getLookups() {
   return request('/lookups');
 }
 
-/** Used by Ctrl + A on College Name / Dept, and "Add new heading" on the Others tab. */
+/** Master › Dropdown Values (Manager / Admin): every list with its values, and the issue contacts. */
+export async function getLookupLists() {
+  return request('/lookups/lists');
+}
+
+/** Save a whole list (added, renamed and removed values). Returns the sorted values. */
+export async function saveLookupList(kind, values) {
+  return request(`/lookups/lists/${encodeURIComponent(kind)}`, { method: 'PUT', body: { values } });
+}
+
+/** Managing person of Center or a college for issue alerts. Empty fields remove it. Returns all contacts. */
+export async function saveIssueContact(contact) {
+  return request('/lookups/contacts', { method: 'PUT', body: contact });
+}
+
+/** Ctrl + A on College Name / Dept and the other lists: Manager / Admin only. */
 export async function addLookupValue(kind, value) {
   return request(`/lookups/${kind}`, { method: 'POST', body: { value } });
 }
 
-/** "Add course" on the Learning tab: any signed-in user can add a missing course. Returns { id, name }. */
+/** "Add course" on the entry form: Manager / Admin only (faculty use Request new course). Returns { id, name }. */
 export async function addCourse(course) {
   return request('/lookups/courses', { method: 'POST', body: course });
 }

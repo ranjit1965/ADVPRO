@@ -28,6 +28,39 @@ def hours(minutes: int) -> float:
 VIEW_ALL = ("HR", "ADMIN", "MANAGER")
 
 
+ISSUE_FLAG_MINUTES = 60  # issues longer than 1 hour are flagged in the Monthly Report
+
+
+def issue_rows(rows: list[dict]) -> list[dict]:
+    """Class entries with "Issue faced? Yes", longest first; over1h marks the ones of more than an hour."""
+    out = []
+    for e in rows:
+        d = e.get("details") or {}
+        if e["activityType"] != "class" or d.get("issueFaced") != "Yes":
+            continue
+        try:
+            mins = int(d.get("issueMinutes") or 0)
+        except (TypeError, ValueError):
+            mins = 0
+        out.append({
+            "id": e["id"], "activityDate": e["activityDate"], "timeFrom": e["timeFrom"], "timeTo": e["timeTo"],
+            "facultyCode": e["facultyCode"], "facultyName": e.get("facultyName", ""), "facultyIn": e["facultyIn"],
+            "place": ((e.get("outstation") or {}).get("collegeName") or "College / OD") if e["facultyIn"] == "Outstation" else "Center",
+            "courseId": d.get("courseId", ""), "batchNo": d.get("batchNo", ""),
+            "issueType": d.get("issueType", ""), "issueDetails": d.get("issueDetails", ""), "issueMinutes": mins, "over1h": mins > ISSUE_FLAG_MINUTES,
+        })
+    return sorted(out, key=lambda r: (-r["issueMinutes"], r["activityDate"]))
+
+
+def totals(entries: list[dict]) -> dict:
+    """Dashboard cards: days with entries, classes, course preparation and Others time."""
+    def of(kind):
+        rows = [e for e in entries if e["activityType"] == kind]
+        return {"count": len(rows), "minutes": sum(e["minutes"] for e in rows)}
+
+    return {"days": len({e["activityDate"] for e in entries}), "entries": len(entries), "class": of("class"), "learning": of("learning"), "others": of("others")}
+
+
 def scoped_code(user: dict, code: str | None) -> str | None:
     """Faculty and staff only see their own figures; HR, Admin and Manager can open anyone's."""
     return code if user["role"] in VIEW_ALL else user["code"]
@@ -57,6 +90,9 @@ def dashboard(facultyCode: str, me: dict = Depends(current_user)):
         by_type[e["activityType"]] = by_type.get(e["activityType"], 0) + e["minutes"]
     return {
         "today": t,
+        # v49 cards: this month and all time
+        "month": totals(month),
+        "allTime": totals(mine),
         "todayEntries": len(todays),
         "todayMinutes": sum(e["minutes"] for e in todays),
         "totalEntries": len(mine),
@@ -106,6 +142,8 @@ def monthly_report(month: str = MONTH, facultyCode: str | None = None, activityT
         },
         "byType": [{**t, "hours": hours(t["minutes"])} for t in types.values()],
         "byDay": [{"date": d, "hours": hours(m)} for d, m in sorted(days.items())],
+        "issues": issue_rows(rows),
+        "issueFlagMinutes": ISSUE_FLAG_MINUTES,
     }
 
 

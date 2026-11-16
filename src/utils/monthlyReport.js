@@ -46,7 +46,7 @@ export function topicOf(e, courses = []) {
     case 'systemFault':
       return 'Software & system support';
     case 'others':
-      return d.heading ? `Others – ${d.heading}` : 'Others';
+      return d.heading ? `Others – ${d.heading === 'Others' && d.otherHeading ? d.otherHeading : d.heading}` : 'Others';
     default:
       return 'Other';
   }
@@ -142,8 +142,26 @@ export function buildMonthlyReport(rows, month, courses = []) {
       .map((t) => ({ ...t, notes: [...t.notes].join('; '), share: total ? t.minutes / total : 0 }))
       .sort((a, b) => b.minutes - a.minutes),
     log: sorted,
+    issues: issuesOf(sorted),
     kpi,
   };
+}
+
+/** Issues faced in classes (Class "Issue faced? Yes"), longest first; over1h marks those over 1 hour. */
+export const ISSUE_LIMIT_MINUTES = 60;
+export function issuesOf(rows) {
+  return rows
+    .filter((e) => e.activityType === 'class' && e.details?.issueFaced === 'Yes')
+    .map((e) => {
+      const d = e.details || {};
+      const minutes = Number(d.issueMinutes) || 0;
+      return {
+        id: e.id, activityDate: e.activityDate, timeFrom: e.timeFrom, timeTo: e.timeTo, facultyIn: e.facultyIn,
+        place: e.facultyIn === 'Outstation' ? e.outstation?.collegeName || 'College / OD' : 'Center',
+        course: [d.courseId, d.batchNo].filter(Boolean).join(' / '), type: d.issueType || '', details: d.issueDetails || '', minutes, over1h: minutes > ISSUE_LIMIT_MINUTES,
+      };
+    })
+    .sort((a, b) => b.minutes - a.minutes || a.activityDate.localeCompare(b.activityDate));
 }
 
 /** "235h 08m" */

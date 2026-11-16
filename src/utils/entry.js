@@ -1,11 +1,14 @@
 import { ACTIVITY_LABEL } from './constants';
 
+/** Others heading as shown: the typed heading when "Others" was picked. */
+export const othersHeading = (d = {}) => (d.heading === 'Others' && d.otherHeading ? d.otherHeading : d.heading);
+
 /** One-line description of an entry, used in tables and timelines. */
 export function entrySummary(e) {
   const d = e.details || {};
   switch (e.activityType) {
     case 'class':
-      return [d.batchNo || d.classIn, d.courseId, d.chapterNo && `Ch ${d.chapterNo}`, d.dayOrder && `Day ${d.dayOrder}`, d.todaySessionType].filter(Boolean).join(' · ');
+      return [d.batchNo || d.classIn, d.classMode, d.courseId, d.chapterNo && `Ch ${d.chapterNo}`, d.dayOrder && `Day ${d.dayOrder}`, d.todaySessionType, d.issueFaced === 'Yes' && `Issue ${d.issueMinutes || '?'} min`].filter(Boolean).join(' · ');
     case 'seminar':
       return [d.seminarType, d.collegeName || d.courseId, d.dept, d.facultyRole === 'Assistance Faculty' && 'Assistance'].filter(Boolean).join(' · ');
     case 'facultyDevelopment':
@@ -23,7 +26,7 @@ export function entrySummary(e) {
     case 'software':
       return [d.softwareName, d.softwareActivity, d.location].filter(Boolean).join(' · ');
     case 'others':
-      return [d.heading, d.remarks].filter(Boolean).join(' · ');
+      return [othersHeading(d), d.remarks].filter(Boolean).join(' · ');
     case 'systemFault':
       return [d.advproNo, d.productType, d.faultError, d.faultStatus].filter(Boolean).join(' · ');
     default:
@@ -123,7 +126,7 @@ export function reportRow(e, courses = []) {
       row.topic = join(d.marketingType, d.databaseName, d.fileName, d.total && `${d.total} total`, d.records && `${d.records} records`, d.enquiryFormNo, d.courseId, d.registerNo, d.collegeName && d.marketingType === 'Lab Creation - Check' ? d.collegeName : '', d.noOfStudents && `${d.noOfStudents} students`, d.utilizationCheck && `Utilization ${d.utilizationCheck}`, d.labCreation, d.remarks);
       break;
     case 'others':
-      row.topic = join(d.heading, d.remarks && d.remarks.toLowerCase() !== String(d.heading || '').toLowerCase() ? d.remarks : '');
+      row.topic = join(othersHeading(d), d.remarks && d.remarks.toLowerCase() !== String(othersHeading(d) || '').toLowerCase() ? d.remarks : '');
       break;
     default:
       row.topic = join(entrySummary(e), d.purpose, d.solution, d.remarks);

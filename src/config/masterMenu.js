@@ -9,6 +9,7 @@ export const MASTER_MENU = [
   { key: 'monthlyStaffReport', label: 'MontlyStaffReport', to: '/faculty/reports/working-hours', description: 'Working hours per faculty for a month.' },
   { key: 'deletedEmployees', label: 'Deleted Employees', to: '/master/deleted-employees', description: 'Deleted employees with their saved entries and records. Restore brings them back.' },
   { key: 'roleAccess', label: 'Roles & Access', to: '/master/role-access', roles: ['MANAGER'], description: 'Manager only: create roles and tick which menus each role can open.' },
+  { key: 'dropdownValues', label: 'Dropdown Values', to: '/master/dropdown-values', description: 'Add, rename or remove the values of every dropdown, and set who gets class issue alerts.' },
   { key: 'biometric', label: 'Biometric', to: '/master/biometric', description: 'Upload the biometric file; Time In / Time Out are compared with the entries.' },
 ].map((m) => {
   const def = masters.find((d) => d.key === m.key);

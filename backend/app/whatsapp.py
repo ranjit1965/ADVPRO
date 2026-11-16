@@ -72,13 +72,15 @@ def send_template(to: str, params: list[str]) -> None:
         raise RuntimeError(f"HTTP {e.code}: {e.read()[:300].decode(errors='replace')}") from e
 
 
-def notify(values: dict) -> dict:
-    """Sends the template to every WA_NOTIFY_NUMBERS number. Returns {"sent": n, "errors": [...]}, never raises."""
+def notify(values: dict, extra_numbers: list[str] | None = None) -> dict:
+    """Sends the template to every WA_NOTIFY_NUMBERS number (and extra_numbers, e.g. a college's managing person).
+    Returns {"sent": n, "errors": [...]}, never raises."""
     params = template_params(values)
     if not configured():
         return {"sent": 0, "errors": ["WhatsApp is not configured (WA_* settings in backend/.env)"]}
     sent, errors = 0, []
-    for n in notify_numbers():
+    numbers = list(dict.fromkeys(notify_numbers() + [_number(n) for n in (extra_numbers or []) if n and n.strip()]))
+    for n in numbers:
         try:
             send_template(n, params)
             sent += 1

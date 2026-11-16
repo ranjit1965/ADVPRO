@@ -1,5 +1,5 @@
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { AlarmClock, CheckCircle2, ClipboardList, Clock3, FilePlus2, FileText, ListChecks, Printer, AlertTriangle, ArrowRight } from 'lucide-react';
+import { BookOpen, CalendarCheck, Coffee, GraduationCap, FilePlus2, FileText, ListChecks, Printer, AlertTriangle, ArrowRight } from 'lucide-react';
 import PageHeader from '../components/ui/PageHeader';
 import StatCard from '../components/ui/StatCard';
 import Card from '../components/ui/Card';
@@ -20,6 +20,9 @@ import { getDashboardSummary, HR_ROLES } from '../services/api';
 import { ACTIVITY_LABEL } from '../utils/constants';
 import { formatDate, formatDuration, formatTime } from '../utils/format';
 import { entrySummary } from '../utils/entry';
+
+/** "12 · 18h 30m": number of entries and their hours. */
+const countHours = (t) => `${t?.count ?? 0} · ${formatDuration(t?.minutes || 0)}`;
 
 const QUICK_ACTIONS = [
   { label: 'New daily entry', icon: FilePlus2, to: '/faculty/daily-activity/entry' },
@@ -117,10 +120,11 @@ export default function Dashboard() {
       )}
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard label="Today's entries" value={data?.todayEntries ?? 0} sub={formatDate(new Date())} icon={ClipboardList} loading={loading} onClick={other ? undefined : () => navigate('/faculty/daily-activity/entry')} />
-        <StatCard label="Worked hours today" value={formatDuration(data?.todayMinutes)} sub="Sum of Time From to Time To" icon={Clock3} tone="info" loading={loading} />
-        <StatCard label="Worked hours this month" value={formatDuration(data?.monthTotalMinutes)} sub="All activities, Others included" icon={AlarmClock} tone="warning" loading={loading} />
-        <StatCard label="Total entries" value={data?.totalEntries ?? 0} sub="All time" icon={CheckCircle2} tone="success" loading={loading} onClick={other ? undefined : () => navigate('/faculty/daily-activity/history')} />
+        {/* This month in large type; all time underneath. */}
+        <StatCard label="Days with entries" value={data?.month?.days ?? 0} sub={`This month · ${data?.allTime?.days ?? 0} days all time`} icon={CalendarCheck} tone="success" loading={loading} onClick={other ? undefined : () => navigate('/faculty/daily-activity/history')} />
+        <StatCard label="Total class taken" value={countHours(data?.month?.class)} sub={`This month · all time ${countHours(data?.allTime?.class)}`} icon={GraduationCap} loading={loading} />
+        <StatCard label="Total course preparation" value={countHours(data?.month?.learning)} sub={`This month · all time ${countHours(data?.allTime?.learning)}`} icon={BookOpen} tone="info" loading={loading} />
+        <StatCard label="Total Others time" value={formatDuration(data?.month?.others?.minutes || 0)} sub={`This month · all time ${formatDuration(data?.allTime?.others?.minutes || 0)}`} icon={Coffee} tone="warning" loading={loading} />
       </div>
 
       <div className="mt-5 grid grid-cols-1 gap-5 xl:grid-cols-3">

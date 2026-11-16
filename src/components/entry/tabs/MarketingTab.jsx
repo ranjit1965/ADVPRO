@@ -25,7 +25,7 @@ export default function MarketingTab({ values, errors, set, setMany, lookups, on
   const changeType = (t) =>
     setMany({
       marketingType: t, collegeName: '', dept: '', sec: '', yop: '', total: '', freshRepeat: '', enquiryFormNo: '', courseId: '', registerNo: '',
-      databaseName: '', fileName: '', records: '', storedPlace: '', utilizationCheck: '', labCreation: '', noOfStudents: '',
+      databaseName: '', fileName: '', records: '', storedPlace: '', labCreation: '', noOfStudents: '',
       ...Object.fromEntries(MARKETING_GRADE_FIELDS.map(([k]) => [k, ''])),
     });
 
@@ -61,7 +61,6 @@ export default function MarketingTab({ values, errors, set, setMany, lookups, on
           <LookupSelect kind="colleges" label="College Name" className="sm:col-span-2 lg:col-span-5" options={lookups.colleges} onAddLookup={onAddLookup} {...req('collegeName')} />
           <SearchableSelect label="Course ID" className="lg:col-span-5" options={courseOptions(lookups)} placeholder="Search course" {...req('courseId')} />
           <Input label="No of Students" className="lg:col-span-2" maxLength={5} placeholder="0" {...num('noOfStudents')} />
-          <RadioGroup className="lg:col-span-4" label="Utilization Check" required name="utilizationCheck" options={['Yes', 'No']} value={values.utilizationCheck} onChange={(v) => set('utilizationCheck', v)} error={errors.utilizationCheck} />
           <RadioGroup className="lg:col-span-5" label="Fresh Lab / Repeat Lab Creation" required name="labCreation" options={LAB_CREATION_OPTIONS} value={values.labCreation} onChange={(v) => set('labCreation', v)} error={errors.labCreation} />
           <Textarea label="Remarks" className="sm:col-span-2 lg:col-span-12" rows={2} maxLength={500} {...f('remarks')} />
         </fieldset>

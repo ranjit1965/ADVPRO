@@ -11,8 +11,10 @@ export const emptyHeader = (facultyCode = '', date = toISODate()) => ({
 
 export const EMPTY_DETAILS = {
   class: {
-    courseId: '', batchNo: '', classIn: '', chapterNo: '', dayOrder: '', noOfStudents: '', todaySessionType: '', todaySessionDetail: '',
-    dailyTest: '', dailyActivityPost: '',
+    courseId: '', batchNo: '', classIn: '', classMode: '', chapterNo: '', dayOrder: '', noOfStudents: '', noOfAbsent: '', todaySessionType: '', todaySessionDetail: '',
+    dailyTest: '', dailyTestAttended: '', dailyTestAvgMark: '', dailyActivityPost: '',
+    // Issue faced in the class: type, details and minutes lost (alert to Ranjit and the managing person).
+    issueFaced: '', issueType: '', issueDetails: '', issueMinutes: '',
   },
   seminar: {
     seminarType: '', collegeName: '', dept: '', sec: '', totalStudent: '', yop: '', databaseCollected: '', facultyRole: 'Main Faculty', mainFaculty: '', remarks: '',
@@ -23,7 +25,7 @@ export const EMPTY_DETAILS = {
     marketingType: 'TC calls', collegeName: '', dept: '', sec: '', yop: '', total: '', freshRepeat: '',
     gradeA: '', gradeBPlus: '', gradeBMinus: '', gradeD: '', gradeNR: '', enquiryFormNo: '', courseId: '', registerNo: '', remarks: '',
     // DataBase Creation/Download (moved here from its own tab) and Lab Creation - Check
-    databaseName: '', fileName: '', records: '', storedPlace: '', utilizationCheck: '', labCreation: '', noOfStudents: '',
+    databaseName: '', fileName: '', records: '', storedPlace: '', labCreation: '', noOfStudents: '',
   },
   learning: { courseId: '', materialType: '', chapterNo: '', pages: '', chapterDetails: '' },
   selfLearning: { learningType: 'Self Learning', courseId: '', chapterNo: '', chapterType: '', materialType: '', classFaculty: '', classMode: '', trainee: '', chapterDetails: '' },
@@ -32,7 +34,8 @@ export const EMPTY_DETAILS = {
   travelling: { fromType: '', fromPlace: '', toType: '', toPlace: '', mode: '', purpose: '', remarks: '' },
   // Software and System Fault are no longer entered (tabs removed); kept so old entries still open.
   software: { softwareName: '', softwareActivity: '', location: '', systems: '', remarks: '' },
-  others: { heading: '', remarks: '' },
+  // Heading "Others" asks for the faculty's own heading (otherHeading).
+  others: { heading: '', otherHeading: '', remarks: '' },
   systemFault: { productType: '', location: '', advproNo: '', productNo: '', faultError: '', faultStatus: '', solution: '', remarks: '' },
 };
 
@@ -96,6 +99,10 @@ export const MARKETING_GRADE_FIELDS = [
 
 /** Entries longer than these (minutes) ask "Are you sure?" before saving. */
 export const LONG_ENTRY_MINUTES = 120;
+/** Others heading that asks for a typed heading. */
+export const OTHERS_CUSTOM = 'Others';
+/** Class issues longer than this (minutes) are flagged in the Monthly Report. */
+export const ISSUE_FLAG_MINUTES = 60;
 export const OTHERS_CONFIRM_MINUTES = 60;
 
 export const freshDetails = () => JSON.parse(JSON.stringify(EMPTY_DETAILS));
@@ -116,7 +123,7 @@ const REQUIRED = {
 
 export const isRequired = (tab, field) => REQUIRED[tab]?.includes(field);
 
-const NUMERIC = ['noOfStudents', 'totalStudent', 'totalPresent', 'totalAbsent', 'total', 'records', 'systems', 'pages', 'yop', 'gradeA', 'gradeBPlus', 'gradeBMinus', 'gradeD', 'gradeNR'];
+const NUMERIC = ['noOfStudents', 'noOfAbsent', 'dailyTestAttended', 'issueMinutes', 'totalStudent', 'totalPresent', 'totalAbsent', 'total', 'records', 'systems', 'pages', 'yop', 'gradeA', 'gradeBPlus', 'gradeBMinus', 'gradeD', 'gradeNR'];
 
 /** Returns { header: {...}, details: {...}, outstation: {...} } error maps. */
 export function validateEntry({ header, tab, details, outstation }) {
@@ -132,6 +139,26 @@ export function validateEntry({ header, tab, details, outstation }) {
     if (!String(details[f] ?? '').trim()) errors.details[f] = 'Required';
   });
   if (tab === 'class') {
+    const students = Number(details.noOfStudents || 0);
+    if (header.facultyIn !== 'Outstation') {
+      if (!details.classMode) errors.details.classMode = 'Choose Online or Offline';
+      if (Number(details.noOfAbsent || 0) > students) errors.details.noOfAbsent = 'Cannot exceed No of Students';
+    }
+    if (details.dailyTest === 'Yes') {
+      if (!String(details.dailyTestAttended || '').trim()) errors.details.dailyTestAttended = 'Required';
+      else if (Number(details.dailyTestAttended) > students) errors.details.dailyTestAttended = 'Cannot exceed No of Students';
+      const mark = String(details.dailyTestAvgMark || '').trim();
+      if (!mark) errors.details.dailyTestAvgMark = 'Required';
+      else if (!/^\d{1,3}(\.\d{1,2})?$/.test(mark) || Number(mark) > 100) errors.details.dailyTestAvgMark = 'Enter 0 to 100';
+    }
+    if (details.issueFaced === 'Yes') {
+      if (!details.issueType) errors.details.issueType = 'Required';
+      if (!String(details.issueDetails || '').trim()) errors.details.issueDetails = 'Required';
+      const mins = String(details.issueMinutes || '').trim();
+      const classMinutes = minutesBetween(header.timeFrom, header.timeTo);
+      if (!mins) errors.details.issueMinutes = 'Required';
+      else if (/^\d+$/.test(mins) && (Number(mins) < 1 || (classMinutes > 0 && Number(mins) > classMinutes))) errors.details.issueMinutes = `1 to ${classMinutes || '…'} minutes`;
+    }
     if (header.facultyIn === 'Outstation') {
       if (!details.classIn) errors.details.classIn = 'Required';
       ['collegeName', 'dept'].forEach((f) => {
@@ -143,6 +170,7 @@ export function validateEntry({ header, tab, details, outstation }) {
       if (outstation.facultyRole === 'Assistance Faculty' && !outstation.mainFaculty) errors.outstation.mainFaculty = 'Select the main faculty';
     }
   }
+  if (tab === 'others' && details.heading === OTHERS_CUSTOM && !String(details.otherHeading || '').trim()) errors.details.otherHeading = 'Type the heading';
   if (tab === 'seminar') {
     const need = details.seminarType === 'Internship' ? ['courseId', 'chapterDetails'] : ['collegeName', 'dept', 'totalStudent'];
     need.forEach((f) => {
@@ -165,7 +193,7 @@ export function validateEntry({ header, tab, details, outstation }) {
     }
     if (t === 'Councelling' && !String(details.enquiryFormNo || '').trim()) errors.details.enquiryFormNo = 'Required';
     if (t === MK_DATABASE) ['databaseName', 'fileName', 'records'].forEach((k) => !String(details[k] || '').trim() && (errors.details[k] = 'Required'));
-    if (t === MK_LAB_CHECK) ['collegeName', 'courseId', 'noOfStudents', 'utilizationCheck', 'labCreation'].forEach((k) => !String(details[k] || '').trim() && (errors.details[k] = 'Required'));
+    if (t === MK_LAB_CHECK) ['collegeName', 'courseId', 'noOfStudents', 'labCreation'].forEach((k) => !String(details[k] || '').trim() && (errors.details[k] = 'Required'));
     if (t === 'Registration' && !String(details.registerNo || '').trim()) errors.details.registerNo = 'Required';
     if (details.yop && !/^\d{4}$/.test(details.yop)) errors.details.yop = 'Enter a 4-digit year';
   }
@@ -205,14 +233,28 @@ export function buildPayload({ header, tab, details, outstation }) {
         : t === MK_DATABASE
           ? ['marketingType', 'databaseName', 'fileName', 'records', 'storedPlace', 'remarks']
           : t === MK_LAB_CHECK
-            ? ['marketingType', 'collegeName', 'courseId', 'noOfStudents', 'utilizationCheck', 'labCreation', 'remarks']
+            ? ['marketingType', 'collegeName', 'courseId', 'noOfStudents', 'labCreation', 'remarks']
             : ['marketingType', 'registerNo', 'remarks'];
     d = Object.fromEntries(Object.entries(d).filter(([k]) => keep.includes(k)));
   }
   if (tab === 'class') {
     if (header.facultyIn === 'Center') d.classIn = '';
-    else d.batchNo = '';
+    else {
+      d.batchNo = '';
+      d.noOfAbsent = '';
+      d.classMode = '';
+    }
+    if (d.dailyTest !== 'Yes') {
+      d.dailyTestAttended = '';
+      d.dailyTestAvgMark = '';
+    }
+    if (d.issueFaced !== 'Yes') {
+      d.issueType = '';
+      d.issueDetails = '';
+      d.issueMinutes = '';
+    }
   }
+  if (tab === 'others' && d.heading !== OTHERS_CUSTOM) d.otherHeading = '';
   return {
     facultyCode: header.facultyCode,
     activityDate: header.activityDate,

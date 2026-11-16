@@ -16,6 +16,7 @@ import RequestCourseModal from '../components/entry/RequestCourseModal';
 import RequestBatchModal from '../components/entry/RequestBatchModal';
 import { TAB_COMPONENTS } from '../components/entry/tabs';
 import { useAuth } from '../context/AuthContext';
+import { canManage } from '../utils/permissions';
 import { usePreferences } from '../hooks/usePreferences';
 import { useLookups } from '../context/LookupsContext';
 import { useToast } from '../context/ToastContext';
@@ -260,6 +261,7 @@ export default function DailyEntry() {
   }, []);
 
   /* ---------- Ctrl + A: add college / dept ---------- */
+  // Only Manager and Admin add dropdown values and courses (passed to the tabs only for them).
   const openLookupModal = (kind, apply) => setLookupModal({ kind, apply });
   const submitLookup = async (value) => {
     await api.addLookupValue(lookupModal.kind, value);
@@ -353,8 +355,8 @@ export default function DailyEntry() {
               outstation={outstation}
               outstationErrors={errors.outstation}
               setOutstation={setOutstationField}
-              onAddLookup={openLookupModal}
-              onAddCourse={openCourseModal}
+              onAddLookup={canManage(user) ? openLookupModal : undefined}
+              onAddCourse={canManage(user) ? openCourseModal : undefined}
               onRequestCourse={() => setRequestCourseOpen(true)}
               onRequestBatch={(courseId) => setRequestBatch({ courseId })}
             />

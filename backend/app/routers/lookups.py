@@ -5,15 +5,107 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
 from .. import db
-from ..security import current_user
+from ..security import current_user, require_section
 from .master import CourseIn  # same CourseMaster columns as Master › Course
 
 router = APIRouter(prefix="/lookups", tags=["lookups"])
-EDITABLE = {"colleges", "departments", "othersHeadings", "travelModes", "sessionTypes", "slMaterialTheory", "slMaterialPractical"}  # any logged-in user can add
+# Only Manager and Admin (Master or Admin menu ticked) add, rename or remove dropdown values.
+# Faculty and staff only pick from the lists.
+list_admin = require_section("master", "admin")
+
+# Every list on Master › Dropdown Values, with the name shown there (and where it is used).
+LIST_LABELS = {
+    "colleges": "Colleges (College / OD, Seminar, Marketing, Travelling)",
+    "departments": "Departments",
+    "sections": "Sections",
+    "yopOptions": "Year of passing",
+    "classIn": "Class in (College / OD)",
+    "sessionTypes": "Today's Session Type (Class)",
+    "issueTypes": "Issue Type (Class issue faced)",
+    "chapterTypes": "Chapter / Session Type",
+    "materialTypes": "Material Type (Course Preparation)",
+    "slMaterialTheory": "Material Type, Theory (Self Learning)",
+    "slMaterialPractical": "Material Type, Lab / Practical (Self Learning)",
+    "marketingTypes": "Marketing Type",
+    "enquiryFormNos": "Enquiry Form No (Marketing)",
+    "othersHeadings": "Others Heading",
+    "travelModes": "Travel Mode",
+    "softwareActivities": "Software Activity (old entries)",
+    "productTypes": "Product Type (old entries)",
+    "locations": "Location (old entries)",
+}
+CENTER = "Center"  # contact for issues in Center classes; colleges have their own
 
 
 class ValueIn(BaseModel):
     value: str = Field(min_length=1, max_length=200)
+
+
+class ListIn(BaseModel):
+    values: list[str] = Field(max_length=500)
+
+
+class ContactIn(BaseModel):
+    place: str = Field(min_length=1, max_length=200)
+    name: str = Field(default="", max_length=80)
+    email: str = Field(default="", max_length=120, pattern=r"^$|^[^@\s]+@[^@\s]+\.[^@\s]+$")
+    phone: str = Field(default="", max_length=40)
+
+
+def _clean(values: list[str]) -> list[str]:
+    out, seen = [], set()
+    for v in values:
+        v = re.sub(r"\s+", " ", str(v)).strip()[:200]
+        if v and v.lower() not in seen:
+            seen.add(v.lower())
+            out.append(v)
+    return out
+
+
+def contacts() -> dict[str, dict]:
+    return {c["_id"]: {k: c.get(k, "") for k in ("name", "email", "phone")} for c in db.db.place_contacts.find()}
+
+
+@router.get("/lists")
+def get_lists(_: dict = Depends(list_admin)):
+    """Master › Dropdown Values: every list with its values, plus the issue contacts of Center and each college."""
+    from ..seed import OPTION_LISTS  # noqa: PLC0415
+
+    docs = {d["_id"]: d for d in db.lookups.find({"_id": {"$in": list(OPTION_LISTS)}})}
+    kinds = [k for k in LIST_LABELS if k in OPTION_LISTS] + [k for k in OPTION_LISTS if k not in LIST_LABELS]
+    return {
+        "lists": [
+            {"kind": k, "label": LIST_LABELS.get(k, k), "values": sorted((docs.get(k) or {}).get("values", []), key=natural_key),
+             "updatedBy": (docs.get(k) or {}).get("updatedBy"), "updatedAt": (docs.get(k) or {}).get("updatedAt")}
+            for k in kinds
+        ],
+        "contacts": contacts(),
+        "center": CENTER,
+    }
+
+
+@router.put("/lists/{kind}")
+def save_list(kind: str, body: ListIn, me: dict = Depends(list_admin)):
+    """Replace a list's values (add, rename and remove in one save). Saved entries keep the text they had."""
+    from ..seed import OPTION_LISTS  # noqa: PLC0415
+
+    if kind not in OPTION_LISTS:
+        raise HTTPException(400, "Unknown list")
+    values = _clean(body.values)
+    db.lookups.update_one({"_id": kind}, {"$set": {"values": values, "updatedBy": me["name"], "updatedAt": datetime.now(timezone.utc).isoformat()}}, upsert=True)
+    return sorted(values, key=natural_key)
+
+
+@router.put("/contacts")
+def save_contact(body: ContactIn, me: dict = Depends(list_admin)):
+    """Managing person of Center or a college: gets the issue alert email / WhatsApp with Ranjit."""
+    place = body.place.strip()
+    data = {k: v.strip() for k, v in body.model_dump(exclude={"place"}).items()}
+    if not any(data.values()):
+        db.db.place_contacts.delete_one({"_id": place})
+    else:
+        db.db.place_contacts.update_one({"_id": place}, {"$set": {**data, "updatedBy": me["name"], "updatedAt": datetime.now(timezone.utc).isoformat()}}, upsert=True)
+    return contacts()
 
 
 
@@ -55,8 +147,8 @@ def get_lookups(_: dict = Depends(current_user)):
 
 
 @router.post("/courses", status_code=201)
-def add_course(body: CourseIn, user: dict = Depends(current_user)):
-    """Any signed-in user can add a missing course from the entry form (Learning tab).
+def add_course(body: CourseIn, user: dict = Depends(list_admin)):
+    """Manager / Admin can add a missing course from the entry form (faculty use Request new course).
     It goes into the same `courses` collection Master › Courses & Chapters uses."""
     cid = body.id.strip().upper()
     name = body.name.strip()
@@ -72,8 +164,10 @@ def add_course(body: CourseIn, user: dict = Depends(current_user)):
 
 
 @router.post("/{kind}", status_code=201)
-def add_value(kind: str, body: ValueIn, _: dict = Depends(current_user)):
-    if kind not in EDITABLE:
+def add_value(kind: str, body: ValueIn, _: dict = Depends(list_admin)):
+    from ..seed import OPTION_LISTS  # noqa: PLC0415
+
+    if kind not in OPTION_LISTS:
         raise HTTPException(400, "Unknown list")
     value = body.value.strip()
     doc = db.lookups.find_one({"_id": kind}) or {"values": []}
