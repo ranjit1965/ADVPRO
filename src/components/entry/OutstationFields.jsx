@@ -10,7 +10,7 @@ import { FACULTY_ROLES, OD_CHECKS } from '../../utils/entryForm';
 import ShortLabel from '../ui/ShortLabel';
 
 /** "College / OD" group shown on the Class tab when Faculty in = College / OD (stored as Outstation). */
-export default function OutstationFields({ values, errors, set, lookups, onAddLookup }) {
+export default function OutstationFields({ values, errors, set, lookups, onAddLookup, children }) {
   const f = (name, required) => ({ id: `out-${name}`, value: values[name] ?? '', onChange: (e) => set(name, e?.target ? e.target.value : e), error: errors[name], required });
   return (
     <fieldset className="rounded-xl border border-accent-600/25 bg-accent-50/40 p-4">
@@ -36,6 +36,8 @@ export default function OutstationFields({ values, errors, set, lookups, onAddLo
           <SearchableSelect label="Main faculty name" className="col-span-2 lg:col-span-6" options={facultyOptions(lookups)} placeholder="Search faculty" {...f('mainFaculty', true)} />
         )}
       </div>
+      {/* Class fields asked here for College / OD: Daily test (attended, average mark) and Daily activity post. */}
+      {children && <div className="mt-4 grid grid-cols-2 gap-x-3 gap-y-4 border-t border-accent-600/15 pt-3 sm:gap-4 lg:grid-cols-12">{children}</div>}
       <div className="mt-4 border-t border-accent-600/15 pt-3">
         <p className="mb-2 text-[12px] font-medium text-ink-500">In this session (optional)</p>
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">

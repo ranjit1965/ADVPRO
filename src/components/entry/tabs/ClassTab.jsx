@@ -34,6 +34,29 @@ export default function ClassTab({ values, errors, set, setMany, lookups, facult
     setMany(course ? { batchNo: e.target.value, courseId: course, chapterNo: '' } : { batchNo: e.target.value });
   };
 
+  // Daily test and Daily activity post: in the main grid for Center, inside the College / OD section for College / OD.
+  const classChecks = (
+    <>
+      {CLASS_CHECKS.map(([name, label]) => (
+        <RadioGroup
+          key={name}
+          className="lg:col-span-3"
+          label={label}
+          name={`class-${name}`}
+          options={['Yes', 'No']}
+          value={values[name] ?? ''}
+          onChange={(v) => (name === 'dailyTest' && v !== 'Yes' ? setMany({ dailyTest: v, dailyTestAttended: '', dailyTestAvgMark: '' }) : set(name, v))}
+        />
+      ))}
+      {values.dailyTest === 'Yes' && (
+        <>
+          <Input label="Students attended the test" className="lg:col-span-3" placeholder="0" {...digits('dailyTestAttended', 4)} required />
+          <Input label="Average mark (out of 100)" className="lg:col-span-3" inputMode="decimal" maxLength={6} placeholder="e.g. 72.5" {...f('dailyTestAvgMark')} onChange={(e) => set('dailyTestAvgMark', e.target.value.replace(/[^\d.]/g, ''))} required />
+        </>
+      )}
+    </>
+  );
+
   return (
     <div className="space-y-5">
       <div className="grid grid-cols-2 gap-x-3 gap-y-4 sm:gap-4 lg:grid-cols-12">
@@ -83,26 +106,14 @@ export default function ClassTab({ values, errors, set, setMany, lookups, facult
           </>
         )}
         <Select label={<ShortLabel full="Today's Session Type" short="Session Type" />} className="lg:col-span-4" options={lookups.sessionTypes} {...f('todaySessionType')} />
-        {CLASS_CHECKS.map(([name, label]) => (
-          <RadioGroup
-            key={name}
-            className="lg:col-span-3"
-            label={label}
-            name={`class-${name}`}
-            options={['Yes', 'No']}
-            value={values[name] ?? ''}
-            onChange={(v) => (name === 'dailyTest' && v !== 'Yes' ? setMany({ dailyTest: v, dailyTestAttended: '', dailyTestAvgMark: '' }) : set(name, v))}
-          />
-        ))}
-        {values.dailyTest === 'Yes' && (
-          <>
-            <Input label="Students attended the test" className="lg:col-span-3" placeholder="0" {...digits('dailyTestAttended', 4)} required />
-            <Input label="Average mark (out of 100)" className="lg:col-span-3" inputMode="decimal" maxLength={6} placeholder="e.g. 72.5" {...f('dailyTestAvgMark')} onChange={(e) => set('dailyTestAvgMark', e.target.value.replace(/[^\d.]/g, ''))} required />
-          </>
-        )}
+        {!outstationMode && classChecks}
         <Textarea label="Today's Session Detail" className="col-span-2 lg:col-span-12" rows={2} maxLength={500} placeholder="What was covered in today's session" {...f('todaySessionDetail')} />
       </div>
-      {outstationMode && <OutstationFields values={outstation} errors={outstationErrors} set={setOutstation} lookups={lookups} onAddLookup={onAddLookup} />}
+      {outstationMode && (
+        <OutstationFields values={outstation} errors={outstationErrors} set={setOutstation} lookups={lookups} onAddLookup={onAddLookup}>
+          {classChecks}
+        </OutstationFields>
+      )}
     </div>
   );
 }
