@@ -9,6 +9,7 @@ import { PageLoader } from '../components/ui/Loading';
 import ErrorState from '../components/ui/ErrorState';
 import EntryHeaderFields, { EntryTimeFields } from '../components/entry/EntryHeaderFields';
 import EntryActionBar from '../components/entry/EntryActionBar';
+import IssueFields from '../components/entry/IssueFields';
 import EntriesGrid from '../components/entry/EntriesGrid';
 import AddLookupModal from '../components/entry/AddLookupModal';
 import AddCourseModal from '../components/entry/AddCourseModal';
@@ -360,6 +361,16 @@ export default function DailyEntry() {
               onRequestCourse={() => setRequestCourseOpen(true)}
               onRequestBatch={(courseId) => setRequestBatch({ courseId })}
             />
+            <div className="mt-5">
+              <IssueFields
+                values={details[tab]}
+                errors={errors.details}
+                set={setField}
+                setMany={setMany}
+                lookups={lookups}
+                place={tab === 'class' && header.facultyIn === 'Outstation' ? outstation.collegeName || 'this college' : details[tab].collegeName || 'the Center'}
+              />
+            </div>
           </div>
           <div className="border-t border-ink-100 bg-ink-50/60 px-5 py-3">
             <EntryActionBar

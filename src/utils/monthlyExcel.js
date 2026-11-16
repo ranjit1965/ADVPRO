@@ -122,14 +122,14 @@ export async function downloadMonthlyExcel(report, faculty, courses, biometric) 
   ]);
   log.forEach((e) => lg.addRow({ date: e.activityDate, start: e.timeFrom, end: e.timeTo, minutes: e.minutes, hours: +(e.minutes / 60).toFixed(2), type: ACTIVITY_LABEL[e.activityType], topic: topicOf(e, courses), in: e.facultyIn, details: entrySummary(e) }));
 
-  // Issues faced in classes (over 1 hour in red)
+  // Issues faced on any activity (over 1 hour in red)
   const issues = report.issues || [];
-  const is = sheet(wb, 'Issues', 'Issues faced in classes', issues.length ? `${issues.length} issue(s); ${issues.filter((i) => i.over1h).length} lasted more than 1 hour (red).` : 'No class had an issue this month.', [
-    { key: 'date', header: 'Date', width: 12 }, { key: 'time', header: 'Class time', width: 12 }, { key: 'place', header: 'Place', width: 26 }, { key: 'course', header: 'Course / Batch', width: 18 },
+  const is = sheet(wb, 'Issues', 'Issues faced', issues.length ? `${issues.length} issue(s); ${issues.filter((i) => i.over1h).length} lasted more than 1 hour (red).` : 'No issue was recorded this month.', [
+    { key: 'date', header: 'Date', width: 12 }, { key: 'time', header: 'Time', width: 12 }, { key: 'activity', header: 'Activity', width: 22 }, { key: 'place', header: 'Place', width: 26 }, { key: 'course', header: 'Course / Batch', width: 18 },
     { key: 'type', header: 'Issue type', width: 24 }, { key: 'minutes', header: 'Minutes lost', width: 12 }, { key: 'over', header: 'Over 1 hour', width: 11 }, { key: 'details', header: 'Details', width: 60 },
   ]);
   issues.forEach((i) => {
-    const row = is.addRow({ date: i.activityDate, time: `${i.timeFrom}-${i.timeTo}`, place: i.place, course: i.course, type: i.type, minutes: i.minutes, over: i.over1h ? 'Yes' : 'No', details: i.details });
+    const row = is.addRow({ date: i.activityDate, time: `${i.timeFrom}-${i.timeTo}`, activity: ACTIVITY_LABEL[i.activityType] || i.activityType, place: i.place, course: i.course, type: i.type, minutes: i.minutes, over: i.over1h ? 'Yes' : 'No', details: i.details });
     if (i.over1h) row.eachCell((c) => (c.font = { bold: true, color: { argb: 'FFB42318' } }));
   });
   if (issues.length) foot(is.addRow({ date: 'Total', minutes: issues.reduce((t, i) => t + i.minutes, 0), over: `${issues.filter((i) => i.over1h).length} over 1 hour` }));

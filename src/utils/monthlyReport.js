@@ -147,17 +147,17 @@ export function buildMonthlyReport(rows, month, courses = []) {
   };
 }
 
-/** Issues faced in classes (Class "Issue faced? Yes"), longest first; over1h marks those over 1 hour. */
+/** Issues faced ("Issue faced? Yes" on any activity), longest first; over1h marks those over 1 hour. */
 export const ISSUE_LIMIT_MINUTES = 60;
 export function issuesOf(rows) {
   return rows
-    .filter((e) => e.activityType === 'class' && e.details?.issueFaced === 'Yes')
+    .filter((e) => e.details?.issueFaced === 'Yes')
     .map((e) => {
       const d = e.details || {};
       const minutes = Number(d.issueMinutes) || 0;
       return {
-        id: e.id, activityDate: e.activityDate, timeFrom: e.timeFrom, timeTo: e.timeTo, facultyIn: e.facultyIn,
-        place: e.facultyIn === 'Outstation' ? e.outstation?.collegeName || 'College / OD' : 'Center',
+        id: e.id, activityDate: e.activityDate, timeFrom: e.timeFrom, timeTo: e.timeTo, facultyIn: e.facultyIn, activityType: e.activityType,
+        place: e.outstation?.collegeName || d.collegeName || (e.facultyIn === 'Outstation' ? 'College / OD' : 'Center'),
         course: [d.courseId, d.batchNo].filter(Boolean).join(' / '), type: d.issueType || '', details: d.issueDetails || '', minutes, over1h: minutes > ISSUE_LIMIT_MINUTES,
       };
     })

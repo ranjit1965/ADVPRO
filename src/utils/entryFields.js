@@ -16,10 +16,6 @@ export const DETAIL_FIELDS = {
     ['dailyTestAvgMark', 'Daily test: average mark'],
     ['dailyActivityPost', 'Daily activity post'],
     ['todaySessionDetail', "Today's Session Detail", true],
-    ['issueFaced', 'Issue faced'],
-    ['issueType', 'Issue type'],
-    ['issueMinutes', 'Minutes lost'],
-    ['issueDetails', 'Issue details', true],
   ],
   seminar: [
     ['seminarType', 'Type'],
@@ -121,6 +117,11 @@ export const DETAIL_FIELDS = {
     ['remarks', 'Remarks', true],
   ],
 };
+
+// "Issue faced?" is asked under every activity tab.
+Object.values(DETAIL_FIELDS).forEach((list) =>
+  list.push(['issueFaced', 'Issue faced'], ['issueType', 'Issue type'], ['issueMinutes', 'Minutes lost'], ['issueDetails', 'Issue details', true]),
+);
 
 export const OUTSTATION_FIELDS = [
   ['collegeName', 'College Name'],

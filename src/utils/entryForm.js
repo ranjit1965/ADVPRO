@@ -13,8 +13,6 @@ export const EMPTY_DETAILS = {
   class: {
     courseId: '', batchNo: '', classIn: '', classMode: '', chapterNo: '', dayOrder: '', noOfStudents: '', noOfAbsent: '', todaySessionType: '', todaySessionDetail: '',
     dailyTest: '', dailyTestAttended: '', dailyTestAvgMark: '', dailyActivityPost: '',
-    // Issue faced in the class: type, details and minutes lost (alert to Ranjit and the managing person).
-    issueFaced: '', issueType: '', issueDetails: '', issueMinutes: '',
   },
   seminar: {
     seminarType: '', collegeName: '', dept: '', sec: '', totalStudent: '', yop: '', databaseCollected: '', facultyRole: 'Main Faculty', mainFaculty: '', remarks: '',
@@ -38,6 +36,11 @@ export const EMPTY_DETAILS = {
   others: { heading: '', otherHeading: '', remarks: '' },
   systemFault: { productType: '', location: '', advproNo: '', productNo: '', faultError: '', faultStatus: '', solution: '', remarks: '' },
 };
+
+// "Issue faced?" is asked on every activity (below the tabs): type, details and minutes lost.
+// Saved with the tab's details; an issue is emailed / sent on WhatsApp to Ranjit sir and the managing person.
+export const ISSUE_FIELDS = { issueFaced: '', issueType: '', issueDetails: '', issueMinutes: '' };
+Object.values(EMPTY_DETAILS).forEach((d) => Object.assign(d, ISSUE_FIELDS));
 
 export const EMPTY_OUTSTATION = {
   collegeName: '', dept: '', sec: '', totalPresent: '', totalAbsent: '', yop: '', facultyRole: 'Main Faculty', mainFaculty: '',
@@ -138,6 +141,14 @@ export function validateEntry({ header, tab, details, outstation }) {
   REQUIRED[tab].forEach((f) => {
     if (!String(details[f] ?? '').trim()) errors.details[f] = 'Required';
   });
+  if (details.issueFaced === 'Yes') {
+    if (!details.issueType) errors.details.issueType = 'Required';
+    if (!String(details.issueDetails || '').trim()) errors.details.issueDetails = 'Required';
+    const mins = String(details.issueMinutes || '').trim();
+    const entryMinutes = minutesBetween(header.timeFrom, header.timeTo);
+    if (!mins) errors.details.issueMinutes = 'Required';
+    else if (/^\d+$/.test(mins) && (Number(mins) < 1 || (entryMinutes > 0 && Number(mins) > entryMinutes))) errors.details.issueMinutes = `1 to ${entryMinutes || '…'} minutes`;
+  }
   if (tab === 'class') {
     const students = Number(details.noOfStudents || 0);
     if (header.facultyIn !== 'Outstation') {
@@ -150,14 +161,6 @@ export function validateEntry({ header, tab, details, outstation }) {
       const mark = String(details.dailyTestAvgMark || '').trim();
       if (!mark) errors.details.dailyTestAvgMark = 'Required';
       else if (!/^\d{1,3}(\.\d{1,2})?$/.test(mark) || Number(mark) > 100) errors.details.dailyTestAvgMark = 'Enter 0 to 100';
-    }
-    if (details.issueFaced === 'Yes') {
-      if (!details.issueType) errors.details.issueType = 'Required';
-      if (!String(details.issueDetails || '').trim()) errors.details.issueDetails = 'Required';
-      const mins = String(details.issueMinutes || '').trim();
-      const classMinutes = minutesBetween(header.timeFrom, header.timeTo);
-      if (!mins) errors.details.issueMinutes = 'Required';
-      else if (/^\d+$/.test(mins) && (Number(mins) < 1 || (classMinutes > 0 && Number(mins) > classMinutes))) errors.details.issueMinutes = `1 to ${classMinutes || '…'} minutes`;
     }
     if (header.facultyIn === 'Outstation') {
       if (!details.classIn) errors.details.classIn = 'Required';
@@ -235,7 +238,7 @@ export function buildPayload({ header, tab, details, outstation }) {
           : t === MK_LAB_CHECK
             ? ['marketingType', 'collegeName', 'courseId', 'noOfStudents', 'labCreation', 'remarks']
             : ['marketingType', 'registerNo', 'remarks'];
-    d = Object.fromEntries(Object.entries(d).filter(([k]) => keep.includes(k)));
+    d = Object.fromEntries(Object.entries(d).filter(([k]) => keep.includes(k) || k in ISSUE_FIELDS));
   }
   if (tab === 'class') {
     if (header.facultyIn === 'Center') d.classIn = '';
@@ -248,11 +251,11 @@ export function buildPayload({ header, tab, details, outstation }) {
       d.dailyTestAttended = '';
       d.dailyTestAvgMark = '';
     }
-    if (d.issueFaced !== 'Yes') {
-      d.issueType = '';
-      d.issueDetails = '';
-      d.issueMinutes = '';
-    }
+  }
+  if (d.issueFaced !== 'Yes') {
+    d.issueType = '';
+    d.issueDetails = '';
+    d.issueMinutes = '';
   }
   if (tab === 'others' && d.heading !== OTHERS_CUSTOM) d.otherHeading = '';
   return {

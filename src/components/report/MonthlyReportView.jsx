@@ -299,15 +299,15 @@ export default function MonthlyReportView({ report, faculty, courses, biometric 
       {biometric && <BiometricSection biometric={biometric} days={days} />}
 
       <Section
-        title="Issues faced in classes"
-        note={issues.length ? `${issues.length} class issue(s) this month, ${hm(issues.reduce((t, i) => t + i.minutes, 0))} lost. ${longIssues.length} of them lasted more than 1 hour (marked red).` : 'No class had an issue this month.'}
+        title="Issues faced"
+        note={issues.length ? `${issues.length} issue(s) this month, ${hm(issues.reduce((t, i) => t + i.minutes, 0))} lost. ${longIssues.length} of them lasted more than 1 hour (marked red).` : 'No issue was recorded this month.'}
       >
         {issues.length > 0 && (
           <div className="overflow-x-auto">
             <table className="w-full min-w-[760px] border-collapse text-[11px]">
               <thead style={{ background: HEAD }}>
                 <tr>
-                  <Th className="text-left">Date</Th><Th>Class time</Th><Th className="text-left">Place</Th><Th className="text-left">Course / Batch</Th>
+                  <Th className="text-left">Date</Th><Th>Time</Th><Th className="text-left">Activity</Th><Th className="text-left">Place</Th><Th className="text-left">Course / Batch</Th>
                   <Th className="text-left">Issue type</Th><Th className="text-right">Minutes lost</Th><Th className="text-left">Details</Th>
                 </tr>
               </thead>
@@ -316,6 +316,7 @@ export default function MonthlyReportView({ report, faculty, courses, biometric 
                   <tr key={i.id} className={cn('border-b border-ink-100', i.over1h && 'bg-danger-50')}>
                     <Td className="whitespace-nowrap">{dateLabel(i.activityDate)}</Td>
                     <Td className="text-center whitespace-nowrap">{i.timeFrom}–{i.timeTo}</Td>
+                    <Td>{ACTIVITY_LABEL[i.activityType] || i.activityType}</Td>
                     <Td>{i.place}</Td>
                     <Td>{i.course || '-'}</Td>
                     <Td>{i.type}</Td>

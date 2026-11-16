@@ -6,9 +6,14 @@ export const othersHeading = (d = {}) => (d.heading === 'Others' && d.otherHeadi
 /** One-line description of an entry, used in tables and timelines. */
 export function entrySummary(e) {
   const d = e.details || {};
+  const text = summaryOf(e, d);
+  return d.issueFaced === 'Yes' ? [text, `Issue: ${d.issueType || ''} ${d.issueMinutes || '?'} min`].filter(Boolean).join(' · ') : text;
+}
+
+function summaryOf(e, d) {
   switch (e.activityType) {
     case 'class':
-      return [d.batchNo || d.classIn, d.classMode, d.courseId, d.chapterNo && `Ch ${d.chapterNo}`, d.dayOrder && `Day ${d.dayOrder}`, d.todaySessionType, d.issueFaced === 'Yes' && `Issue ${d.issueMinutes || '?'} min`].filter(Boolean).join(' · ');
+      return [d.batchNo || d.classIn, d.classMode, d.courseId, d.chapterNo && `Ch ${d.chapterNo}`, d.dayOrder && `Day ${d.dayOrder}`, d.todaySessionType].filter(Boolean).join(' · ');
     case 'seminar':
       return [d.seminarType, d.collegeName || d.courseId, d.dept, d.facultyRole === 'Assistance Faculty' && 'Assistance'].filter(Boolean).join(' · ');
     case 'facultyDevelopment':

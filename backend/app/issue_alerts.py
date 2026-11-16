@@ -1,8 +1,8 @@
-"""Issue alert: when a faculty saves a Class entry with "Issue faced? Yes", tell Ranjit and the managing person.
+"""Issue alert: when a faculty saves any entry with "Issue faced? Yes", tell Ranjit and the managing person.
 
 * Email to COURSE_REQUEST_EMAILS (Ranjit / Admin; or every active Manager and Admin when it is empty)
-  and to the managing person of that place: "Center" for Center classes, or the college of a College / OD
-  class. Their email and phone are set by Manager / Admin in Master › Dropdown Values › Issue contacts.
+  and to the managing person of that place: the college of a College / OD class, the college picked in
+  the entry (seminar, marketing ...), or "Center". Their email and phone are set by Manager / Admin in Master › Dropdown Values › Issue contacts.
 * WhatsApp to WA_NOTIFY_NUMBERS and the managing person's phone, with the same template as course
   requests ("course" carries the issue, "remarks" the details).
 * Sent once per entry: when the entry is created with an issue, or when an issue is added to it later.
@@ -17,16 +17,18 @@ from .config import settings
 from .mailer import send_mail
 
 log = logging.getLogger("der.issue_alerts")
+ACTIVITY = {"class": "Class", "seminar": "Seminar / Work Shop", "marketing": "Marketing Support", "learning": "Course Preparation", "selfLearning": "Self Learning / Knowledge Sharing", "facultyDevelopment": "Faculty Development", "travelling": "Travelling Time", "others": "Others"}
 
 
 def has_issue(e: dict | None) -> bool:
-    return bool(e) and e.get("activityType") == "class" and (e.get("details") or {}).get("issueFaced") == "Yes"
+    return bool(e) and (e.get("details") or {}).get("issueFaced") == "Yes"
 
 
 def place_of(e: dict) -> str:
-    if e.get("facultyIn") == "Outstation":
-        return ((e.get("outstation") or {}).get("collegeName") or "").strip() or "College / OD"
-    return "Center"
+    college = ((e.get("outstation") or {}).get("collegeName") or (e.get("details") or {}).get("collegeName") or "").strip()
+    if college:
+        return college
+    return "College / OD" if e.get("facultyIn") == "Outstation" else "Center"
 
 
 def _recipients() -> list[str]:
@@ -42,10 +44,10 @@ def _text(e: dict, place: str, contact: dict) -> str:
     lines = [
         "Dear Sir / Madam,",
         "",
-        f"Sub: Issue faced in a class at {place}",
+        f"Sub: Issue faced at {place}",
         "",
         f"    Faculty              : {e['facultyName']} ({e['facultyCode']})",
-        f"    Class                : {e['activityDate']}, {e['timeFrom']} to {e['timeTo']} ({'College / OD' if e.get('facultyIn') == 'Outstation' else 'Center'})",
+        f"    Activity             : {ACTIVITY.get(e['activityType'], e['activityType'])}, {e['activityDate']}, {e['timeFrom']} to {e['timeTo']} ({'College / OD' if e.get('facultyIn') == 'Outstation' else 'Center'})",
         f"    Place                : {place}",
         f"    Course / Batch       : {d.get('courseId') or '-'} {('/ ' + d['batchNo']) if d.get('batchNo') else ''}",
         f"    Issue type           : {d.get('issueType') or '-'}",
@@ -75,7 +77,7 @@ def send(entry_id: str) -> dict:
     to = list(dict.fromkeys(_recipients() + ([contact["email"]] if contact.get("email") else [])))
     if to:
         try:
-            send_mail(to, f"Issue in class: {e['facultyName']} at {place}, {d.get('issueType') or 'issue'} ({d.get('issueMinutes') or '?'} min)", _text(e, place, contact))
+            send_mail(to, f"Issue faced: {e['facultyName']} at {place}, {d.get('issueType') or 'issue'} ({d.get('issueMinutes') or '?'} min)", _text(e, place, contact))
             result["emailedTo"] = to
         except Exception as exc:  # noqa: BLE001 - mail is down or not set up: keep the entry
             log.warning("Issue alert email for %s failed: %s", entry_id, exc)

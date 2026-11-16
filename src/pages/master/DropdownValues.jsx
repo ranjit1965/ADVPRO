@@ -16,6 +16,7 @@ import { canManage } from '../../utils/permissions';
 import { formatDateTime } from '../../utils/format';
 import { cn } from '../../utils/cn';
 
+const CONTACTS = '__issueContacts'; // left-list item for the issue alert contacts (not a dropdown)
 const byName = (a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });
 
 /**
@@ -130,6 +131,16 @@ export default function DropdownValues() {
                 </button>
               </li>
             ))}
+            <li className="mt-2 border-t border-ink-100 pt-2">
+              <button
+                type="button"
+                onClick={() => pickList(CONTACTS)}
+                className={cn('flex w-full items-center justify-between gap-2 rounded-lg px-3 py-2 text-left text-[13px] hover:bg-ink-50', kind === CONTACTS && 'bg-brand-50 text-brand-800 hover:bg-brand-50')}
+              >
+                <span className="font-medium">Issue alert contacts</span>
+                <span className="shrink-0 text-xs text-ink-500 tabular-nums">{Object.keys(data.contacts).length}</span>
+              </button>
+            </li>
           </ul>
         </Card>
 
@@ -191,7 +202,7 @@ export default function DropdownValues() {
             </Card>
           )}
 
-          <IssueContacts data={data} setData={setData} />
+          {kind === CONTACTS && <IssueContacts data={data} setData={setData} />}
         </div>
       </div>
     </>
@@ -225,7 +236,7 @@ function IssueContacts({ data, setData }) {
   const listed = Object.entries(data.contacts).sort(([a], [b]) => (a === data.center ? -1 : b === data.center ? 1 : byName(a, b)));
 
   return (
-    <Card title="Issue alert contacts" description="When a faculty saves a class with an issue, the email and WhatsApp go to Ranjit sir (COURSE_REQUEST_EMAILS / WA_NOTIFY_NUMBERS) and to the managing person of that Center or college.">
+    <Card title="Issue alert contacts" description="When a faculty saves an entry with an issue, the email and WhatsApp go to Ranjit sir and to the managing person of that Center or college set here.">
       <form onSubmit={save} className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-12">
         <SearchableSelect label="Center / College" className="sm:col-span-2 lg:col-span-12" sort={false} options={places.map((p) => ({ value: p, label: p === data.center ? 'Center (Advantage Pro)' : p }))} value={place} onChange={(v) => setPlace(v?.target ? v.target.value : v)} />
         <Input label="Managing person" className="lg:col-span-4" maxLength={80} value={form.name || ''} onChange={set('name')} placeholder="Name" />

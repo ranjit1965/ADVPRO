@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { AlertTriangle, Hash, Mail } from 'lucide-react';
+import { Hash, Mail } from 'lucide-react';
 import Select from '../../ui/Select';
 import Input from '../../ui/Input';
 import RadioGroup from '../../ui/RadioGroup';
@@ -7,15 +7,12 @@ import ShortLabel from '../../ui/ShortLabel';
 import Textarea from '../../ui/Textarea';
 import OutstationFields from '../OutstationFields';
 import { makeField, courseOptions } from '../fieldProps';
-import { CLASS_CHECKS, CLASS_MODES, DAY_ORDERS, ISSUE_FLAG_MINUTES } from '../../../utils/entryForm';
+import { CLASS_CHECKS, CLASS_MODES, DAY_ORDERS } from '../../../utils/entryForm';
 
 export default function ClassTab({ values, errors, set, setMany, lookups, facultyCode, facultyIn, outstation, outstationErrors, setOutstation, onAddLookup, onRequestCourse, onRequestBatch }) {
   const f = makeField('class', values, errors, set);
   const outstationMode = facultyIn === 'Outstation';
-  const req = (k) => ({ ...f(k), required: true });
   const digits = (k, max) => ({ ...f(k), inputMode: 'numeric', maxLength: max, onChange: (e) => set(k, e.target.value.replace(/\D/g, '')) });
-  const issue = values.issueFaced === 'Yes';
-  const issueMinutes = Number(values.issueMinutes || 0);
 
   // Chapters come from Master › Courses & Chapters.
   const courseChapters = lookups.chapters.filter((c) => c.courseId === values.courseId).sort((a, b) => a.no - b.no);
@@ -105,28 +102,6 @@ export default function ClassTab({ values, errors, set, setMany, lookups, facult
         )}
         <Textarea label="Today's Session Detail" className="col-span-2 lg:col-span-12" rows={2} maxLength={500} placeholder="What was covered in today's session" {...f('todaySessionDetail')} />
       </div>
-      <fieldset className="grid grid-cols-2 gap-x-3 gap-y-4 rounded-xl border border-ink-200 p-4 sm:gap-4 lg:grid-cols-12">
-        <legend className="px-1 text-[13px] font-semibold text-ink-700">Issue faced in this class</legend>
-        <RadioGroup
-          className="col-span-2 lg:col-span-3"
-          label="Issue faced?"
-          name="class-issueFaced"
-          options={['Yes', 'No']}
-          value={values.issueFaced ?? ''}
-          onChange={(v) => (v === 'Yes' ? set('issueFaced', v) : setMany({ issueFaced: v, issueType: '', issueDetails: '', issueMinutes: '' }))}
-        />
-        {issue && (
-          <>
-            <Select label="Issue type" className="lg:col-span-5" options={lookups.issueTypes || []} {...req('issueType')} />
-            <Input label="Minutes lost" className="lg:col-span-4" placeholder="e.g. 45" {...digits('issueMinutes', 3)} required hint={issueMinutes > ISSUE_FLAG_MINUTES ? 'Over 1 hour: shown in the Monthly Report' : undefined} />
-            <Textarea label="Issue details" className="col-span-2 lg:col-span-12" rows={2} maxLength={500} placeholder="What happened and what was done" {...req('issueDetails')} />
-            <p className="col-span-2 flex items-start gap-2 text-[12px] text-ink-600 lg:col-span-12">
-              <AlertTriangle className="mt-0.5 size-3.5 shrink-0 text-accent-600" aria-hidden />
-              On Save, an email and WhatsApp message go to Ranjit sir and the managing person of {outstationMode ? 'this college' : 'the Center'}.
-            </p>
-          </>
-        )}
-      </fieldset>
       {outstationMode && <OutstationFields values={outstation} errors={outstationErrors} set={setOutstation} lookups={lookups} onAddLookup={onAddLookup} />}
     </div>
   );

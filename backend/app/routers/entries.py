@@ -60,9 +60,9 @@ class EntryIn(BaseModel):
 
     @model_validator(mode="after")
     def class_issue(self):
-        """Class "Issue faced? Yes" needs the issue type and the minutes lost (not more than the class)."""
+        """"Issue faced? Yes" (any activity) needs the issue type and the minutes lost (not more than the entry)."""
         d = self.details or {}
-        if self.activityType != "class" or d.get("issueFaced") != "Yes":
+        if d.get("issueFaced") != "Yes":
             return self
         if not str(d.get("issueType") or "").strip():
             raise ValueError("Choose the issue type")
@@ -71,7 +71,7 @@ class EntryIn(BaseModel):
         except ValueError:
             raise ValueError("Enter the minutes lost by the issue") from None
         if mins <= 0 or mins > minutes_between(self.timeFrom, self.timeTo):
-            raise ValueError("Minutes lost must be between 1 and the class duration")
+            raise ValueError("Minutes lost must be between 1 and the entry's duration")
         return self
 
 

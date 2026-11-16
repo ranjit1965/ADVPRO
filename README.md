@@ -352,17 +352,18 @@ missed), the Dashboard and this page remind Admin / Manager until each file is u
 * **Class (Center):** new **No of Absent** (not more than No of Students) and a required
   **Class mode: Online / Offline**.
 * **Daily test = Yes** now asks **students attended the test** and the **average mark** (0 to 100).
-* **Issue faced in this class?** (Center and College / OD). Yes asks the issue type, minutes lost (up
-  to the class duration) and details. On save, an email goes to `COURSE_REQUEST_EMAILS` (Ranjit sir /
-  Admin) and to the managing person of the Center or that college, and the WhatsApp template goes to
+* **Issue faced?** is asked under every activity tab of the entry page (class, seminar, marketing,
+  travelling, Others ...). Yes asks the issue type (dropdown), minutes lost (up to the entry's duration)
+  and details. On save, an email goes to `COURSE_REQUEST_EMAILS` (Ranjit sir / Admin) and to the managing
+  person of the Center or the college of that entry, and the WhatsApp template goes to
   `WA_NOTIFY_NUMBERS` plus that person's number. It is sent once per entry, after the save, and a mail or
   WhatsApp failure never stops the entry (the result is kept on the entry as `issueAlert`).
-  The Monthly Report has a new **Issues faced in classes** section and an **Issues** sheet in the Excel;
+  The Monthly Report has a new **Issues faced** section and an **Issues** sheet in the Excel;
   issues of more than 1 hour are marked red.
 * **Master › Dropdown Values** (Master and Admin menus): Manager and Admin add, rename and remove the
   values of every dropdown (colleges, departments, session types, issue types, material types, Others
-  headings and the rest) and set the **issue alert contacts** (name, email, WhatsApp) of the Center and
-  each college. Faculty and Staff only pick from the lists: the Ctrl + A / "Add new" links and "Add
+  headings and the rest). **Issue alert contacts** (last item in its list) holds the managing person
+  (name, email, WhatsApp) of the Center and of each college. Faculty and Staff only pick from the lists: the Ctrl + A / "Add new" links and "Add
   course" show only for Manager and Admin, and the server refuses them for others.
 * **Others:** the "Add new heading" link is gone; the Heading list ends with **Others (type your own)**,
   which asks for the heading in a text box.

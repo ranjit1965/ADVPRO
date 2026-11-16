@@ -32,11 +32,11 @@ ISSUE_FLAG_MINUTES = 60  # issues longer than 1 hour are flagged in the Monthly 
 
 
 def issue_rows(rows: list[dict]) -> list[dict]:
-    """Class entries with "Issue faced? Yes", longest first; over1h marks the ones of more than an hour."""
+    """Entries with "Issue faced? Yes" (any activity), longest first; over1h marks the ones of more than an hour."""
     out = []
     for e in rows:
         d = e.get("details") or {}
-        if e["activityType"] != "class" or d.get("issueFaced") != "Yes":
+        if d.get("issueFaced") != "Yes":
             continue
         try:
             mins = int(d.get("issueMinutes") or 0)
@@ -45,7 +45,8 @@ def issue_rows(rows: list[dict]) -> list[dict]:
         out.append({
             "id": e["id"], "activityDate": e["activityDate"], "timeFrom": e["timeFrom"], "timeTo": e["timeTo"],
             "facultyCode": e["facultyCode"], "facultyName": e.get("facultyName", ""), "facultyIn": e["facultyIn"],
-            "place": ((e.get("outstation") or {}).get("collegeName") or "College / OD") if e["facultyIn"] == "Outstation" else "Center",
+            "activityType": e["activityType"],
+            "place": (e.get("outstation") or {}).get("collegeName") or d.get("collegeName") or ("College / OD" if e["facultyIn"] == "Outstation" else "Center"),
             "courseId": d.get("courseId", ""), "batchNo": d.get("batchNo", ""),
             "issueType": d.get("issueType", ""), "issueDetails": d.get("issueDetails", ""), "issueMinutes": mins, "over1h": mins > ISSUE_FLAG_MINUTES,
         })
