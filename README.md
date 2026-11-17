@@ -77,7 +77,7 @@ Other scripts:
 | Faculty › Monthly Report | `/faculty/reports/monthly` | Activity report laid out like the September 2026 sample: headline figures, day-by-day, type, week and topic charts, daily and weekly summaries (Others in its own column), calendar view and activity log. **Download PDF** (print dialog, A4 landscape) and **Download Excel** (one sheet per section) |
 | Master (Admin, Manager) | `/master`, `/master/<key>` | Batch, Batch Import, Employees, Course, MontlyStaffReport, Deleted Employees, Role Access (Manager), Biometric |
 | Master › Employees | `/master/employees` | Admin and Manager add, edit, disable and delete employees (the manager account itself can only be changed by the manager) |
-| HR_Report › HR Policy, Your Info | `/hr-report/...` | Policy text (HR edits); PF/bank details, EL/CL allotted, absent days and ratings |
+| HR_Report › HR Policy | `/hr-report/policy` | Policy text (HR edits) |
 | Faculty › Monthly Working Hrs Report | `/faculty/reports/working-hours` | Hours per employee and faculty (HR, Admin, Manager): class, center, outstation, performance, Others, total |
 | Employee (HR read-only) | `/master/employees` | HR sees every employee with hours and days this month and opens anyone's dashboard; only Admin and Manager can add, edit or delete |
 | Dashboard person picker | `/?code=SAN` | HR, Admin and Manager pick a faculty member or employee and the dashboard shows that person's entries, hours and missing days, with a link to their monthly report. Faculty and staff only ever see their own figures (also enforced by the API) |
@@ -369,6 +369,13 @@ missed), the Dashboard and this page remind Admin / Manager until each file is u
   which asks for the heading in a text box.
 * Material Type has **PDF for Advantage site** (Course Preparation).
 * Marketing › Lab Creation - Check no longer asks **Utilization Check**.
+* **HR › Your Info removed** (page, menu and `/api/hr/info`). The details saved on employees (`hr`: PF / bank
+  account, EL / CL, absent days, ratings) are deleted by `python -m app.cleanup_removed --yes`.
+* **Biometric upload reads any layout:** code, name, time in, time out and month are found in any column
+  order and usual wording (Emp. Code, Employee ID, AC-No, Employee Name, In Time / Check In / First Punch,
+  Out Time / Check Out / Last Punch, Date, Day + Month column, Date Time). Day-wise sheets (days 1 to 31
+  across, times like "09:02 18:30" in each cell, or In / Out rows per employee, or "Emp. Code: 101 /
+  Emp. Name: Ravi" blocks) are read too; the month comes from a Month column or the title row.
 * **Dashboard:** the cards are now Days with entries, Total class taken (count and hours), Total course
   preparation (count and hours) and Total Others time, for this month with the all-time figure below.
 * New API: `GET /api/lookups/lists`, `PUT /api/lookups/lists/{kind}`, `PUT /api/lookups/contacts`
@@ -388,7 +395,7 @@ missed), the Dashboard and this page remind Admin / Manager until each file is u
 * Master › Registration, Attendence, Product, Old Registrations, Shedulling, Vendor and Assest;
   HR › Batch Paper Completion and Leave/Permission Form; My Work (for every role); Transaction (v47);
   Faculty › Monthly Plan (v48). Their pages, menu
-  items and API endpoints are gone. Your Info now shows EL / CL allotted (no taken / available).
+  items and API endpoints are gone. (Your Info was removed in v49.)
 * Their data stays in MongoDB until you delete it once, from the `backend` folder:
   ```bash
   python -m app.cleanup_removed          # lists what would be deleted

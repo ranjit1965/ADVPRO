@@ -80,7 +80,6 @@ export const NAVIGATION = [
       { key: 'employees', label: 'Employees', to: '/master/employees', roles: PEOPLE_VIEW_ROLES },
       { key: 'deleted-employees', label: 'Deleted Employees', to: '/master/deleted-employees', roles: PEOPLE_VIEW_ROLES },
       { key: 'hr-policy', label: 'HR Policy', to: '/hr-report/policy' },
-      { key: 'your-info', label: 'Your Info', to: '/hr-report/your-info' },
       { key: 'halfyearly', label: 'Halfyearly Program Report', to: '/hr-report/halfyearly' },
     ],
   },

@@ -2,7 +2,8 @@
 
 Removed: Master › Registration, Attendence, Product, Old Registrations, Shedulling (work assignments),
 Vendor and Assest; HR › Batch Paper Completion (no data of its own) and Leave/Permission Form; My Work;
-Transaction (v47, a menu placeholder with no data); Monthly Plan (v48, monthly_plans).
+Transaction (v47, a menu placeholder with no data); Monthly Plan (v48, monthly_plans);
+HR › Your Info (v49: PF / bank account, EL / CL, absent days and ratings saved on each employee as `hr`).
 
     cd backend
     python -m app.cleanup_removed          # shows what would be deleted
@@ -35,8 +36,14 @@ def main() -> None:
         db.db.deleted_records.delete_many({"coll": {"$in": ["leave_requests", "work_assignments"]}})
         db.db.roles.update_many({}, {"$unset": {"access.myWork": "", "access.transaction": ""}})
         print(f"Removed {stale} leave / work records kept with deleted employees, and the My Work / Transaction ticks.")
+    your_info = db.users.count_documents({"hr": {"$exists": True}})
+    if a.yes:
+        db.users.update_many({"hr": {"$exists": True}}, {"$unset": {"hr": ""}})
+        db.db.deleted_users.update_many({"hr": {"$exists": True}}, {"$unset": {"hr": ""}})
+        print(f"Removed the Your Info details of {your_info} employee(s).")
     else:
         print(f"deleted_records (leave / work of deleted employees): {stale}")
+        print(f"Your Info details saved on employees: {your_info}")
         print("\nNothing was deleted. Run again with --yes to delete. Take a backup first (mongodump).")
 
 

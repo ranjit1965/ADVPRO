@@ -14,7 +14,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useLookups } from '../../context/LookupsContext';
 import { useToast } from '../../context/ToastContext';
 import { useAsync } from '../../hooks/useAsync';
-import { canAccess, hasSection, MASTER_ROLES } from '../../utils/permissions';
+import { canManage } from '../../utils/permissions';
 import { formatDateTime, monthLabel, toISODate } from '../../utils/format';
 
 /**
@@ -24,7 +24,7 @@ import { formatDateTime, monthLabel, toISODate } from '../../utils/format';
  */
 export default function Biometric() {
   const { user } = useAuth();
-  const canEdit = hasSection(user, 'master') || hasSection(user, 'admin');
+  const canEdit = canManage(user);
   const { lookups } = useLookups();
   const toast = useToast();
   const settings = useAsync(() => api.getBiometricSettings(), []);
@@ -107,7 +107,7 @@ export default function Biometric() {
             <p className="text-[13px] text-ink-600">Only Admin and Manager can upload the biometric file.</p>
           )}
           <p className="mt-3 text-[12px] text-ink-500">
-            Columns can be in any order: an employee code or name column and a date with time, or In / Out time columns. People are matched by employee code, login ID or name; link anyone not matched below. Saving a month again replaces those days.
+            Columns can be in any order and named in any usual way (Emp Code / Employee ID, Name, Date or Day with a Month column, In Time / Out Time, Punch Time). Day-wise sheets with days 1 to 31 across and the month in a column or the title are read too. People are matched by employee code, login ID or name; link anyone not matched below. Saving a month again replaces those days.
           </p>
           <div className="mt-4 flex flex-wrap items-end gap-2 border-t border-ink-100 pt-4">
             <Input

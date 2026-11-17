@@ -23,7 +23,6 @@ import Biometric from './pages/master/Biometric';
 import BatchImport from './pages/master/BatchImport';
 import DataUpload from './pages/admin/DataUpload';
 import HrPolicy from './pages/hr/HrPolicy';
-import YourInfo from './pages/hr/YourInfo';
 import HalfyearlyReport from './pages/hr/HalfyearlyReport';
 import NotFound from './pages/NotFound';
 import RoleAccess from './pages/master/RoleAccess';
@@ -81,7 +80,6 @@ export default function App() {
               <Route path="admin/data-upload" element={<DataUpload />} />
               <Route path="hr-report" element={<Navigate to="/hr-report/policy" replace />} />
               <Route path="hr-report/policy" element={<HrPolicy />} />
-              <Route path="hr-report/your-info" element={<YourInfo />} />
               <Route path="hr-report/halfyearly" element={<HalfyearlyReport />} />
               <Route path="users" element={<Navigate to="/master/employees" replace />} />
               <Route path="settings" element={<Settings />} />

@@ -241,7 +241,7 @@ export async function deleteMasterRecords(key, ids) {
 }
 
 /* ------------------------------------------------------------ HR_Report */
-// HR Policy and Your Info.
+// HR Policy.
 
 export const HR_ROLES = ['HR', 'MANAGER', 'ADMIN'];
 
@@ -255,16 +255,6 @@ export async function saveHrPolicy(content) {
   return request('/hr/policy', { method: 'PUT', body: { content } });
 }
 
-
-/** GET /api/hr/info?userId= : your own info; HR, Manager and Admin can open anyone's. */
-export async function getEmployeeInfo(userId) {
-  return request('/hr/info', { params: { userId } });
-}
-
-/** PUT /api/hr/info/{userId} (HR, Manager, Admin) */
-export async function saveEmployeeInfo(userId, patch) {
-  return request(`/hr/info/${encodeURIComponent(userId)}`, { method: 'PUT', body: patch });
-}
 
 /* ------------------------------------------------------- Daily activity */
 

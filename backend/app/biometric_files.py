@@ -52,7 +52,7 @@ class ReadResult:
 
 
 def _key(h: str) -> str:
-    return re.sub(r"[\s._\-/()]", "", str(h or "")).lower()
+    return re.sub(r"[\s._\-/():#]", "", str(h or "")).lower()
 
 
 def parse_date(text) -> date | None:
@@ -182,18 +182,152 @@ def rows_from_upload(name: str, data: bytes) -> list[list]:
         return rows_from_file(path)
 
 
+MONTHS = {m: i for i, m in enumerate(("jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"), 1)}
+# Columns that hold other times (shift, late, overtime, totals): never read as Time In / Time Out.
+NOT_PUNCH = ("shift", "late", "early", "total", "duration", "hrs", "hours", "status", "remark", "break", "overtime", "worked", "work")
+IN_PARTS = ("intime", "timein", "checkin", "clockin", "punchin", "firstin", "inpunch", "arrival", "entrytime", "logintime", "firstpunch", "inpunchtime")
+OUT_PARTS = ("outtime", "timeout", "checkout", "clockout", "punchout", "lastout", "outpunch", "departure", "exittime", "logouttime", "lastpunch", "outpunchtime")
+
+
+def _role(cell) -> str | None:
+    """What a header cell is, from its name in any wording: id, name, datetime, date, day, month, in, out or time."""
+    k = _key(cell)
+    if not k or len(k) > 40:
+        return None
+    punchy = not any(w in k for w in NOT_PUNCH)
+    if k in OUT_HEADERS or (punchy and any(w in k for w in OUT_PARTS)):
+        return "out"
+    if k in IN_HEADERS or (punchy and any(w in k for w in IN_PARTS)):
+        return "in"
+    if "name" in k and "dept" not in k and "department" not in k and "shift" not in k and "company" not in k:
+        return "name"
+    if k in ID_HEADERS or re.fullmatch(r"(emp|employee|staff|user|enroll|enrollment|biometric|device|card|badge|ac|person|faculty|machine)(code|id|no|number)", k) or (k.endswith("code") and k.startswith(("emp", "employee", "staff", "faculty", "user", "punch", "attendance"))):
+        return "id"
+    if k in DATETIME_HEADERS or ("date" in k and "time" in k):
+        return "datetime"
+    if k in {"month", "monthyear", "period", "attmonth", "payrollmonth", "salarymonth", "yearmonth"} or (k.startswith("month") and len(k) < 12):
+        return "month"
+    if k in DATE_HEADERS or k.endswith("date") or k.startswith("date"):
+        return "date"
+    if k in {"day", "dayno", "dd", "dates"}:
+        return "day"
+    if k in TIME_HEADERS or (punchy and k in {"punchtime", "logtime", "attendancetime"}):
+        return "time"
+    return None
+
+
+def month_in_text(text) -> tuple[int, int] | None:
+    """(year, month) from "October 2026", "Oct-26", "10/2026", "2026-10", "01/10/2026 to 31/10/2026" or a date value."""
+    if isinstance(text, (datetime, date)):
+        return text.year, text.month
+    s = str(text or "").strip().lower()
+    if not s:
+        return None
+    m = re.search(r"\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?[\s\-,/']*(?:\d{1,2}(?:st|nd|rd|th)?[\s,\-]+)?'?(\d{4}|\d{2})\b", s)
+    if m:
+        y = int(m.group(2))
+        return (y + 2000 if y < 100 else y), MONTHS[m.group(1)]
+    m = re.search(r"\b\d{1,2}[\s\-/](jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*[\s\-/,]*(\d{4}|\d{2})\b", s)
+    if m:
+        y = int(m.group(2))
+        return (y + 2000 if y < 100 else y), MONTHS[m.group(1)]
+    for token in re.findall(r"\b\d{1,4}[/\-.]\d{1,2}(?:[/\-.]\d{2,4})?\b", s):
+        d = parse_date(token)
+        if d:
+            return d.year, d.month
+        a, b = re.split(r"[/\-.]", token)[:2]
+        if len(a) == 4 and 1 <= int(b) <= 12:
+            return int(a), int(b)
+        if len(b) == 4 and 1 <= int(a) <= 12:
+            return int(b), int(a)
+    return None
+
+
+def _day_number(cell) -> int | None:
+    """1 to 31 from a day cell or day header: 5, "05", "5 Mon", "Mon 5", "5-Tue"."""
+    if isinstance(cell, bool):
+        return None
+    if isinstance(cell, (int, float)) and float(cell).is_integer() and 1 <= int(cell) <= 31:
+        return int(cell)
+    m = re.fullmatch(r"(?:[a-z]{2,3}[\s\-]*)?(\d{1,2})(?:[\s\-]*[a-z]{1,3})?", str(cell or "").strip().lower())
+    if m and 1 <= int(m.group(1)) <= 31:
+        return int(m.group(1))
+    return None
+
+
+def _day_columns(row: list) -> dict[int, object]:
+    """Columns of a day-wise (matrix) header: {column: date or day number}. Needs at least 5 days."""
+    cols: dict[int, object] = {}
+    for j, cell in enumerate(row):
+        if isinstance(cell, (datetime, date)):
+            cols[j] = cell.date() if isinstance(cell, datetime) else cell
+            continue
+        d = parse_date(cell) if isinstance(cell, str) and re.search(r"\d+[/\-.]\d+[/\-.]\d+", cell) else None
+        if d:
+            cols[j] = d
+            continue
+        n = _day_number(cell)
+        if n is not None:
+            cols[j] = n
+    nums = [v for v in cols.values() if isinstance(v, int)]
+    if len(cols) < 5 or (nums and len(set(nums)) < len(nums)):
+        return {}
+    return cols
+
+
+def _times(cell) -> list[time]:
+    """Every time in a cell: a time value, or text like "09:02", "9.05 AM", "09:02 18:31", "09:02-18:31"."""
+    if isinstance(cell, datetime):
+        return [cell.time().replace(microsecond=0)] if (cell.hour or cell.minute) else []
+    if isinstance(cell, time):
+        return [cell.replace(microsecond=0)]
+    if isinstance(cell, float) and 0 < cell < 1:  # Excel time stored as a fraction of a day
+        mins = round(cell * 24 * 60)
+        return [time(mins // 60, mins % 60)]
+    out = []
+    for h, m, ap in re.findall(r"\b(\d{1,2})[:.](\d{2})(?::\d{2})?\s*(am|pm|a\.m\.|p\.m\.)?", str(cell or "").lower()):
+        h, m = int(h), int(m)
+        if ap.startswith("p") and h < 12:
+            h += 12
+        elif ap.startswith("a") and h == 12:
+            h = 0
+        if h < 24 and m < 60 and (h or m):
+            out.append(time(h, m))
+    return out
+
+
+def _person_in_row(row: list) -> tuple[str, str]:
+    """ "Emp Code: 101", "Employee Name : Ravi" (in one cell, or label and value in two cells)."""
+    pid = name = ""
+    cells = [str(c).strip() if c is not None else "" for c in row]
+    for j, text in enumerate(cells):
+        if not text:
+            continue
+        for part in re.split(r"\s{2,}|\t|\|", text):
+            m = re.match(r"^\s*([A-Za-z .]+?)\s*[:\-]\s*(.+?)\s*$", part)
+            if m:
+                role, value = _role(m.group(1)), m.group(2)
+            else:
+                role = _role(part) if part.endswith(":") or _role(part) in ("id", "name") else None
+                value = next((c for c in cells[j + 1:] if c), "") if role else ""
+                value = value.lstrip(":- ").strip()
+            if role == "id" and value and not pid:
+                pid = value.split()[0]
+            elif role == "name" and value and not name:
+                name = value
+    return pid, name
+
+
 def _find_header(rows: list[list]) -> tuple[int, dict[str, int]] | None:
-    """Looks at the first rows for one that names an ID or Name column plus a date or time column."""
-    for i, row in enumerate(rows[:15]):
+    """Looks at the first rows for one that names an ID or Name column plus a date, day, month or time column,
+    in any order and any wording ("Emp. Code", "Employee Name", "In Time", "Punch Out", "Month" ...)."""
+    for i, row in enumerate(rows[:25]):
         cols: dict[str, int] = {}
         for j, cell in enumerate(row):
-            k = _key(cell)
-            for role, names in (("id", ID_HEADERS), ("name", NAME_HEADERS), ("datetime", DATETIME_HEADERS), ("date", DATE_HEADERS),
-                                ("in", IN_HEADERS), ("out", OUT_HEADERS), ("time", TIME_HEADERS)):
-                if k in names and role not in cols:
-                    cols[role] = j
-                    break
-        if ("id" in cols or "name" in cols) and ({"datetime", "date", "in"} & cols.keys()):
+            role = _role(cell)
+            if role and role not in cols:
+                cols[role] = j
+        if ("id" in cols or "name" in cols) and ({"datetime", "date", "in", "time", "day"} & cols.keys()):
             return i, cols
     return None
 
@@ -202,8 +336,42 @@ def _cell(row: list, idx: int | None):
     return row[idx] if idx is not None and idx < len(row) else None
 
 
+def _resolve_day(raw, month: tuple[int, int] | None) -> date | None:
+    d = parse_date(raw)
+    if d:
+        return d
+    n = _day_number(raw)
+    if n and month:
+        try:
+            return date(month[0], month[1], n)
+        except ValueError:
+            return None
+    return None
+
+
+def _file_month(rows: list[list]) -> tuple[int, int] | None:
+    """Month named in the title rows above the table ("Attendance for October 2026", "01/10/2026 To 31/10/2026")."""
+    for row in rows[:12]:
+        for cell in row:
+            if isinstance(cell, str) and len(cell) > 4:
+                m = month_in_text(cell)
+                if m:
+                    return m
+    return None
+
+
 def read_rows(rows: list[list], file: str, out: ReadResult) -> None:
+    """Reads one sheet in any of three layouts (columns in any order, any header wording):
+    1. a column table: code / name, date (or day + month), time in / time out (or one punch per row);
+    2. a day-wise sheet: a row of days 1 to 31 with the times under each day, one row (or In / Out rows)
+       per employee, or "Emp Code: 101  Name: Ravi" blocks; the month comes from a Month column or the title;
+    3. a headerless punch log: code, then date and time."""
+    file_month = _file_month(rows)
+    day_header = next((i for i, r in enumerate(rows[:40]) if _day_columns(r)), None)
     found = _find_header(rows)
+    if day_header is not None and (found is None or found[0] >= day_header or ({"in", "out", "time", "datetime"} & found[1].keys()) == set()):
+        _read_day_wise(rows, file, out, file_month)
+        return
     if not found:
         # Headerless punch log: first column = person id, then a date-time.
         for row in rows:
@@ -221,9 +389,13 @@ def read_rows(rows: list[list], file: str, out: ReadResult) -> None:
     for row in rows[header_at + 1:]:
         pid = str(_cell(row, c.get("id")) or "").strip()
         name = str(_cell(row, c.get("name")) or "").strip()
+        if isinstance(_cell(row, c.get("id")), float) and float(_cell(row, c.get("id"))).is_integer():
+            pid = str(int(_cell(row, c.get("id"))))
         if not pid and not name:
             out.skipped_rows += 1
             continue
+        month = month_in_text(_cell(row, c.get("month"))) if "month" in c else None
+        month = month or file_month
         times: list[time] = []
         day = None
         if "datetime" in c:
@@ -232,16 +404,73 @@ def read_rows(rows: list[list], file: str, out: ReadResult) -> None:
                 day, times = dt.date(), [dt.time()]
         if day is None and "date" in c:
             raw_date = _cell(row, c["date"])
-            day = parse_date(raw_date)
-            if isinstance(raw_date, datetime) and "in" not in c and "time" not in c:
+            day = _resolve_day(raw_date, month)
+            if isinstance(raw_date, datetime) and not ({"in", "out", "time"} & c.keys()) and (raw_date.hour or raw_date.minute):
                 times = [raw_date.time()]
+        if day is None and "day" in c:
+            day = _resolve_day(_cell(row, c["day"]), month)
         if "in" in c or "out" in c:
-            t_in, t_out = parse_time(_cell(row, c.get("in"))), parse_time(_cell(row, c.get("out")))
+            t_in = (_times(_cell(row, c.get("in"))) or [None])[0] if "in" in c else None
+            t_out = (_times(_cell(row, c.get("out"))) or [None])[-1] if "out" in c else None
             times += [t for t in (t_in, t_out) if t]
         elif "time" in c and not times:
-            t = parse_time(_cell(row, c["time"]))
-            times = [t] if t else []
+            times = _times(_cell(row, c["time"]))
         if not day or not times:
             out.skipped_rows += 1
             continue
         out.punches.append(Punch(pid, name, day, times, file))
+    if out.skipped_rows and not out.punches and "month" not in c and not file_month and "datetime" not in c:
+        out.errors.append(f"{file}: no punches read from {out.skipped_rows} rows. If the date column has only the day number, add a Month column or the month in the title.")
+
+
+SKIP_LABELS = ("status", "duration", "total", "late", "early", "overtime", "shift", "break", "hrs", "hours", "remark", "present", "absent", "leave", "weekoff", "holiday", "worked")
+
+
+def _read_day_wise(rows: list[list], file: str, out: ReadResult, file_month: tuple[int, int] | None) -> None:
+    person = ("", "")
+    day_cols: dict[int, object] = {}
+    id_col = name_col = month_col = None
+    month = file_month
+    for row in rows:
+        cols = _day_columns(row)
+        if cols:
+            day_cols = cols
+            roles = {_role(c): j for j, c in enumerate(row) if j not in cols and _role(c)}
+            id_col, name_col, month_col = roles.get("id"), roles.get("name"), roles.get("month")
+            continue
+        pid, name = _person_in_row(row)
+        if pid or name:
+            if pid and pid != person[0]:
+                person = (pid, name)
+            elif name and not pid:
+                person = (person[0] if not person[1] else "", name)
+            row_month = next((month_in_text(c) for c in row if isinstance(c, str) and "month" in c.lower() and month_in_text(c)), None)
+            month = row_month or month
+            if not any(_times(_cell(row, j)) for j in day_cols):
+                continue
+        if not day_cols:
+            m = next((month_in_text(c) for c in row if isinstance(c, str) and month_in_text(c)), None)
+            month = m or month
+            continue
+        cell_id, cell_name = str(_cell(row, id_col) or "").strip(), str(_cell(row, name_col) or "").strip()
+        if isinstance(_cell(row, id_col), float) and float(_cell(row, id_col)).is_integer():
+            cell_id = str(int(_cell(row, id_col)))
+        if cell_id or cell_name:
+            person = (cell_id, cell_name)
+        row_month = month_in_text(_cell(row, month_col)) if month_col is not None else None
+        label = " ".join(_key(c) for j, c in enumerate(row) if j not in day_cols and j not in (id_col, name_col, month_col) and isinstance(c, str))
+        if any(w in label for w in SKIP_LABELS):
+            continue
+        if not (person[0] or person[1]):
+            continue
+        for j, d in day_cols.items():
+            times = _times(_cell(row, j))
+            if not times:
+                continue
+            day = d if isinstance(d, date) else _resolve_day(d, row_month or month)
+            if not day:
+                out.skipped_rows += 1
+                continue
+            out.punches.append(Punch(person[0], person[1], day, times, file))
+    if out.skipped_rows and not out.punches:
+        out.errors.append(f"{file}: the day columns have no month. Add a Month column or the month in the title.")
