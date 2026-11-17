@@ -10,7 +10,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
 from .. import db
-from ..security import SECTIONS, default_access, require_roles, require_section, role_doc_access, roles_list
+from ..security import SECTIONS, current_user, default_access, require_roles, role_doc_access, roles_list, sections_for
 
 router = APIRouter(prefix="/access", tags=["roles and access"])
 manager = require_roles("MANAGER")
@@ -59,9 +59,18 @@ def get_access(_: dict = Depends(manager)):
     return _view()
 
 
+def _people_pages(user: dict = Depends(current_user)) -> dict:
+    """Same users as the Employees page: Master or Admin menu, or HR / Admin roles with the HR menu."""
+    access = sections_for(user)
+    if user["role"] == "MANAGER" or access.get("master") or access.get("admin") or (access.get("hr") and user["role"] in ("HR", "ADMIN")):
+        return user
+    raise HTTPException(403, "You do not have access to this menu. Ask the Manager.")
+
+
 @router.get("/roles")
-def list_roles(_: dict = Depends(require_section("master"))):
-    """Roles for the Employee form's Role list: [{key, label}]."""
+def list_roles(_: dict = Depends(_people_pages)):
+    """Roles for the Employees page (Role list and names): [{key, label}]. Before v49 only the Master menu
+    could read it, so Admin / HR opening Employees from their own menu saw "Roles could not be loaded"."""
     return [{"key": r["key"], "label": r.get("label") or r["key"]} for r in roles_list()]
 
 
