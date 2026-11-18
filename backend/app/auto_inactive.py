@@ -1,8 +1,8 @@
 """Make an employee inactive when they saved no daily entry on their last 3 working days.
 
 Rules (all set in backend/.env, see AUTO_INACTIVE_* in .env.example):
-* Only employees with the FACULTY role are checked (AUTO_INACTIVE_ROLES). Manager, Admin, HR and
-  Staff are never made inactive by this job.
+* Only employees with the FACULTY role are checked. This is fixed in the code (ROLES below), not a
+  setting: Manager, Admin, HR, Staff and every role the Manager creates are never made inactive by it.
 * Working days are Monday to Saturday (AUTO_INACTIVE_WEEKLY_OFF=6 means Sunday is off) minus the
   dates in AUTO_INACTIVE_HOLIDAYS.
 * Today is never counted (the employee may still enter it). The job looks at the 3 most recent
@@ -27,6 +27,7 @@ from .config import settings
 
 log = logging.getLogger("der.auto_inactive")
 SETTINGS_ID = "autoInactive"
+ROLES = ("FACULTY",)  # the only role this job ever makes inactive
 MAX_LOOKBACK_DAYS = 60  # 3 working days are always found well inside this window
 
 
@@ -104,9 +105,8 @@ def find_missing(today: date | None = None) -> list[dict]:
     today = today or local_today()
     start = date.fromisoformat(cfg["startDate"])
     off, hol = weekly_off(), holidays()
-    roles = [r.upper() for r in _csv(settings.auto_inactive_roles)]
     found = []
-    for u in db.users.find({"active": {"$ne": False}, "role": {"$in": roles}}).sort("name"):
+    for u in db.users.find({"active": {"$ne": False}, "role": {"$in": list(ROLES)}}).sort("name"):
         hit = check_user(u, today, start, off, hol)
         if hit:
             found.append(hit)
@@ -122,7 +122,7 @@ def run(dry_run: bool = False, today: date | None = None, by: str = "Scheduled j
         for f in found:
             reason = "No daily entry on " + ", ".join(f["missedDays"])
             db.users.update_one(
-                {"userId": f["userId"], "active": {"$ne": False}},
+                {"userId": f["userId"], "active": {"$ne": False}, "role": {"$in": list(ROLES)}},
                 {"$set": {"active": False, "autoInactive": True, "inactiveAt": now, "inactiveBy": by, "inactiveReason": reason}},
             )
             log.info("Made %s (%s) inactive: %s", f["name"], f["code"], reason)
@@ -141,7 +141,7 @@ def status() -> dict:
         "enabled": settings.auto_inactive_enabled,
         "time": settings.auto_inactive_time,
         "days": settings.auto_inactive_days,
-        "roles": _csv(settings.auto_inactive_roles),
+        "roles": list(ROLES),
         "weeklyOff": sorted(weekly_off()),
         "holidays": sorted(holidays()),
     }
