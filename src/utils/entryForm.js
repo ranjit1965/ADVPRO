@@ -69,6 +69,8 @@ export const DAY_ORDERS = Array.from({ length: 20 }, (_, i) => String(i + 1));
 export const SELF_LEARNING_TYPES = ['Self Learning', 'Knowledge Sharing', 'Class Attended'];
 export const SESSION_KINDS = ['Theory', 'Lab'];
 export const CLASS_MODES = ['Online', 'Offline'];
+/** Class tab: a class can also run Online and Offline at the same time. */
+export const CLASS_TAB_MODES = ['Online', 'Offline', 'Both'];
 /** Material Type list of Self Learning: the Lab / Practical list for a lab, practical or coding session, else Theory. */
 export const materialKind = (chapterType) => (!chapterType ? '' : /lab|practical|coding/i.test(chapterType) ? 'slMaterialPractical' : 'slMaterialTheory');
 

@@ -7,7 +7,10 @@ import ShortLabel from '../../ui/ShortLabel';
 import Textarea from '../../ui/Textarea';
 import OutstationFields from '../OutstationFields';
 import { makeField, courseOptions } from '../fieldProps';
-import { CLASS_CHECKS, CLASS_TAB_MODES, DAY_ORDERS } from '../../../utils/entryForm';
+import { CLASS_CHECKS, DAY_ORDERS } from '../../../utils/entryForm';
+
+/** Class mode: a class can also run Online and Offline at the same time. */
+const CLASS_TAB_MODES = ['Online', 'Offline', 'Both'];
 
 export default function ClassTab({ values, errors, set, setMany, lookups, facultyCode, facultyIn, outstation, outstationErrors, setOutstation, onAddLookup, onRequestCourse, onRequestBatch }) {
   const f = makeField('class', values, errors, set);
