@@ -1,8 +1,8 @@
-"""Batch No requests: faculty ask Manager / Admin for a batch number from the Class entry.
+"""Batch No requests: faculty ask Super Admin / Admin for a batch number from the Class entry.
 
 Same as course requests: saved in `batch_requests`, emailed to COURSE_REQUEST_EMAILS (or every active
-Manager / Admin with an email) and sent on WhatsApp to WA_NOTIFY_NUMBERS with the sender's name.
-Manager / Admin see the pending ones in Master › Course and mark them Done or Dismissed.
+Super Admin / Admin with an email) and sent on WhatsApp to WA_NOTIFY_NUMBERS with the sender's name.
+Super Admin / Admin see the pending ones in Master › Course and mark them Done or Dismissed.
 """
 import uuid
 from datetime import datetime, timedelta, timezone
@@ -15,10 +15,10 @@ from .. import db, whatsapp
 from ..config import settings
 from ..mailer import MailNotConfigured, send_mail
 from ..schemas import Form
-from ..security import current_user, require_section
+from ..security import manage_access, super_admin_only, is_super_admin, current_user, require_section
 
 router = APIRouter(prefix="/batch-requests", tags=["batch requests"])
-master_roles = require_section("master", "admin")  # Master or Admin menu ticked for the role
+master_roles = manage_access  # Master or Admin menu, or HR menu for HR / Admin roles; Super Admin always
 
 
 class BatchRequestIn(Form):

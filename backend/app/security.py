@@ -46,7 +46,7 @@ def current_user(creds: HTTPAuthorizationCredentials | None = Depends(bearer)) -
 
 
 def effective(user: dict) -> dict:
-    """An Admin whose access the Manager removed works as a normal employee (STAFF) until it is given back."""
+    """An Admin whose access the Super Admin removed works as a normal employee (STAFF) until it is given back."""
     if user.get("role") == "ADMIN" and user.get("adminAccess") is False:
         return {**user, "role": "STAFF", "adminAccessRemoved": True}
     return user
@@ -62,8 +62,8 @@ def require_roles(*roles: str):
 
 
 # ------------------------------------------------------------------ menu (tab) access per role
-# The Manager ticks which menus each role may open (Master › Role Access). Not ticked = hidden in the
-# menu and refused by the server. The Manager always has every menu. Defaults = the old fixed rules.
+# The Super Admin ticks which menus each role may open (Master › Role Access). Not ticked = hidden in the
+# menu and refused by the server. The Super Admin always has every menu. Defaults = the old fixed rules.
 BUILT_IN_ROLES = ("ADMIN", "HR", "FACULTY", "STAFF")
 ALL_ROLES = BUILT_IN_ROLES  # kept for older imports; use all_roles() for the full list with added roles
 # Every tab of the left side pane, in menu order (Dashboard is always shown: it is the home page).
@@ -82,12 +82,12 @@ BUILT_IN_LABELS = {"ADMIN": "Admin", "HR": "HR", "FACULTY": "Faculty", "STAFF": 
 # Roles live in their own collection `roles`, one document per role:
 #   {key: "ACCOUNTS", label: "Accounts", description, builtIn: false, access: {master: true, ...},
 #    createdBy, createdAt, updatedBy, updatedAt}
-# The Manager creates roles and ticks their menu access in Master › Roles & Access; Master › Employees
+# The Super Admin creates roles and ticks their menu access in Master › Roles & Access; Master › Employees
 # offers them in the Role list. MANAGER is not a role document: it always has everything.
 
 
 def default_access(role: str, section: str) -> bool:
-    # A role the Manager creates starts with the same menus as Staff until the Manager ticks otherwise.
+    # A role the Super Admin creates starts with the same menus as Staff until the Super Admin ticks otherwise.
     base = role if role in BUILT_IN_ROLES else "STAFF"
     return base in SECTIONS[section]["default"]
 
@@ -154,7 +154,40 @@ def require_section(*sections: str, roles: tuple[str, ...] | None = None):
             return user
         access = sections_for(user)
         if not any(access.get(s) for s in sections) or (roles and user["role"] not in roles):
-            raise HTTPException(status.HTTP_403_FORBIDDEN, "You do not have access to this menu. Ask the Manager.")
+            raise HTTPException(status.HTTP_403_FORBIDDEN, "You do not have access to this menu. Ask the Super Admin.")
         return user
 
     return dep
+
+
+# ------------------------------------------------------------------ Super Admin and the shared admin pages
+# The MANAGER role is shown as "Super Admin" everywhere (the stored key stays MANAGER so existing logins work).
+SUPER_ADMIN = "MANAGER"
+SUPER_ADMIN_LABEL = "Super Admin"
+MANAGE_ROLES_WITH_HR = ("HR", "ADMIN")  # the HR menu opens the admin pages only for these roles
+
+
+def is_super_admin(user: dict) -> bool:
+    return user.get("role") == SUPER_ADMIN
+
+
+def can_manage(user: dict) -> bool:
+    """Data Upload, Employees, Batch, Batch Import, Course, Biometric, Dropdown Values: Master or Admin menu,
+    or the HR menu for HR / Admin roles (v50). Super Admin always."""
+    if is_super_admin(user):
+        return True
+    access = sections_for(user)
+    return bool(access.get("master") or access.get("admin") or (access.get("hr") and user.get("role") in MANAGE_ROLES_WITH_HR))
+
+
+def manage_access(user: dict = Depends(current_user)) -> dict:
+    if not can_manage(user):
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "You do not have access to this menu. Ask the Super Admin.")
+    return user
+
+
+def super_admin_only(user: dict = Depends(current_user)) -> dict:
+    """Deleting any record (courses, chapters, batches, dropdown values, employees ...) is for the Super Admin only."""
+    if not is_super_admin(user):
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Only the Super Admin can delete records.")
+    return user

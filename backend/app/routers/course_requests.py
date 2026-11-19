@@ -1,8 +1,8 @@
-"""Course requests: faculty and employees ask Manager / Admin to add a missing course.
+"""Course requests: faculty and employees ask Super Admin / Admin to add a missing course.
 
 The request is saved in `course_requests` and emailed to the addresses in COURSE_REQUEST_EMAILS
-(backend/.env); when that is empty, to every active Manager and Admin who has an email address. At the
-same time a WhatsApp template message goes to WA_NOTIFY_NUMBERS (see app/whatsapp.py). Both say who sent it. Manager / Admin then add the course in Master › Courses & Chapters
+(backend/.env); when that is empty, to every active Super Admin and Admin who has an email address. At the
+same time a WhatsApp template message goes to WA_NOTIFY_NUMBERS (see app/whatsapp.py). Both say who sent it. Super Admin / Admin then add the course in Master › Courses & Chapters
 (the request is marked Added) or dismiss it.
 """
 import re
@@ -18,10 +18,10 @@ from .. import whatsapp
 from ..mailer import MailNotConfigured, send_mail
 from ..config import settings
 from ..schemas import Form
-from ..security import require_section, current_user, require_roles
+from ..security import manage_access, super_admin_only, is_super_admin, require_section, current_user, require_roles
 
 router = APIRouter(prefix="/course-requests", tags=["course requests"])
-master_roles = require_section("master", "admin")  # Master or Admin menu ticked for the role
+master_roles = manage_access  # Master or Admin menu, or HR menu for HR / Admin roles; Super Admin always
 
 
 class RequestIn(Form):
@@ -71,7 +71,7 @@ def create_request(body: RequestIn, me: dict = Depends(current_user)):
     name = body.courseName.strip()
     if db.courses.find_one({"name": {"$regex": f"^{re.escape(name)}$", "$options": "i"}}):
         raise HTTPException(409, f'A course named "{name}" already exists. Pick it from Course ID.')
-    # Fixed addresses from COURSE_REQUEST_EMAILS; only when that is empty, every active Manager / Admin with an email.
+    # Fixed addresses from COURSE_REQUEST_EMAILS; only when that is empty, every active Super Admin / Admin with an email.
     recipients = [e.strip() for e in settings.course_request_emails.split(",") if e.strip()]
     if not recipients:
         recipients = sorted({u["email"] for u in db.users.find({"role": {"$in": ["MANAGER", "ADMIN"]}, "active": True, "email": {"$nin": [None, ""]}}, {"email": 1})})
@@ -96,7 +96,7 @@ def create_request(body: RequestIn, me: dict = Depends(current_user)):
         raise HTTPException(503, str(e)) from e
     except Exception as e:  # SMTP refused, network down ...
         raise HTTPException(502, f"The email could not be sent: {e}") from e
-    # WhatsApp to Manager / Admin with the sender's name; a failure is recorded but does not stop the request.
+    # WhatsApp to Super Admin / Admin with the sender's name; a failure is recorded but does not stop the request.
     wa = whatsapp.notify({
         "employee": me["name"], "code": me["code"], "employeeCode": f"{me['name']} ({me['code']})",
         "course": name, "courseId": r["courseId"], "remarks": r["notes"],

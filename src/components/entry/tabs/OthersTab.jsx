@@ -6,7 +6,7 @@ import { makeField } from '../fieldProps';
 import { OTHERS_CUSTOM } from '../../../utils/entryForm';
 
 /**
- * Others: Heading and Remarks. Headings come from Master › Dropdown Values (Admin / Manager add them);
+ * Others: Heading and Remarks. Headings come from Master › Dropdown Values (Admin / Super Admin add them);
  * "Others" at the end of the list asks for a heading typed by the faculty. An entry over 1 hour asks
  * "Are you sure?" on Save.
  */

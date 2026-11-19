@@ -5,13 +5,13 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
 from .. import db
-from ..security import current_user, require_section
+from ..security import manage_access, super_admin_only, is_super_admin, roles_list, current_user, require_section
 from .master import CourseIn  # same CourseMaster columns as Master › Course
 
 router = APIRouter(prefix="/lookups", tags=["lookups"])
-# Only Manager and Admin (Master or Admin menu ticked) add, rename or remove dropdown values.
+# Only Super Admin and Admin (Master or Admin menu ticked) add, rename or remove dropdown values.
 # Faculty and staff only pick from the lists.
-list_admin = require_section("master", "admin")
+list_admin = manage_access  # Master or Admin menu, or HR menu for HR / Admin; Super Admin always
 
 # Every list on Master › Dropdown Values, with the name shown there (and where it is used).
 LIST_LABELS = {
@@ -43,6 +43,7 @@ class ValueIn(BaseModel):
 
 class ListIn(BaseModel):
     values: list[str] = Field(max_length=500)
+    renamed: list[str] = Field(default_factory=list, max_length=500)  # old values that were renamed (not removed)
 
 
 class ContactIn(BaseModel):
@@ -92,6 +93,13 @@ def save_list(kind: str, body: ListIn, me: dict = Depends(list_admin)):
     if kind not in OPTION_LISTS:
         raise HTTPException(400, "Unknown list")
     values = _clean(body.values)
+    if not is_super_admin(me):
+        old = (db.lookups.find_one({"_id": kind}) or {}).get("values", [])
+        kept = {v.lower() for v in values}
+        renamed = {v.lower() for v in body.renamed}
+        gone = [v for v in old if v.lower() not in kept and v.lower() not in renamed]
+        if gone or len(values) < len(old):
+            raise HTTPException(403, "Only the Super Admin can remove dropdown values." + (f" ({', '.join(gone[:3])}{' ...' if len(gone) > 3 else ''})" if gone else ""))
     db.lookups.update_one({"_id": kind}, {"$set": {"values": values, "updatedBy": me["name"], "updatedAt": datetime.now(timezone.utc).isoformat()}}, upsert=True)
     return sorted(values, key=natural_key)
 
@@ -127,7 +135,11 @@ def get_lookups(_: dict = Depends(current_user)):
     # Every dropdown list is returned A to Z (case-insensitive, numbers in natural order).
     out = {d["_id"]: sorted(d["values"], key=natural_key) for d in db.lookups.find({"_id": {"$in": list(OPTION_LISTS)}})}
     out["faculties"] = faculty_list()
-    out["employees"] = sorted(db.users.find({"active": True}, {"_id": 0, "userId": 1, "code": 1, "name": 1, "role": 1, "designation": 1}), key=lambda u: natural_key(u["name"]))
+    labels = {r["key"]: r["label"] for r in roles_list()}
+    out["employees"] = sorted(
+        ({**u, "roleLabel": labels.get(u.get("role"), u.get("role"))} for u in db.users.find({"active": True}, {"_id": 0, "userId": 1, "code": 1, "name": 1, "role": 1, "designation": 1})),
+        key=lambda u: natural_key(u["name"]),
+    )
     # Batch, asset, register-number and vendor dropdowns come from the Master collections.
     out["batches"] = [b["batchNo"] for b in db.db.master_batches.find({}, {"batchNo": 1}).sort("batchNo")]
     # Batches with the employees they are assigned to; the Class tab offers each faculty their own.
@@ -148,7 +160,7 @@ def get_lookups(_: dict = Depends(current_user)):
 
 @router.post("/courses", status_code=201)
 def add_course(body: CourseIn, user: dict = Depends(list_admin)):
-    """Manager / Admin can add a missing course from the entry form (faculty use Request new course).
+    """Super Admin / Admin can add a missing course from the entry form (faculty use Request new course).
     It goes into the same `courses` collection Master › Courses & Chapters uses."""
     cid = body.id.strip().upper()
     name = body.name.strip()

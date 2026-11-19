@@ -31,34 +31,34 @@ export async function changePassword(currentPassword, newPassword) {
   return request('/auth/change-password', { method: 'POST', body: { currentPassword, newPassword } });
 }
 
-/* ---------------------------------------------- Manager account (email OTP) */
+/* ---------------------------------------------- Super Admin account (email OTP) */
 
 /** GET /api/auth/setup-status -> { managerExists } */
 export async function getSetupStatus() {
   return request('/auth/setup-status');
 }
 
-/** POST /api/auth/manager/request-otp: emails a 6-digit code. Only while no manager exists. */
+/** POST /api/auth/manager/request-otp: emails a 6-digit code. Only while no Super Admin exists. */
 export async function requestManagerOtp(name, email) {
   return request('/auth/manager/request-otp', { method: 'POST', body: { name, email } });
 }
 
-/** POST /api/auth/manager/verify: checks the code and creates the manager account. */
+/** POST /api/auth/manager/verify: checks the code and creates the Super Admin account. */
 export async function verifyManagerOtp({ email, otp, name, userId, password }) {
   return request('/auth/manager/verify', { method: 'POST', body: { email, otp, name, userId, password } });
 }
 
-/** POST /api/auth/forgot-password/request-otp: emails a reset code to the manager's email on record. -> { email (masked) } */
+/** POST /api/auth/forgot-password/request-otp: emails a reset code to the Super Admin's email on record. -> { email (masked) } */
 export async function requestPasswordResetOtp(userId) {
   return request('/auth/forgot-password/request-otp', { method: 'POST', body: { userId } });
 }
 
-/** POST /api/auth/forgot-password/reset: checks the code and sets the manager's new password. */
+/** POST /api/auth/forgot-password/reset: checks the code and sets the Super Admin's new password. */
 export async function resetPasswordWithOtp({ userId, otp, newPassword }) {
   return request('/auth/forgot-password/reset', { method: 'POST', body: { userId, otp, newPassword } });
 }
 
-/* --------------------------------------------------- Employees (Master › Employees: Manager and Admin) */
+/* --------------------------------------------------- Employees (Master › Employees: Super Admin and Admin) */
 
 export async function getUsers() {
   return request('/users');
@@ -104,7 +104,7 @@ export async function restoreUser(userId) {
   return request(`/users/deleted/${encodeURIComponent(userId)}/restore`, { method: 'POST' });
 }
 
-/** Master › Role Access (Manager): which menus each role may open. */
+/** Master › Role Access (Super Admin): which menus each role may open. */
 export async function getRoleAccess() {
   return request('/access');
 }
@@ -134,14 +134,14 @@ export async function getLookups() {
   return request('/lookups');
 }
 
-/** Master › Dropdown Values (Manager / Admin): every list with its values, and the issue contacts. */
+/** Master › Dropdown Values (Super Admin / Admin): every list with its values, and the issue contacts. */
 export async function getLookupLists() {
   return request('/lookups/lists');
 }
 
 /** Save a whole list (added, renamed and removed values). Returns the sorted values. */
-export async function saveLookupList(kind, values) {
-  return request(`/lookups/lists/${encodeURIComponent(kind)}`, { method: 'PUT', body: { values } });
+export async function saveLookupList(kind, values, renamed = []) {
+  return request(`/lookups/lists/${encodeURIComponent(kind)}`, { method: 'PUT', body: { values, renamed } });
 }
 
 /** Managing person of Center or a college for issue alerts. Empty fields remove it. Returns all contacts. */
@@ -149,17 +149,17 @@ export async function saveIssueContact(contact) {
   return request('/lookups/contacts', { method: 'PUT', body: contact });
 }
 
-/** Ctrl + A on College Name / Dept and the other lists: Manager / Admin only. */
+/** Ctrl + A on College Name / Dept and the other lists: Super Admin / Admin only. */
 export async function addLookupValue(kind, value) {
   return request(`/lookups/${kind}`, { method: 'POST', body: { value } });
 }
 
-/** "Add course" on the entry form: Manager / Admin only (faculty use Request new course). Returns { id, name }. */
+/** "Add course" on the entry form: Super Admin / Admin only (faculty use Request new course). Returns { id, name }. */
 export async function addCourse(course) {
   return request('/lookups/courses', { method: 'POST', body: course });
 }
 
-/** Class tab "Request Batch No": saved, emailed and sent on WhatsApp to Manager / Admin. Returns { id, emailedTo, whatsappTo }. */
+/** Class tab "Request Batch No": saved, emailed and sent on WhatsApp to Super Admin / Admin. Returns { id, emailedTo, whatsappTo }. */
 export async function requestBatch(body) {
   return request('/batch-requests', { method: 'POST', body });
 }
@@ -173,7 +173,7 @@ export async function setBatchRequestStatus(id, status) {
   return request(`/batch-requests/${encodeURIComponent(id)}`, { method: 'PATCH', body: { status } });
 }
 
-/** Class tab "Request new course": saved and emailed to every Manager and Admin. Returns { id, emailedTo }. */
+/** Class tab "Request new course": saved and emailed to every Super Admin and Admin. Returns { id, emailedTo }. */
 export async function requestCourse(body) {
   return request('/course-requests', { method: 'POST', body });
 }
@@ -188,7 +188,7 @@ export async function setCourseRequestStatus(id, status) {
 }
 
 /* ------------------------------------------- Master: courses and chapters */
-// Manager and Admin maintain these; the Class tab reads them through getLookups().
+// Super Admin and Admin maintain these; the Class tab reads them through getLookups().
 
 
 /** POST /api/master/courses (new) or PUT /api/master/courses/{id} */
@@ -221,7 +221,7 @@ export async function deleteChapter(courseId, no) {
 /* --------------------------------------------------------------- Masters */
 // Master › Registration, Batch, Attendence, Product, Old Registrations, Vendor, Assest.
 // Each is its own collection (master_<key>) described in src/config/masters.json.
-// Admin and Manager maintain them.
+// Admin and Super Admin maintain them.
 
 
 
@@ -255,7 +255,7 @@ export async function getHrPolicy() {
   return request('/hr/policy');
 }
 
-/** PUT /api/hr/policy (HR, Manager, Admin) */
+/** PUT /api/hr/policy (HR, Super Admin, Admin) */
 export async function saveHrPolicy(content) {
   return request('/hr/policy', { method: 'PUT', body: { content } });
 }
@@ -384,12 +384,12 @@ export async function getHalfyearly({ employeeCode } = {}) {
   return request('/hr/halfyearly', { params: { employeeCode } });
 }
 
-/** POST /api/hr/halfyearly (HR, Manager, Admin): assign a target certification and its months. */
+/** POST /api/hr/halfyearly (HR, Super Admin, Admin): assign a target certification and its months. */
 export async function assignHalfyearly(body) {
   return request('/hr/halfyearly', { method: 'POST', body });
 }
 
-/** PUT /api/hr/halfyearly/{id} (HR, Manager, Admin): change the assignment. */
+/** PUT /api/hr/halfyearly/{id} (HR, Super Admin, Admin): change the assignment. */
 export async function updateHalfyearly(id, body) {
   return request(`/hr/halfyearly/${encodeURIComponent(id)}`, { method: 'PUT', body });
 }
@@ -399,12 +399,27 @@ export async function updateHalfyearlyStatus(id, body) {
   return request(`/hr/halfyearly/${encodeURIComponent(id)}/status`, { method: 'PUT', body });
 }
 
-/** DELETE /api/hr/halfyearly/{id} (HR, Manager, Admin) */
+/** GET /api/hr/halfyearly/followup: HR mail id, last run and the Deferred Report email template. */
+export async function getCertFollowup() {
+  return request('/hr/halfyearly/followup');
+}
+
+/** PUT /api/hr/halfyearly/followup (Super Admin): the HR mail id the Deferred Report is sent from. */
+export async function saveCertFollowup(hrEmail) {
+  return request('/hr/halfyearly/followup', { method: 'PUT', body: { hrEmail } });
+}
+
+/** POST /api/hr/halfyearly/followup/run (Super Admin): carry forward and email now. */
+export async function runCertFollowup() {
+  return request('/hr/halfyearly/followup/run', { method: 'POST' });
+}
+
+/** DELETE /api/hr/halfyearly/{id} (Super Admin only) */
 export async function deleteHalfyearly(id) {
   return request(`/hr/halfyearly/${encodeURIComponent(id)}`, { method: 'DELETE' });
 }
 
-/** PUT /api/users/{userId}/admin-access (Manager only): give (true) or remove (false) an Admin's access. */
+/** PUT /api/users/{userId}/admin-access (Super Admin only): give (true) or remove (false) an Admin's access. */
 export async function setAdminAccess(userId, enabled) {
   return request(`/users/${encodeURIComponent(userId)}/admin-access`, { method: 'PUT', body: { enabled } });
 }

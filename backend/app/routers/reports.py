@@ -63,7 +63,7 @@ def totals(entries: list[dict]) -> dict:
 
 
 def scoped_code(user: dict, code: str | None) -> str | None:
-    """Faculty and staff only see their own figures; HR, Admin and Manager can open anyone's."""
+    """Faculty and staff only see their own figures; HR, Admin and Super Admin can open anyone's."""
     return code if user["role"] in VIEW_ALL else user["code"]
 
 

@@ -1,20 +1,20 @@
 """HR › Halfyearly Program Report.
 
-HR, Manager and Admin pick an employee or faculty and assign, for a quarter (H1 to H6) with its months:
+HR, Super Admin and Admin pick an employee or faculty and assign, for a quarter (H1 to H6) with its months:
   * 1 to 3 target certifications (from the course list), and
   * 1 to 3 delivery ready courses (from the course list).
-Only HR, Manager and Admin update the status: achieved / completion date / certification code for each
+Only HR, Super Admin and Admin update the status: achieved / completion date / certification code for each
 target, and ready Yes / No for each delivery ready course. The employee sees their rows read-only.
 """
 from datetime import date, datetime, timezone
 from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, EmailStr, Field, model_validator
 
-from .. import db
+from .. import cert_followup, db
 from ..schemas import Form
-from ..security import require_section, current_user, require_roles
+from ..security import manage_access, super_admin_only, is_super_admin, require_section, current_user, require_roles
 from .hr import HR_ROLES
 
 router = APIRouter(prefix="/hr/halfyearly", tags=["halfyearly program report"])
@@ -84,6 +84,10 @@ class DeliveryStatus(Form):
     ready: Literal["Yes", "No"] | None = None
 
 
+class MailSettingsIn(BaseModel):
+    hrEmail: EmailStr | Literal[""] = ""
+
+
 class StatusIn(BaseModel):
     targets: list[TargetStatus] = Field(default_factory=list, max_length=3)
     deliveries: list[DeliveryStatus] = Field(default_factory=list, max_length=3)
@@ -102,20 +106,45 @@ def _merge(new: list[CertIn], old: list[dict], status_keys: tuple[str, ...]) -> 
     out = []
     for c in new:
         prev = by_name.get(c.name.lower(), {})
-        out.append({"name": c.name.strip(), "courseId": c.courseId, **{k: prev.get(k) for k in status_keys}})
+        out.append({"name": c.name.strip(), "courseId": c.courseId, **{k: prev.get(k) for k in status_keys}, **{k: prev[k] for k in CARRY_KEYS if k in prev}})
     return out
 
 
 TARGET_KEYS = ("achieved", "completionDate", "certificationCode")
+CARRY_KEYS = ("carriedForward", "carriedFrom", "carriedFromQuarter", "carriedTo")  # kept when HR edits the row
 DELIVERY_KEYS = ("ready",)
 
 
 @router.get("")
 def list_reports(employeeCode: str | None = None, me: dict = Depends(current_user)):
+    cert_followup.carry_over(by=me["name"])  # unfinished targets of an ended quarter show in the next one at once
     if me["role"] not in HR_ROLES:
         employeeCode = me["code"]  # employees and faculty see only their own rows
     q = {"employeeCode": employeeCode} if employeeCode else {}
     return [_clean(r) for r in col.find(q).sort([("startMonth", -1), ("employeeName", 1)])]
+
+
+# ---------------------------------------------------------------- HR › Certification Status: carry over + Deferred Report
+
+@router.get("/followup")
+def followup_settings(_: dict = Depends(hr_only)):
+    """HR mail id (set by the Super Admin), the last run, and a sample of the Deferred Report email."""
+    sample = {"id": "HY-0000", "employeeCode": "ABC", "quarter": "H1", "startMonth": "2026-01", "endMonth": "2026-06",
+              "targets": [{"name": "Sample certification", "courseId": "C101", "achieved": None}]}
+    cfg = cert_followup.get_settings()
+    subject, text = cert_followup.deferred_mail(sample, "<Faculty name>", cfg["hrEmail"])
+    return {**cfg, "template": {"subject": subject, "text": text}}
+
+
+@router.put("/followup")
+def save_followup_settings(body: MailSettingsIn, me: dict = Depends(super_admin_only)):
+    return cert_followup.save_settings(body.hrEmail, me["name"])
+
+
+@router.post("/followup/run")
+def run_followup(me: dict = Depends(super_admin_only)):
+    """Carry unfinished certifications of ended quarters forward and email the Deferred Report now (once per row)."""
+    return cert_followup.run(by=me["name"])
 
 
 @router.post("", status_code=201)
@@ -156,7 +185,7 @@ def update_assignment(rid: str, body: AssignIn, me: dict = Depends(hr_only)):
 
 @router.put("/{rid}/status")
 def update_status(rid: str, body: StatusIn, me: dict = Depends(hr_only)):
-    """Only HR, Manager and Admin record achieved / code / delivery ready; faculty see it read-only."""
+    """Only HR, Super Admin and Admin record achieved / code / delivery ready; faculty see it read-only."""
     row = col.find_one({"id": rid})
     if not row:
         raise HTTPException(404, "Report row not found")
@@ -168,7 +197,8 @@ def update_status(rid: str, body: StatusIn, me: dict = Depends(hr_only)):
 
 
 @router.delete("/{rid}")
-def delete(rid: str, _: dict = Depends(hr_only)):
+def delete(rid: str, _: dict = Depends(super_admin_only)):
     if not col.delete_one({"id": rid}).deleted_count:
         raise HTTPException(404, "Report row not found")
     return True
+

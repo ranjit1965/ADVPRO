@@ -13,7 +13,7 @@ import ErrorState from '../components/ui/ErrorState';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { useConfirm } from '../context/ConfirmContext';
-import { canManage, canViewPeople, ROLES } from '../utils/permissions';
+import { canManage, canViewPeople, isSuperAdmin, roleLabel, ROLES } from '../utils/permissions';
 import { formatDuration, monthLabel, toISODate } from '../utils/format';
 
 const ROLE_OPTIONS = [ROLES.FACULTY, ROLES.HR, ROLES.ADMIN, 'STAFF'].map((r) => ({ value: r, label: r }));
@@ -21,8 +21,8 @@ const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const EMPTY = { userId: '', code: '', name: '', email: '', role: 'FACULTY', designation: 'FACULTY', grade: 'E1', department: '', branch: 'Chennai Center', password: '' };
 
 /**
- * Admin and Manager add, edit, deactivate and delete employees (faculty, HR, admin, staff).
- * HR sees the same list read-only, with each person's hours this month and a link to their dashboard.
+ * HR, Admin and Super Admin view, add, edit and deactivate employees (faculty, HR, admin, staff), with each
+ * person's hours this month and a link to their dashboard. Only the Super Admin deletes an employee.
  */
 export default function Users() {
   const { user } = useAuth();
@@ -72,7 +72,7 @@ export default function Users() {
     return (
       <>
         <PageHeader title="Employees" />
-        <Card><p className="text-sm text-ink-600">Access restricted. Only HR, Admin and Manager can see the employee list.</p></Card>
+        <Card><p className="text-sm text-ink-600">Access restricted. Only HR, Admin and Super Admin can see the employee list.</p></Card>
       </>
     );
   }
@@ -150,7 +150,7 @@ export default function Users() {
     }
   };
 
-  // Manager only: give or remove an Admin's access (an Admin without it works like a normal employee).
+  // Super Admin only: give or remove an Admin's access (an Admin without it works like a normal employee).
   const toggleAdminAccess = async (r) => {
     const removing = r.adminAccess !== false;
     if (removing && !(await confirm({ title: 'Remove Admin access', message: `${r.name} will no longer create batches, upload Batch Master or manage employees until you give the access back.`, confirmLabel: 'OK, remove', tone: 'danger' }))) return;
@@ -183,7 +183,7 @@ export default function Users() {
       header: 'Role',
       render: (r) => (
         <span>
-          {r.role}
+          {roleLabel(r.role)}
           {r.role === ROLES.ADMIN && r.adminAccess === false && <span className="ml-1.5 rounded-full bg-warning-50 px-1.5 py-0.5 text-[11px] font-semibold text-warning-700">access removed</span>}
         </span>
       ),
@@ -226,7 +226,7 @@ export default function Users() {
             <>
             <Button size="sm" variant="ghost" icon={Pencil} onClick={() => openEdit(r)} aria-label={`Edit ${r.name}`} />
             <Button size="sm" variant="ghost" icon={r.active ? UserX : UserCheck} onClick={() => toggleActive(r)} aria-label={r.active ? `Make ${r.name} inactive` : `Make ${r.name} active`} title={r.active ? 'Make inactive' : 'Make active'} />
-            <Button size="sm" variant="ghost" icon={Trash2} onClick={() => remove(r)} aria-label={`Delete ${r.name}`} />
+            {isSuperAdmin(user) && <Button size="sm" variant="ghost" icon={Trash2} onClick={() => remove(r)} aria-label={`Delete ${r.name}`} title="Delete" />}
             </>
           )}
         </div>
@@ -239,11 +239,11 @@ export default function Users() {
       <PageHeader
         title="Employees"
         description={canEdit ? 'Add faculty, HR, admin and other staff logins.' : 'Every employee with their work hours this month. Open a dashboard to see that person\'s details.'}
-        breadcrumb={canEdit ? [{ label: 'Master', to: '/master' }, { label: 'Employees' }] : [{ label: 'Employees' }]}
+        breadcrumb={[{ label: 'Employees' }]}
         actions={
           canEdit && (
             <div className="flex flex-wrap gap-2">
-              <Button variant="secondary" icon={ArchiveRestore} onClick={() => navigate('/master/deleted-employees')}>Deleted employees</Button>
+              {isSuperAdmin(user) && <Button variant="secondary" icon={ArchiveRestore} onClick={() => navigate('/master/deleted-employees')}>Deleted employees</Button>}
               <Button variant="secondary" icon={CalendarX} onClick={openCheck}>Missing entries check</Button>
               <Button icon={Plus} onClick={openNew}>Add employee</Button>
             </div>

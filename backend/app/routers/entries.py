@@ -76,6 +76,7 @@ class EntryIn(BaseModel):
 
 
 VIEW_ALL = ("HR", "ADMIN", "MANAGER")  # see everyone's entries; everyone else sees only their own
+NO_ENTRY_ROLES = VIEW_ALL  # HR, Admin and Super Admin only view faculty entries; they do not record their own
 
 
 def can_see(user: dict, faculty_code: str) -> None:
@@ -172,6 +173,8 @@ def faculty_or_404(code: str) -> dict:
 @router.post("", status_code=201)
 def create_entry(body: EntryIn, tasks: BackgroundTasks, user: dict = Depends(current_user)):
     p = body.model_dump(mode="json")
+    if user["role"] in NO_ENTRY_ROLES:
+        raise HTTPException(403, "HR, Admin and Super Admin only view faculty entries. They do not add entries.")
     can_touch(user, p["facultyCode"])
     check_overlap(p)
     check_others_limit(p)
@@ -217,6 +220,7 @@ def delete_entry(entry_id: str, user: dict = Depends(current_user)):
     old = db.entries.find_one({"id": entry_id})
     if not old:
         raise HTTPException(404, "Entry not found")
-    can_touch(user, old["facultyCode"])
+    if user["role"] != "MANAGER" and user["code"] != old["facultyCode"]:
+        raise HTTPException(403, "Only the Super Admin can delete another person's entry")
     db.entries.delete_one({"id": entry_id})
     return True

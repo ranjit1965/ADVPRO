@@ -1,6 +1,6 @@
 r"""Master › Batch Import and Admin › Data Upload (Batch Master).
 
-Admin / Manager upload the BatchMaster Excel file (.xlsx, .xls or .csv, any column order).
+Admin / Super Admin upload the BatchMaster Excel file (.xlsx, .xls or .csv, any column order).
 "Save" reads it and stores every batch with its allotted faculty
 short name, matched to an employee code, in Master › Batch (master_batches). The Class tab then
 offers each faculty the batches assigned to them. There is no folder path or automatic import.
@@ -18,10 +18,10 @@ from .. import db
 from ..batch_files import BatchRow, read_rows
 from ..biometric_files import rows_from_upload
 from ..config import settings
-from ..security import require_section, require_roles
+from ..security import manage_access, super_admin_only, is_super_admin, require_section, require_roles
 
 router = APIRouter(prefix="/batch-import", tags=["batch-import"])
-master_roles = require_section("master", "admin")  # Master or Admin (Data Upload) menu
+master_roles = manage_access  # Master or Admin menu, or HR menu for HR / Admin roles; Super Admin always
 SETTINGS_ID = "batchImport"
 CLOSE_AFTER_DAYS = 60  # a batch whose end date is older than this is counted as Completed
 CLASS_TYPES = {"weekdays": "WeekDays", "weekday": "WeekDays", "weekend": "WeekEnd", "weekends": "WeekEnd"}
@@ -68,7 +68,7 @@ def get_settings(_: dict = Depends(master_roles)):
 
 @router.post("/upload")
 async def upload(request: Request, name: str = Query(..., min_length=1, max_length=200), me: dict = Depends(master_roles)):
-    """Admin / Manager upload the file (raw body, .xlsx / .xls / .csv); it is read and saved to the database."""
+    """Admin / Super Admin upload the file (raw body, .xlsx / .xls / .csv); it is read and saved to the database."""
     data = await request.body()
     try:
         rows = await run_in_threadpool(rows_from_upload, name, data)

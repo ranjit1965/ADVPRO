@@ -13,14 +13,14 @@ import { PageLoader } from '../../components/ui/Loading';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import { useConfirm } from '../../context/ConfirmContext';
-import { hasSection } from '../../utils/permissions';
+import { isSuperAdmin, roleLabel } from '../../utils/permissions';
 import { formatDate, formatDateTime, formatDuration } from '../../utils/format';
 import { ACTIVITY_LABEL } from '../../utils/constants';
 import { cn } from '../../utils/cn';
 
 const COLLECTION_LABEL = { daily_entries: 'Daily entries', leave_requests: 'Leave / permission', halfyearly_reports: 'Halfyearly reports', work_assignments: 'Work assignments', biometric_days: 'Biometric days' };
 
-/** Master › Deleted Employees: who was deleted, with the entries and records saved with them, and Restore. */
+/** Deleted Employees (Super Admin only): who was deleted, with the entries and records saved with them, and Restore. */
 export default function DeletedEmployees() {
   const { user } = useAuth();
   const { userId } = useParams();
@@ -36,13 +36,13 @@ export default function DeletedEmployees() {
 
   const load = useCallback(() => {
     setError('');
-    api.getDeletedUsers().then(setRows).catch((e) => setError(e.message));
-  }, []);
+    if (isSuperAdmin(user)) api.getDeletedUsers().then(setRows).catch((e) => setError(e.message));
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(load, [load]);
 
   const selected = userId || rows?.[0]?.userId || '';
   useEffect(() => {
-    if (!selected) return setDetail(null);
+    if (!selected || !isSuperAdmin(user)) return setDetail(null);
     setDetailLoading(true);
     api
       .getDeletedUser(selected)
@@ -59,11 +59,11 @@ export default function DeletedEmployees() {
     return !rows ? [] : s ? rows.filter((r) => [r.userId, r.code, r.name, r.role].some((v) => String(v || '').toLowerCase().includes(s))) : rows;
   }, [rows, q]);
 
-  if (!hasSection(user, 'master')) {
+  if (!isSuperAdmin(user)) {
     return (
       <>
         <PageHeader title="Deleted Employees" />
-        <Card><p className="text-sm text-ink-600">Access restricted. Ask the Manager for the Master menu.</p></Card>
+        <Card><p className="text-sm text-ink-600">Only the Super Admin can view and restore deleted employees.</p></Card>
       </>
     );
   }
@@ -102,7 +102,7 @@ export default function DeletedEmployees() {
       <PageHeader
         title="Deleted Employees"
         description="Employees deleted in Master › Employees, with the daily entries and records that were moved with them. Restore brings the employee and all their records back."
-        breadcrumb={[{ label: 'Master', to: '/master' }, { label: 'Deleted Employees' }]}
+        breadcrumb={[{ label: 'Deleted Employees' }]}
       />
       {rows.length === 0 ? (
         <Card><EmptyState icon={UserX} title="No deleted employees" message="Employees you delete appear here with their entries." /></Card>
@@ -121,7 +121,7 @@ export default function DeletedEmployees() {
                     className={cn('w-full rounded-lg px-3 py-2 text-left text-[13px] hover:bg-ink-50', r.userId === selected && 'bg-brand-50 text-brand-800 hover:bg-brand-50')}
                   >
                     <span className="font-semibold">{r.name} ({r.code})</span>
-                    <span className="block truncate text-xs text-ink-500">{r.role} · deleted {formatDateTime(r.deletedAt)}</span>
+                    <span className="block truncate text-xs text-ink-500">{roleLabel(r.role)} · deleted {formatDateTime(r.deletedAt)}</span>
                   </button>
                 </li>
               ))}

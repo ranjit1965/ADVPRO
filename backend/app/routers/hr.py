@@ -9,7 +9,7 @@ from ..security import require_section, current_user
 
 router = APIRouter(prefix="/hr", tags=["hr report"])
 HR_ROLES = ("HR", "MANAGER", "ADMIN")
-hr_only = require_section("hr", roles=("HR", "ADMIN"))  # HR / Admin with the HR menu ticked; Manager always
+hr_only = require_section("hr", roles=("HR", "ADMIN"))  # HR / Admin with the HR menu ticked; Super Admin always
 
 DEFAULT_POLICY = (
     "# Working hours\n- Office hours are 9:30 AM to 6:30 PM, Monday to Saturday.\n"

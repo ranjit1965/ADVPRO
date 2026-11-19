@@ -2,7 +2,7 @@
 
 Rules (all set in backend/.env, see AUTO_INACTIVE_* in .env.example):
 * Only employees with the FACULTY role are checked. This is fixed in the code (ROLES below), not a
-  setting: Manager, Admin, HR, Staff and every role the Manager creates are never made inactive by it.
+  setting: Super Admin, Admin, HR, Staff and every role the Super Admin creates are never made inactive by it.
 * Working days are Monday to Saturday (AUTO_INACTIVE_WEEKLY_OFF=6 means Sunday is off) minus the
   dates in AUTO_INACTIVE_HOLIDAYS.
 * Today is never counted (the employee may still enter it). The job looks at the 3 most recent

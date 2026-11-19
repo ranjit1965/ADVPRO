@@ -5,10 +5,10 @@ from pydantic import BaseModel, EmailStr, Field
 
 from .. import auto_inactive, db
 from ..schemas import Form
-from ..security import all_roles, current_user, hash_password, public_user, require_roles, require_section, sections_for
+from ..security import manage_access, super_admin_only, is_super_admin, all_roles, current_user, hash_password, public_user, require_roles, require_section, sections_for
 
 router = APIRouter(prefix="/users", tags=["users"])
-manager_only = require_section("master", "admin")  # Employees: Master or Admin menu ticked for the role
+manager_only = manage_access  # Employees: view, add and edit for Master / Admin menu, or HR / Admin with the HR menu
 
 
 def people_view(user: dict = Depends(current_user)) -> dict:
@@ -16,7 +16,7 @@ def people_view(user: dict = Depends(current_user)) -> dict:
     access = sections_for(user)
     if user["role"] == "MANAGER" or access["master"] or access["admin"] or (access["hr"] and user["role"] in ("HR", "ADMIN")):
         return user
-    raise HTTPException(403, "You do not have access to this menu. Ask the Manager.")
+    raise HTTPException(403, "You do not have access to this menu. Ask the Super Admin.")
 
 
 # Records that belong to one employee: moved to `deleted_records` on delete and back on restore.
@@ -31,7 +31,7 @@ OWNED = (
 def check_role(role: str) -> str:
     role = role.strip().upper()
     if role not in all_roles():
-        raise HTTPException(422, f"Unknown role {role}. The Manager adds roles in Master › Role Access.")
+        raise HTTPException(422, f"Unknown role {role}. The Super Admin adds roles in Master › Role Access.")
     return role
 
 
@@ -75,6 +75,8 @@ def create_user(body: UserIn, _: dict = Depends(manager_only)):
         raise HTTPException(409, "That employee code is already used")
     doc = body.model_dump(exclude={"password"})
     doc["role"] = check_role(body.role)
+    if doc["role"] == "MANAGER":
+        raise HTTPException(400, "Only one Super Admin account is allowed")
     doc.update(
         code=code,
         name=body.name.strip().upper(),
@@ -94,16 +96,16 @@ def update_user(user_id: str, body: UserPatch, me: dict = Depends(manager_only))
         raise HTTPException(404, "Employee not found")
     patch = body.model_dump(exclude_unset=True)
     if u["role"] == "MANAGER" and me["role"] != "MANAGER":
-        raise HTTPException(403, "Only the manager can change the manager account")
+        raise HTTPException(403, "Only the Super Admin can change the Super Admin account")
     if "role" in patch:
         if u["role"] == "MANAGER" and patch["role"] != "MANAGER":
-            raise HTTPException(400, "The manager role cannot be changed")
+            raise HTTPException(400, "The Super Admin role cannot be changed")
         if patch["role"] == "MANAGER" and u["role"] != "MANAGER":
-            raise HTTPException(400, "Only one manager account is allowed")
+            raise HTTPException(400, "Only one Super Admin account is allowed")
         if patch["role"] != "MANAGER":
             patch["role"] = check_role(patch["role"])
     if u["role"] == "MANAGER" and patch.get("active") is False:
-        raise HTTPException(400, "The manager account cannot be disabled")
+        raise HTTPException(400, "The Super Admin account cannot be disabled")
     if "code" in patch:
         patch["code"] = patch["code"].upper()
         if db.users.find_one({"code": patch["code"], "_id": {"$ne": u["_id"]}}):
@@ -143,7 +145,7 @@ def auto_inactive_run(me: dict = Depends(manager_only)):
 
 @router.put("/{user_id}/admin-access")
 def set_admin_access(user_id: str, body: AdminAccessIn, _: dict = Depends(require_roles("MANAGER"))):
-    """Manager only: give or remove an Admin's access (create batches, Batch Master upload, employees ...)."""
+    """Super Admin only: give or remove an Admin's access (create batches, Batch Master upload, employees ...)."""
     u = db.users.find_one({"userIdLower": user_id.lower()})
     if not u:
         raise HTTPException(404, "Employee not found")
@@ -154,7 +156,7 @@ def set_admin_access(user_id: str, body: AdminAccessIn, _: dict = Depends(requir
 
 
 @router.delete("/{user_id}")
-def delete_user(user_id: str, me: dict = Depends(manager_only)):
+def delete_user(user_id: str, me: dict = Depends(super_admin_only)):
     """Moves the employee to Deleted employees (`deleted_users`); restore brings them back unchanged."""
     if me["userIdLower"] == user_id.lower():
         raise HTTPException(400, "You cannot delete your own account")
@@ -162,7 +164,7 @@ def delete_user(user_id: str, me: dict = Depends(manager_only)):
     if not target:
         raise HTTPException(404, "Employee not found")
     if target["role"] == "MANAGER":
-        raise HTTPException(400, "The manager account cannot be deleted")
+        raise HTTPException(400, "The Super Admin account cannot be deleted")
     record = {k: v for k, v in target.items() if k != "_id"}
     record.update(deletedAt=datetime.now(timezone.utc).isoformat(), deletedBy=me["name"])
     if db.deleted_users.find_one({"userIdLower": record["userIdLower"]}):
@@ -182,12 +184,12 @@ def delete_user(user_id: str, me: dict = Depends(manager_only)):
 
 
 @router.get("/deleted/list")
-def list_deleted(_: dict = Depends(people_view)):  # HR: read-only
+def list_deleted(_: dict = Depends(super_admin_only)):  # Super Admin only
     return [public_user(u) for u in db.deleted_users.find().sort("deletedAt", -1)]
 
 
 @router.get("/deleted/{user_id}")
-def deleted_detail(user_id: str, _: dict = Depends(people_view)):
+def deleted_detail(user_id: str, _: dict = Depends(super_admin_only)):
     """One deleted employee with the daily entries and other records saved with them."""
     rec = db.deleted_users.find_one({"userIdLower": user_id.lower()})
     if not rec:
@@ -216,7 +218,7 @@ def _minutes(a: str | None, b: str | None) -> int:
 
 
 @router.post("/deleted/{user_id}/restore")
-def restore_user(user_id: str, me: dict = Depends(manager_only)):
+def restore_user(user_id: str, me: dict = Depends(super_admin_only)):
     rec = db.deleted_users.find_one({"userIdLower": user_id.lower()})
     if not rec:
         raise HTTPException(404, "Deleted employee not found")

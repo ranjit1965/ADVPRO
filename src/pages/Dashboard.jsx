@@ -1,5 +1,5 @@
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { BookOpen, CalendarCheck, Coffee, GraduationCap, FilePlus2, FileText, ListChecks, Printer, AlertTriangle, ArrowRight } from 'lucide-react';
+import { BookOpen, CalendarCheck, Coffee, GraduationCap, FilePlus2, FileText, ListChecks, Printer, AlertTriangle, ArrowRight, Users } from 'lucide-react';
 import PageHeader from '../components/ui/PageHeader';
 import StatCard from '../components/ui/StatCard';
 import Card from '../components/ui/Card';
@@ -12,7 +12,7 @@ import SimpleBarChart from '../components/charts/BarChartCard';
 import { useAuth } from '../context/AuthContext';
 import { useLookups } from '../context/LookupsContext';
 import Select from '../components/ui/Select';
-import { canAccess, MASTER_ROLES, PEOPLE_VIEW_ROLES } from '../utils/permissions';
+import { canAccess, makesEntries, MASTER_ROLES } from '../utils/permissions';
 import UploadReminder from '../components/UploadReminder';
 import CertificationTargets from '../components/dashboard/CertificationTargets';
 import { useAsync } from '../hooks/useAsync';
@@ -32,6 +32,10 @@ const QUICK_ACTIONS = [
   { label: 'Monthly report', icon: FileText, to: '/faculty/reports/monthly' },
 ];
 
+/** HR, Admin and Super Admin pick only from the Faculty and Lab Support people. */
+const LAB_SUPPORT = /lab\s*_?support/i;
+const isDashboardPerson = (p) => p.role === 'FACULTY' || LAB_SUPPORT.test(p.role || '') || LAB_SUPPORT.test(p.roleLabel || '');
+
 const greeting = () => {
   const h = new Date().getHours();
   return h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
@@ -43,16 +47,44 @@ export default function Dashboard() {
   const { lookups } = useLookups();
   const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
-  // HR, Admin and Manager can open any employee's or faculty member's dashboard.
-  const viewAll = canAccess(user, PEOPLE_VIEW_ROLES);
-  const people = lookups?.employees || [];
+  // HR, Admin and Super Admin do not make entries: they only view a Faculty or Lab Support person's dashboard.
+  const viewAll = !makesEntries(user);
+  const people = (lookups?.employees || []).filter(isDashboardPerson);
   const picked = viewAll ? params.get('code') : null;
   const other = picked && picked !== user.code ? people.find((p) => p.code === picked) || { code: picked, name: picked } : null;
   const target = other || user;
-  const { data, loading, error, reload } = useAsync(() => getDashboardSummary(target.code), [target.code]);
+  const { data, loading, error, reload } = useAsync(() => (viewAll && !other ? Promise.resolve(null) : getDashboardSummary(target.code)), [target.code, viewAll]);
   const pickPerson = (code) => setParams(code && code !== user.code ? { code } : {});
 
   if (error) return <ErrorState message={error} onRetry={reload} />;
+
+  const picker = viewAll && (
+    <div className="no-print mb-5 flex flex-wrap items-end gap-3 rounded-xl border border-brand-200 bg-brand-50 px-4 py-3">
+      <Select
+        label="View dashboard of"
+        className="w-full sm:w-80"
+        searchable
+        placeholder="Select a faculty or lab support person"
+        options={people.map((p) => ({ value: p.code, label: `${p.name} (${p.code})` }))}
+        value={other ? other.code : ''}
+        onChange={(e) => pickPerson(e.target.value)}
+      />
+      <p className="pb-2 text-[13px] text-ink-600">{other ? `Showing ${other.name}'s entries and hours.` : 'Pick a faculty or lab support person to see their dashboard.'}</p>
+    </div>
+  );
+
+  if (viewAll && !other) {
+    return (
+      <>
+        {canAccess(user, MASTER_ROLES) && <UploadReminder />}
+        <PageHeader title={`${greeting()}, ${user.name}`} description={formatDate(new Date())} />
+        {picker}
+        <Card>
+          <EmptyState icon={Users} title="Select a person" message="Choose a faculty or lab support person above to view their dashboard, hours and recent entries." />
+        </Card>
+      </>
+    );
+  }
 
   const recentColumns = [
     { key: 'activityDate', header: 'Date', render: (r) => formatDate(r.activityDate) },
@@ -66,12 +98,12 @@ export default function Dashboard() {
       {!other && canAccess(user, MASTER_ROLES) && <UploadReminder />}
       {user.adminAccessRemoved && (
         <div className="mb-5 rounded-xl border border-warning-600/25 bg-warning-50 px-4 py-3 text-[13px] text-warning-700" role="status">
-          Your Admin access was removed by the Manager. You can still enter and see your own work. Ask the Manager to give it back.
+          Your Admin access was removed by the Super Admin. You can still enter and see your own work. Ask the Super Admin to give it back.
         </div>
       )}
       <PageHeader
         title={other ? `${other.name}'s dashboard` : `${greeting()}, ${user.name}`}
-        description={other ? `${formatDate(new Date())} · ${other.role || ''}${other.designation && other.designation !== other.role ? ` · ${other.designation}` : ''} · Code ${other.code}` : `${formatDate(new Date())} · ${user.designation} · Grade ${user.grade}`}
+        description={other ? `${formatDate(new Date())} · ${other.roleLabel || other.role || ''}${other.designation && other.designation !== other.role ? ` · ${other.designation}` : ''} · Code ${other.code}` : `${formatDate(new Date())} · ${user.designation} · Grade ${user.grade}`}
         actions={
           other ? (
             <Button variant="secondary" icon={FileText} onClick={() => navigate(`/faculty/reports/monthly?code=${encodeURIComponent(other.code)}`)}>
@@ -85,25 +117,7 @@ export default function Dashboard() {
         }
       />
 
-      {viewAll && (
-        <div className="no-print mb-5 flex flex-wrap items-end gap-3 rounded-xl border border-brand-200 bg-brand-50 px-4 py-3">
-          <Select
-            label="View dashboard of"
-            className="w-full sm:w-80"
-            searchable
-            placeholder={`My dashboard (${user.name})`}
-            options={people.filter((p) => p.code !== user.code).map((p) => ({ value: p.code, label: `${p.name} (${p.code}) · ${p.role}` }))}
-            value={other ? other.code : ''}
-            onChange={(e) => pickPerson(e.target.value)}
-          />
-          <p className="pb-2 text-[13px] text-ink-600">{other ? `Showing ${other.name}'s entries and hours.` : 'Pick a faculty member or employee to see their dashboard.'}</p>
-          {other && (
-            <button type="button" className="mb-2 text-[13px] font-medium text-brand-700 hover:underline" onClick={() => pickPerson('')}>
-              Back to my dashboard
-            </button>
-          )}
-        </div>
-      )}
+      {picker}
 
       <CertificationTargets employeeCode={target.code} canUpdate={HR_ROLES.includes(user.role)} />
 

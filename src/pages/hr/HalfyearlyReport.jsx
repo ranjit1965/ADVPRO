@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useState } from 'react';
-import { Award, Download, Mail, Pencil, Save, Trash2, X } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { Award, Download, Mail, X } from 'lucide-react';
 import * as api from '../../services/api';
 import PageHeader from '../../components/ui/PageHeader';
 import Card from '../../components/ui/Card';
@@ -18,21 +19,22 @@ import { useAsync } from '../../hooks/useAsync';
 import { formatDate } from '../../utils/format';
 import { downloadCsv } from '../../utils/export';
 import { periodDates } from '../../utils/halfyearly';
+import { isSuperAdmin } from '../../utils/permissions';
+import ReportRows, { monthLabel, ReportHead } from '../../components/hr/CertificationRows';
 
-const YES_NO = ['Yes', 'No'];
 const COUNTS = ['1', '2', '3'];
 export const QUARTERS = ['H1', 'H2', 'H3', 'H4', 'H5', 'H6'];
 const blankCert = () => ({ courseId: '', name: '' });
 const EMPTY_FORM = { employeeCode: '', quarter: '', startMonth: '', endMonth: '', targets: [blankCert()], deliveries: [blankCert()] };
 
-const monthLabel = (m) => (m ? new Date(`${m}-01T00:00:00`).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' }) : '');
 const resize = (list, n) => Array.from({ length: n }, (_, i) => list[i] || blankCert());
 
 /**
  * HR › Halfyearly Program Report.
- * HR, Manager and Admin pick an employee and assign, for a quarter (H1 to H6) with its starting and ending month,
- * 1 to 3 target certifications and 1 to 3 delivery ready courses from the course list. Only they update the status;
- * the employee sees their own rows read-only (and on the dashboard).
+ * HR, Super Admin and Admin pick an employee and assign, for a quarter (H1 to H6) with its starting and ending month,
+ * 1 to 3 target certifications and 1 to 3 delivery ready courses from the course list. The saved rows show below
+ * the form (for the employee picked in the form). The status (Completed Yes / date / code) is recorded in
+ * HR › Certification Status. The employee sees their own rows read-only (and on the dashboard).
  */
 export default function HalfyearlyReport() {
   const { user } = useAuth();
@@ -41,6 +43,7 @@ export default function HalfyearlyReport() {
   const confirm = useConfirm();
   const isHr = api.HR_ROLES.includes(user.role);
   const [filter, setFilter] = useState('');
+  const [lastSaved, setLastSaved] = useState('');
   const { data, loading, error, reload } = useAsync(() => api.getHalfyearly({ employeeCode: filter }), [filter]);
   const [requestOpen, setRequestOpen] = useState(false);
 
@@ -57,7 +60,10 @@ export default function HalfyearlyReport() {
   const [editingId, setEditingId] = useState(null);
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
-  const setF = (k, v) => setForm((f) => ({ ...f, [k]: v }));
+  const setF = (k, v) => {
+    setForm((f) => ({ ...f, [k]: v }));
+    if (k === 'employeeCode' && v) setFilter(v); // the list below shows that person's saved rows
+  };
   const setCount = (list, n) => setForm((f) => ({ ...f, [list]: resize(f[list], Number(n)) }));
   const setCert = (list, i, courseId) => setForm((f) => ({ ...f, [list]: f[list].map((c, j) => (j === i ? { courseId, name: courseName[courseId] || '' } : c)) }));
   const [startDate, endDate] = periodDates(form.startMonth, form.endMonth);
@@ -83,11 +89,12 @@ export default function HalfyearlyReport() {
     const body = { employeeCode: form.employeeCode, quarter: form.quarter, startMonth: form.startMonth, endMonth: form.endMonth, targets: form.targets, deliveries: form.deliveries };
     setSaving(true);
     try {
-      if (editingId) await api.updateHalfyearly(editingId, body);
-      else await api.assignHalfyearly(body);
-      toast.success(editingId ? 'Certifications updated.' : 'Certifications assigned.');
+      const saved = editingId ? await api.updateHalfyearly(editingId, body) : await api.assignHalfyearly(body);
+      toast.success(editingId ? 'Certifications updated. The saved row is shown below.' : 'Certifications assigned. The saved row is shown below.');
+      setLastSaved(saved?.id || '');
       reset();
-      reload();
+      if (filter === body.employeeCode) reload();
+      else setFilter(body.employeeCode);
     } catch (err) {
       toast.error(err.message);
     } finally {
@@ -124,7 +131,7 @@ export default function HalfyearlyReport() {
       { header: 'Starting Month', value: (x) => monthLabel(x.r.startMonth) },
       { header: 'Ending Month', value: (x) => monthLabel(x.r.endMonth) },
       { header: 'Target Certification', value: (x) => x.t.name || '' },
-      { header: 'Achieved', value: (x) => x.t.achieved || '' },
+      { header: 'Completed', value: (x) => x.t.achieved || '' },
       { header: 'Date of Completion', value: (x) => (x.t.completionDate ? formatDate(x.t.completionDate) : '') },
       { header: 'Certification Code', value: (x) => x.t.certificationCode || '' },
       { header: 'Delivery Ready Course', value: (x) => x.d.name || '' },
@@ -163,7 +170,7 @@ export default function HalfyearlyReport() {
       <PageHeader
         title="Halfyearly Program Report"
         breadcrumb={[{ label: 'HR' }, { label: 'Halfyearly Program Report' }]}
-        description={isHr ? 'Assign each employee their target certifications and delivery ready courses for the quarter, then record the status.' : 'Your target certifications and delivery ready courses. HR records the status.'}
+        description={isHr ? 'Assign each employee their target certifications and delivery ready courses for the quarter. Record the completion in Certification Status.' : 'Your target certifications and delivery ready courses. HR records the status.'}
         actions={<Button variant="secondary" icon={Download} disabled={!data?.length} onClick={exportCsv}>Export</Button>}
       />
 
@@ -198,8 +205,10 @@ export default function HalfyearlyReport() {
 
       <Card
         bodyClassName="p-0"
-        title="HALFYEARLY PROGRAM REPORT"
-        description={isHr ? 'Target certifications and delivery ready courses. Record the status on each line and click Save.' : 'Read-only: HR records the status.'}
+        title={filter && isHr ? `Saved certifications of ${people.find((p) => p.value === filter)?.label || filter}` : 'HALFYEARLY PROGRAM REPORT'}
+        description={isHr ? (
+          <>Saved rows. Record Completed Yes and the date in <Link to="/hr-report/certification-status" className="font-medium text-brand-700 hover:underline">Certification Status</Link>.</>
+        ) : 'Read-only: HR records the status.'}
         actions={isHr && <Select aria-label="Filter by employee" searchable className="w-64" placeholder="All employees" options={people} value={filter} onChange={(e) => setFilter(e.target.value)} />}
       >
         {error ? (
@@ -210,24 +219,12 @@ export default function HalfyearlyReport() {
           <EmptyState icon={Award} title="No certifications assigned" message={isHr ? 'Assign certifications above.' : 'HR has not assigned a certification to you yet.'} />
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[1250px] text-left text-[13px]">
+            <table className="w-full min-w-[1150px] text-left text-[13px]">
               <caption className="sr-only">Halfyearly program report</caption>
-              <thead className="bg-ink-50 text-xs font-semibold uppercase tracking-wide text-ink-500">
-                <tr>
-                  <th className="px-3 py-2.5">Employee</th>
-                  <th className="px-3 py-2.5">Quarter</th>
-                  <th className="px-3 py-2.5">Target Certification</th>
-                  <th className="px-3 py-2.5">Achieved?</th>
-                  <th className="px-3 py-2.5">Date of Completion</th>
-                  <th className="px-3 py-2.5">Certification Code</th>
-                  <th className="px-3 py-2.5">Delivery Ready Course</th>
-                  <th className="px-3 py-2.5">Delivery Ready?</th>
-                  {isHr && <th className="px-3 py-2.5"><span className="sr-only">Actions</span></th>}
-                </tr>
-              </thead>
+              <ReportHead actions={isHr} />
               <tbody>
                 {data.map((r) => (
-                  <ReportRows key={r.id} row={r} isHr={isHr} onSaved={reload} onEdit={() => startEdit(r)} onDelete={() => remove(r)} />
+                  <ReportRows key={r.id} row={r} highlight={r.id === lastSaved} onEdit={isHr ? () => startEdit(r) : undefined} onDelete={isSuperAdmin(user) ? () => remove(r) : undefined} />
                 ))}
               </tbody>
             </table>
@@ -239,119 +236,3 @@ export default function HalfyearlyReport() {
   );
 }
 
-const statusOf = (row) => ({
-  targets: row.targets.map((t) => ({ achieved: t.achieved || '', completionDate: t.completionDate || '', certificationCode: t.certificationCode || '' })),
-  deliveries: row.deliveries.map((d) => ({ ready: d.ready || '' })),
-});
-
-/**
- * One employee's quarter: a line per certification (targets on the left, deliveries on the right), with the
- * employee, quarter and actions spanning the lines. HR edits the status in place; everyone else reads it.
- */
-function ReportRows({ row, isHr, onSaved, onEdit, onDelete }) {
-  const toast = useToast();
-  const [v, setV] = useState(() => statusOf(row));
-  const [err, setErr] = useState({});
-  const [saving, setSaving] = useState(false);
-  useEffect(() => setV(statusOf(row)), [row]);
-  const dirty = JSON.stringify(v) !== JSON.stringify(statusOf(row));
-  const n = Math.max(row.targets.length, row.deliveries.length, 1);
-  const setT = (i, k, val) => setV((s) => ({ ...s, targets: s.targets.map((t, j) => (j === i ? { ...t, [k]: val } : t)) }));
-  const setD = (i, val) => setV((s) => ({ ...s, deliveries: s.deliveries.map((d, j) => (j === i ? { ready: val } : d)) }));
-
-  const save = async () => {
-    const e = {};
-    v.targets.forEach((t, i) => {
-      if (t.achieved === 'Yes' && !t.completionDate) e[`date${i}`] = 'Required';
-      if (t.achieved === 'Yes' && !t.certificationCode.trim()) e[`code${i}`] = 'Required';
-    });
-    setErr(e);
-    if (Object.keys(e).length) return toast.error('Enter the date of completion and the certification code.');
-    setSaving(true);
-    try {
-      await api.updateHalfyearlyStatus(row.id, {
-        targets: v.targets.map((t) => (t.achieved === 'Yes' ? { ...t, certificationCode: t.certificationCode.trim() } : { achieved: t.achieved, completionDate: '', certificationCode: '' })),
-        deliveries: v.deliveries,
-      });
-      toast.success('Saved.');
-      onSaved();
-    } catch (ex) {
-      toast.error(ex.message);
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const [from, to] = periodDates(row.startMonth, row.endMonth);
-  const dash = <span className="text-ink-400">–</span>;
-  return (
-    <>
-      {Array.from({ length: n }, (_, i) => {
-        const t = row.targets[i];
-        const tv = v.targets[i];
-        const d = row.deliveries[i];
-        const yes = tv?.achieved === 'Yes';
-        return (
-          <tr key={i} className={i === 0 ? 'border-t border-ink-200 align-top' : 'align-top'}>
-            {i === 0 && (
-              <>
-                <td rowSpan={n} className="px-3 py-2.5">
-                  <div className="font-medium text-ink-900">{row.employeeName}</div>
-                  <div className="text-xs text-ink-500">{row.employeeCode}</div>
-                </td>
-                <td rowSpan={n} className="whitespace-nowrap px-3 py-2.5">
-                  {row.quarter && <div className="font-semibold text-ink-900">{row.quarter}</div>}
-                  <div className="tabular-nums">{monthLabel(row.startMonth)} – {monthLabel(row.endMonth)}</div>
-                  <div className="text-xs text-ink-500">{formatDate(from)} to {formatDate(to)}</div>
-                </td>
-              </>
-            )}
-            <td className="px-3 py-2">
-              {t ? (
-                <>
-                  <div className="text-ink-900">{i + 1}. {t.name}</div>
-                  {t.courseId && <div className="text-xs text-ink-500">Course {t.courseId}</div>}
-                </>
-              ) : dash}
-            </td>
-            <td className="px-3 py-2">
-              {!t ? dash : isHr ? (
-                <Select aria-label={`Certification ${i + 1} achieved`} sort={false} className="w-24" options={YES_NO} placeholder="Select" value={tv.achieved} onChange={(e) => setT(i, 'achieved', e.target.value)} />
-              ) : (t.achieved || <span className="text-ink-400">Pending</span>)}
-            </td>
-            <td className="px-3 py-2">
-              {!t ? dash : isHr ? (yes ? <Input aria-label={`Certification ${i + 1} date of completion`} type="date" className="w-40" max={new Date().toISOString().slice(0, 10)} value={tv.completionDate} onChange={(e) => setT(i, 'completionDate', e.target.value)} error={err[`date${i}`]} /> : dash) : t.completionDate ? formatDate(t.completionDate) : dash}
-            </td>
-            <td className="px-3 py-2">
-              {!t ? dash : isHr ? (yes ? <Input aria-label={`Certification ${i + 1} code`} className="w-40" maxLength={80} value={tv.certificationCode} onChange={(e) => setT(i, 'certificationCode', e.target.value)} error={err[`code${i}`]} /> : dash) : t.certificationCode || dash}
-            </td>
-            <td className="px-3 py-2">
-              {d ? (
-                <>
-                  <div className="text-ink-900">{i + 1}. {d.name}</div>
-                  {d.courseId && <div className="text-xs text-ink-500">Course {d.courseId}</div>}
-                </>
-              ) : dash}
-            </td>
-            <td className="px-3 py-2">
-              {!d ? dash : isHr ? (
-                <Select aria-label={`Delivery ready course ${i + 1} ready`} sort={false} className="w-24" options={YES_NO} placeholder="Select" value={v.deliveries[i].ready} onChange={(e) => setD(i, e.target.value)} />
-              ) : (d.ready || <span className="text-ink-400">Pending</span>)}
-            </td>
-            {isHr && i === 0 && (
-              <td rowSpan={n} className="px-3 py-2">
-                <div className="flex justify-end gap-1.5">
-                  <Button size="sm" icon={Save} loading={saving} disabled={!dirty} onClick={save}>
-                    Save
-                  </Button>
-                  <Button size="sm" variant="secondary" icon={Pencil} onClick={onEdit} aria-label="Edit assignment" />
-                  <Button size="sm" variant="danger-outline" icon={Trash2} onClick={onDelete} aria-label="Delete row" />
-                </div>
-              </td>
-            )}
-          </tr>
-        );
-      })}
-    </>
-  );
-}

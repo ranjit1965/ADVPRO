@@ -9,7 +9,7 @@ import Logo from '../components/layout/Logo';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-/** One-time manager account creation, verified by a code sent to the manager's email. */
+/** One-time Super Admin account creation, verified by a code sent to the Super Admin's email. */
 export default function ManagerSetup() {
   const toast = useToast();
   const navigate = useNavigate();
@@ -60,7 +60,7 @@ export default function ManagerSetup() {
     setBusy(true);
     try {
       await api.verifyManagerOtp({ email: form.email.trim(), otp: form.otp, name: form.name.trim(), userId: form.userId.trim(), password: form.password });
-      toast.success('Manager account created. Sign in to add employees.');
+      toast.success('Super Admin account created. Sign in to add employees.');
       navigate('/login', { replace: true });
     } catch (err) {
       setFormError(err.message);
@@ -74,9 +74,9 @@ export default function ManagerSetup() {
       <div className="card w-full max-w-md p-6 sm:p-8">
         <Logo size="lg" />
         <h1 className="mt-6 flex items-center gap-2 text-xl font-semibold text-ink-900">
-          <ShieldCheck className="size-5 text-brand-600" aria-hidden /> Create manager account
+          <ShieldCheck className="size-5 text-brand-600" aria-hidden /> Create Super Admin account
         </h1>
-        <p className="mt-1 text-sm text-ink-500">Only one manager account can exist. The manager adds every employee.</p>
+        <p className="mt-1 text-sm text-ink-500">Only one Super Admin account can exist. The Super Admin adds every employee.</p>
 
         {formError && (
           <div role="alert" className="mt-4 rounded-lg border border-danger-500/30 bg-danger-50 px-3 py-2.5 text-[13px] text-danger-700">
@@ -86,7 +86,7 @@ export default function ManagerSetup() {
 
         {status?.managerExists ? (
           <div className="mt-6 space-y-4 text-sm text-ink-600">
-            <p>A manager account already exists. Ask the manager to create your login.</p>
+            <p>A Super Admin account already exists. Ask the Super Admin to create your login.</p>
             <Link to="/login" className="font-medium text-brand-700 hover:underline">Back to sign in</Link>
           </div>
         ) : step === 'details' ? (

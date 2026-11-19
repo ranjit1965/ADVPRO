@@ -6,7 +6,7 @@ import { NAVIGATION, FOOTER_NAVIGATION } from '../../config/navigation';
 import { cn } from '../../utils/cn';
 import Logo from './Logo';
 import { useAuth } from '../../context/AuthContext';
-import { canAccess, hasSection } from '../../utils/permissions';
+import { canSeeItem, hasSection } from '../../utils/permissions';
 
 const containsPath = (item, path) => (item.to && (item.to === '/' ? path === '/' : path.startsWith(item.to))) || item.children?.some((c) => containsPath(c, path));
 
@@ -24,7 +24,7 @@ function FlyoutPanel({ item, anchor, level = 0, onNavigate, panelRefs }) {
   const ref = useRef(null);
   const [pos, setPos] = useState({ left: anchor.left, top: anchor.top });
   const [sub, setSub] = useState(null); // { item, anchor }
-  const children = item.children.filter((c) => canAccess(user, c.roles));
+  const children = item.children.filter((c) => canSeeItem(user, c));
 
   useLayoutEffect(() => {
     const el = ref.current;
@@ -188,7 +188,7 @@ function NavGroup({ item, depth, onNavigate }) {
 
 function NavItem({ item, depth = 0, collapsed, flyoutMode, flyout, setFlyout, onNavigate, onAction }) {
   const { user } = useAuth();
-  if (!canAccess(user, item.roles) || (item.section && !hasSection(user, item.section))) return null;
+  if (!canSeeItem(user, item) || (item.section && !hasSection(user, item.section))) return null;
   if (item.children) {
     if (flyoutMode && depth === 0) return <FlyoutGroup item={item} collapsed={collapsed} flyout={flyout} setFlyout={setFlyout} />;
     return <NavGroup item={item} depth={depth} onNavigate={onNavigate} />;

@@ -4,7 +4,7 @@ import SearchableSelect from '../ui/SearchableSelect';
 const NAMES = { colleges: 'college', departments: 'department', travelModes: 'mode of travel', sessionTypes: 'session type', slMaterialTheory: 'material type', slMaterialPractical: 'material type' };
 
 /**
- * College Name / Dept / Mode of Travel dropdown. For Manager and Admin (onAddLookup given), Ctrl + A
+ * College Name / Dept / Mode of Travel dropdown. For Super Admin and Admin (onAddLookup given), Ctrl + A
  * while the field has focus opens "Add new" so a missing value can be added on the spot. Faculty and
  * staff only pick from the list; the values are kept in Master › Dropdown Values.
  */

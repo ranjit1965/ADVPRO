@@ -12,7 +12,7 @@ import ErrorState from '../components/ui/ErrorState';
 import EntryFilters from '../components/entry/EntryFilters';
 import { useLookups } from '../context/LookupsContext';
 import { useAuth } from '../context/AuthContext';
-import { canEditEntry, seesAllEntries } from '../utils/permissions';
+import { canDeleteEntry, canEditEntry, makesEntries, seesAllEntries } from '../utils/permissions';
 import { useToast } from '../context/ToastContext';
 import { useConfirm } from '../context/ConfirmContext';
 import { useAsync } from '../hooks/useAsync';
@@ -134,7 +134,7 @@ export default function EntryHistory() {
         <div className="flex justify-end gap-0.5" onClick={(e) => e.stopPropagation()}>
           <Button variant="ghost" size="icon" className="size-8" icon={Eye} aria-label={`View ${r.id}`} title="View" onClick={() => navigate(`/entries/${r.id}`)} />
           {canEditEntry(user, r) && <Button variant="ghost" size="icon" className="size-8" icon={Pencil} aria-label={`Edit ${r.id}`} title="Edit" onClick={() => navigate(`/faculty/daily-activity/entry/${r.id}`)} />}
-          {canEditEntry(user, r) && <Button variant="ghost" size="icon" className="size-8 hover:!bg-danger-50 hover:!text-danger-600" icon={Trash2} aria-label={`Delete entry of ${formatDate(r.activityDate)} ${r.timeFrom}`} title="Delete" onClick={() => remove(r)} />}
+          {canDeleteEntry(user, r) && <Button variant="ghost" size="icon" className="size-8 hover:!bg-danger-50 hover:!text-danger-600" icon={Trash2} aria-label={`Delete entry of ${formatDate(r.activityDate)} ${r.timeFrom}`} title="Delete" onClick={() => remove(r)} />}
         </div>
       ),
     },
@@ -143,17 +143,19 @@ export default function EntryHistory() {
   return (
     <>
       <PageHeader
-        title="My Entries"
-        breadcrumb={[{ label: 'Faculty' }, { label: 'Daily Activity' }, { label: 'My Entries' }]}
+        title={makesEntries(user) ? 'My Entries' : 'Faculty Entries'}
+        breadcrumb={[{ label: 'Faculty' }, { label: 'Daily Activity' }, { label: makesEntries(user) ? 'My Entries' : 'Faculty Entries' }]}
         description="All daily activity entries. Search, filter and open any entry."
         actions={
           <>
             <Button variant="secondary" icon={Download} onClick={exportCsv} disabled={!data?.total}>
               Export CSV
             </Button>
-            <Button icon={FilePlus2} onClick={() => navigate('/faculty/daily-activity/entry')}>
-              New entry
-            </Button>
+            {makesEntries(user) && (
+              <Button icon={FilePlus2} onClick={() => navigate('/faculty/daily-activity/entry')}>
+                New entry
+              </Button>
+            )}
           </>
         }
       />

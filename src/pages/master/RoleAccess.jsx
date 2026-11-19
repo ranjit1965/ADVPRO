@@ -14,7 +14,7 @@ import { ROLES } from '../../utils/permissions';
 import { formatDateTime } from '../../utils/format';
 
 /**
- * Master › Roles & Access (Manager only). Roles are stored in the `roles` collection: the Manager
+ * Master › Roles & Access (Super Admin only). Roles are stored in the `roles` collection: the Super Admin
  * creates them here, ticks which side-pane menus each one can open, and picks them for employees in
  * Master › Employees. Unticked menus are hidden for that role and refused by the server.
  */
@@ -47,7 +47,7 @@ export default function RoleAccess() {
     return (
       <>
         <PageHeader title="Roles & Access" />
-        <Card><p className="text-sm text-ink-600">Only the Manager can create roles and change which menus each role can open.</p></Card>
+        <Card><p className="text-sm text-ink-600">Only the Super Admin can create roles and change which menus each role can open.</p></Card>
       </>
     );
   }
@@ -105,7 +105,7 @@ export default function RoleAccess() {
     <>
       <PageHeader
         title="Roles & Access"
-        description="Create roles, then tick the side-pane menus each role can open. The Manager always has every menu."
+        description="Create roles, then tick the side-pane menus each role can open. The Super Admin always has every menu."
         breadcrumb={[{ label: 'Master', to: '/master' }, { label: 'Roles & Access' }]}
       />
 

@@ -62,8 +62,8 @@ def login(body: LoginIn):
         raise HTTPException(401, "Invalid User ID or Password")
     if not u.get("active", True):
         if u.get("autoInactive"):
-            raise HTTPException(403, "This account was made inactive because no daily entry was saved for 3 working days. Ask your manager or admin to make it active again.")
-        raise HTTPException(403, "This account is disabled. Contact your manager.")
+            raise HTTPException(403, "This account was made inactive because no daily entry was saved for 3 working days. Ask your Super Admin or admin to make it active again.")
+        raise HTTPException(403, "This account is disabled. Contact your Super Admin.")
     return {"accessToken": create_token(u["userId"]), "tokenType": "bearer", "user": me_view(effective(u))}
 
 
@@ -105,7 +105,7 @@ def setup_status():
 @router.post("/manager/request-otp")
 def request_manager_otp(body: OtpRequestIn):
     if manager_exists():
-        raise HTTPException(409, "A manager account already exists")
+        raise HTTPException(409, "A Super Admin account already exists")
     code = f"{secrets.randbelow(900000) + 100000}"
     email = body.email.lower()
     db.otps.replace_one(
@@ -133,7 +133,7 @@ def request_manager_otp(body: OtpRequestIn):
 @router.post("/manager/verify")
 def verify_manager_otp(body: OtpVerifyIn):
     if manager_exists():
-        raise HTTPException(409, "A manager account already exists")
+        raise HTTPException(409, "A Super Admin account already exists")
     email = body.email.lower()
     p = db.otps.find_one({"_id": email})
     if not p:
@@ -182,9 +182,9 @@ def _mask(email: str) -> str:
 def _reset_manager(user_id: str) -> dict:
     u = db.users.find_one({"userIdLower": user_id.strip().lower()})
     if not u or u.get("role") != "MANAGER":
-        raise HTTPException(403, "Forgot password works only for the manager account. Other employees ask the Manager or Admin to set a new password.")
+        raise HTTPException(403, "Forgot password works only for the Super Admin account. Other employees ask the Super Admin or Admin to set a new password.")
     if not u.get("email"):
-        raise HTTPException(400, "The manager account has no email address on record.")
+        raise HTTPException(400, "The Super Admin account has no email address on record.")
     return u
 
 

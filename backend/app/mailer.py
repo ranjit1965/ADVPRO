@@ -1,4 +1,4 @@
-"""Outgoing email (manager verification code, course requests). A real SMTP server is required."""
+"""Outgoing email (Super Admin verification code, course requests, deferred certification report). A real SMTP server is required."""
 import logging
 import smtplib
 import ssl
@@ -17,7 +17,7 @@ def smtp_configured() -> bool:
     return bool(settings.smtp_host and settings.smtp_from)
 
 
-def send_mail(to: list[str] | str, subject: str, text: str, reply_to: str | None = None) -> None:
+def send_mail(to: list[str] | str, subject: str, text: str, reply_to: str | None = None, cc: list[str] | None = None) -> None:
     """Sends a plain-text email through the SMTP server in backend/.env. Raises MailNotConfigured or an SMTP error."""
     if not smtp_configured():
         raise MailNotConfigured("Email is not set up on the server. Fill in SMTP_HOST, SMTP_USER, SMTP_PASSWORD and SMTP_FROM in backend/.env.")
@@ -26,6 +26,8 @@ def send_mail(to: list[str] | str, subject: str, text: str, reply_to: str | None
     msg["Subject"] = subject
     msg["From"] = settings.smtp_from
     msg["To"] = ", ".join(recipients)
+    if cc:
+        msg["Cc"] = ", ".join(cc)
     if reply_to:
         msg["Reply-To"] = reply_to
     msg.set_content(text)
@@ -39,7 +41,7 @@ def send_mail(to: list[str] | str, subject: str, text: str, reply_to: str | None
             s.starttls(context=ctx)
         if settings.smtp_user:
             s.login(settings.smtp_user, settings.smtp_password)
-        s.send_message(msg)
+        s.send_message(msg)  # To and Cc both receive it
     log.info("Mail '%s' sent to %s", subject, ", ".join(recipients))
 
 
@@ -58,7 +60,7 @@ def send_otp(to: str, name: str, code: str) -> None:
     """Emails the 6-digit manager sign-up code."""
     send_mail(
         to,
-        "Daily Entry Report: manager account verification code",
+        "Daily Entry Report: Super Admin account verification code",
         f"Hello {name},\n\nYour verification code is {code}.\n"
         f"It expires in {settings.otp_expire_minutes} minutes.\n\n"
         "If you did not request this, ignore this email.",

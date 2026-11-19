@@ -33,7 +33,7 @@ def run() -> None:
         upsert=True,
     )
     migrate()
-    ensure_roles()  # roles collection (built-in roles + roles the Manager creates)
+    ensure_roles()  # roles collection (built-in roles + roles the Super Admin creates)
     if not smtp_configured():
         log.warning("SMTP is not configured: manager sign-up codes cannot be emailed until backend/.env has the SMTP_* settings.")
 

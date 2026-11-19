@@ -1,6 +1,6 @@
 """Biometric time in / time out (Master › Biometric and Admin › Data Upload).
 
-Admin / Manager upload the device export (.xlsx, .xls or .csv; .txt / .tsv / .dat logs too).
+Admin / Super Admin upload the device export (.xlsx, .xls or .csv; .txt / .tsv / .dat logs too).
 "Save" keeps the first and last punch of each person per day in
 `biometric_days`; uploading a day again replaces it. People the system cannot match are kept in
 `biometric_unmatched` until they are linked to an employee. The monthly report compares those
@@ -17,10 +17,10 @@ from pymongo import UpdateOne
 
 from .. import db
 from ..biometric_files import ReadResult, read_rows, rows_from_upload
-from ..security import require_section, current_user, require_roles
+from ..security import manage_access, super_admin_only, is_super_admin, require_section, current_user, require_roles
 
 router = APIRouter(prefix="/biometric", tags=["biometric"])
-master_roles = require_section("master", "admin")  # Master or Admin (Data Upload) menu
+master_roles = manage_access  # Master or Admin menu, or HR menu for HR / Admin; Super Admin always
 view_roles = require_section("master", "admin", "hr", roles=("ADMIN", "HR"))
 SETTINGS_ID = "biometric"
 DEFAULT_TOLERANCE = 15  # minutes of difference still counted as matching
@@ -100,7 +100,7 @@ def save_settings(body: SettingsIn, me: dict = Depends(master_roles)):
 
 @router.post("/upload")
 async def upload(request: Request, name: str = Query(..., min_length=1, max_length=200), me: dict = Depends(master_roles)):
-    """Admin / Manager upload the file (raw body, .xlsx / .xls / .csv); it is read and saved to the database."""
+    """Admin / Super Admin upload the file (raw body, .xlsx / .xls / .csv); it is read and saved to the database."""
     data = await request.body()
     try:
         rows = await run_in_threadpool(rows_from_upload, name, data)

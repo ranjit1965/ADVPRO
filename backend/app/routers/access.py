@@ -1,4 +1,4 @@
-"""Master › Roles & Access (Manager only): create roles, and tick which side-pane menus each role may open.
+"""Master › Roles & Access (Super Admin only): create roles, and tick which side-pane menus each role may open.
 
 Roles are stored in the `roles` collection (see security.py). Master › Employees offers every role
 here in its Role list (GET /api/access/roles).
@@ -64,7 +64,7 @@ def _people_pages(user: dict = Depends(current_user)) -> dict:
     access = sections_for(user)
     if user["role"] == "MANAGER" or access.get("master") or access.get("admin") or (access.get("hr") and user["role"] in ("HR", "ADMIN")):
         return user
-    raise HTTPException(403, "You do not have access to this menu. Ask the Manager.")
+    raise HTTPException(403, "You do not have access to this menu. Ask the Super Admin.")
 
 
 @router.get("/roles")

@@ -16,7 +16,7 @@ import { initials } from '../utils/format';
 
 export default function Settings() {
   const { user } = useAuth();
-  // Only Admin (and the Manager account) can change passwords; everyone else asks Admin.
+  // Only Admin (and the Super Admin account) can change passwords; everyone else asks Admin.
   const canChangePassword = ['ADMIN', 'MANAGER'].includes(user.role);
   const toast = useToast();
   const [prefs, setPrefs] = usePreferences();

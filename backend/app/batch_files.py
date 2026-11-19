@@ -1,4 +1,4 @@
-"""Reads the batch table (BatchMaster) uploaded by Admin / Manager.
+"""Reads the batch table (BatchMaster) uploaded by Admin / Super Admin.
 
 The Excel / CSV file (.xlsx, .xls or .csv) is read into rows; this module finds the columns by their header name, so the order does not matter. Only Batch No and Faculty are
 required; the others are stored when present.

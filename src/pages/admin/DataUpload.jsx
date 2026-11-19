@@ -8,7 +8,7 @@ import Select from '../../components/ui/Select';
 import FileSaveField from '../../components/ui/FileSaveField';
 import { useAuth } from '../../context/AuthContext';
 import { useLookups } from '../../context/LookupsContext';
-import { canAccess, hasSection, MASTER_ROLES } from '../../utils/permissions';
+import { canAccess, canManage, MASTER_ROLES } from '../../utils/permissions';
 import { useToast } from '../../context/ToastContext';
 import { useAsync } from '../../hooks/useAsync';
 import { formatDateTime } from '../../utils/format';
@@ -54,16 +54,16 @@ export const UPLOAD_TYPES = {
 };
 
 /**
- * Admin › Data Upload. Admin / Manager pick Batch Master or Biometric, choose the Excel file
+ * Admin › Data Upload. Admin / Super Admin pick Batch Master or Biometric, choose the Excel file
  * (.xlsx, .xls or .csv) and click Save; the backend reads it and updates the database. The same uploads stay on Master › Batch Import and Master › Biometric.
  */
 export default function DataUpload() {
   const { user } = useAuth();
-  if (!(hasSection(user, 'admin') || hasSection(user, 'master'))) {
+  if (!canManage(user)) {
     return (
       <>
         <PageHeader title="Data Upload" />
-        <Card><p className="text-sm text-ink-600">Access restricted. Only Admin and Manager can upload data.</p></Card>
+        <Card><p className="text-sm text-ink-600">Access restricted. Only HR, Admin and Super Admin can upload data.</p></Card>
       </>
     );
   }

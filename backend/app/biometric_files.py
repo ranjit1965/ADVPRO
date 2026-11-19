@@ -1,6 +1,6 @@
 """Reads time in / time out files exported by the biometric device.
 
-The file is uploaded by Admin / Manager: .xlsx / .xls (first sheet, header row), .csv / .txt / .tsv /
+The file is uploaded by Admin / Super Admin: .xlsx / .xls (first sheet, header row), .csv / .txt / .tsv /
 .dat (comma, semicolon, tab or | separated), or ZKTeco-style logs without a header
 ("1  2026-10-01 09:02:11  1 0 ...").
 

@@ -85,7 +85,7 @@ export default function Login() {
                 <>
                   <div className="hidden sm:block" />
                   <button type="button" onClick={() => setForgotOpen(true)} className="justify-self-end text-sm font-medium text-brand-700 hover:underline">
-                    Forgot password? (Manager)
+                    Forgot password? (Super Admin)
                   </button>
                 </>
               )}
@@ -94,7 +94,7 @@ export default function Login() {
 
           {setup && !setup.managerExists && (
             <p className="mt-5 text-sm text-ink-600">
-              First time here? <Link to="/setup-manager" className="font-medium text-brand-700 hover:underline">Create the manager account</Link>
+              First time here? <Link to="/setup-manager" className="font-medium text-brand-700 hover:underline">Create the Super Admin account</Link>
             </p>
           )}
         </div>

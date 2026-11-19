@@ -69,7 +69,7 @@ export default function ClassTab({ values, errors, set, setMany, lookups, facult
           onChange={onCourse}
           aside={
             onRequestCourse && (
-              <button type="button" onClick={onRequestCourse} className="inline-flex items-center gap-1 text-[12px] font-medium text-brand-700 hover:underline" title="Course not in the list? Ask the Manager / Admin to add it">
+              <button type="button" onClick={onRequestCourse} className="inline-flex items-center gap-1 text-[12px] font-medium text-brand-700 hover:underline" title="Course not in the list? Ask the Super Admin / Admin to add it">
                 <Mail className="size-3.5" aria-hidden /> Request new course
               </button>
             )
@@ -89,7 +89,7 @@ export default function ClassTab({ values, errors, set, setMany, lookups, facult
             onChange={onBatch}
             aside={
               onRequestBatch && (
-                <button type="button" onClick={() => onRequestBatch(values.courseId)} className="inline-flex items-center gap-1 text-[12px] font-medium text-brand-700 hover:underline" title="Batch not in the list? Ask the Manager / Admin to create it">
+                <button type="button" onClick={() => onRequestBatch(values.courseId)} className="inline-flex items-center gap-1 text-[12px] font-medium text-brand-700 hover:underline" title="Batch not in the list? Ask the Super Admin / Admin to create it">
                   <Hash className="size-3.5" aria-hidden /> Request Batch No
                 </button>
               )

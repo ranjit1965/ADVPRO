@@ -344,6 +344,35 @@ missed), the Dashboard and this page remind Admin / Manager until each file is u
   creating the batch (Master › Batch or Batch Import) or **Dismiss** them. Saved in `batch_requests`;
   `POST/GET /api/batch-requests`, `PATCH /api/batch-requests/{id}`.
 
+### Super Admin, HR menu, certification status and dashboards (v50)
+
+- **Super Admin:** the Manager role is shown as *Super Admin* everywhere. The stored role key stays `MANAGER`, so
+  existing logins and data need no change. There is still only one Super Admin account.
+- **Delete is for the Super Admin only.** Admin and HR can view, add and edit, but cannot delete courses, chapters,
+  batches, master records, halfyearly rows or employees, and cannot remove dropdown values (they may add and
+  rename them). The server refuses with "Only the Super Admin can delete records." The Delete buttons are hidden for them.
+- **Employees:** HR and Admin view, add and edit employees (no Delete). **Deleted Employees** (view and Restore)
+  is for the Super Admin only.
+- **HR menu** also has the Admin pages for the HR and Admin roles: Data Upload, Employees, Batch, Batch Import,
+  Course, Biometric and Dropdown Values (Deleted Employees for the Super Admin only), plus **Certification Status**.
+- **Course page:** *View all courses* lists every course with Chapters and Edit (Delete for the Super Admin).
+- **Halfyearly Program Report:** after Save, the saved rows of that employee are listed right below the form
+  (the new row is highlighted). The status is now recorded in **HR › Certification Status**.
+- **HR › Certification Status:** Completed Yes / No with the date of completion and certification code, and
+  Delivery ready, per row (filters: Not completed, Current quarter, Carried forward, All completed, All).
+- **Carry over:** when a row's ending month is over, its unfinished target certifications move to the next quarter
+  (H1 → H2 ... H6 → H1, same number of months, from the next month) marked *Carried forward*. If HR already
+  assigned that next quarter, they are added to it. Each row is carried once.
+- **Deferred Report email:** once per row after the quarter ends, each employee with unfinished certifications gets
+  an email at their email in Employees. The Super Admin sets the **HR mail id** in Certification Status; it is the
+  Reply-To and gets a copy (CC). The sender address is still `SMTP_FROM` (most SMTP servers do not allow another From).
+  It runs daily inside the API (`CERT_FOLLOWUP_ENABLED=true`, `CERT_FOLLOWUP_TIME=07:00`); the Super Admin can
+  also click *Run now*. Rows of employees without an email are marked "No email" and skipped.
+- **No entries for HR, Admin and Super Admin.** Their Entry and Others menus are hidden and the server refuses a new
+  entry from them. Their dashboard shows only *View dashboard of*, listing Faculty and Lab Support people
+  (role key or label matching "Lab Support"); picking one shows that person's dashboard. *My Entries* is
+  *Faculty Entries* for them. Faculty can still delete their own entries; anyone else's only the Super Admin.
+
 ### Entry form, dropdowns, issues and dashboard (v49)
 
 * **Own entries only.** Faculty and Staff see, open, edit and delete only their own entries (the
@@ -420,7 +449,7 @@ missed), the Dashboard and this page remind Admin / Manager until each file is u
                                          # work_assignments, leave_requests, monthly_plans (take a mongodump first)
   ```
 
-### Roles & Access (Master › Roles & Access, Manager only)
+### Roles & Access (Master › Roles & Access, Super Admin only)
 
 * **Roles are stored in their own collection, `roles`**, one document per role: key (e.g. `ACCOUNTS`),
   name, description, built-in or not, the menu ticks (`access`), who created it and when.
@@ -485,7 +514,7 @@ missed), the Dashboard and this page remind Admin / Manager until each file is u
 * **Restore** brings the employee back as Active with the same User ID, code, details and password,
   and puts every record back. If another employee now uses the same User ID or code, change that one first.
 
-### Forgot password (Manager only)
+### Forgot password (Super Admin only)
 
 * The login page has **Forgot password? (Manager)**. Enter the manager User ID, click **Send code
   to email**: a 6-digit code goes to the **email saved on the manager account** (SMTP settings in

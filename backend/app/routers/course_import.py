@@ -1,6 +1,6 @@
 """Master › Course: import courses and their chapters from an Excel / CSV file.
 
-1. Admin / Manager upload the file (.xlsx, .xls or .csv; columns in any order and any usual wording:
+1. Admin / Super Admin upload the file (.xlsx, .xls or .csv; columns in any order and any usual wording:
    Course ID / Course Code, Course Name, Chapter No / Session No, Chapter Name / Topic). Nothing is saved yet:
    POST /api/course-import/preview returns every course found, with its chapters, marked New, Already added
    or "N new chapters".
@@ -16,10 +16,10 @@ from starlette.concurrency import run_in_threadpool
 
 from .. import db
 from ..biometric_files import rows_from_upload
-from ..security import require_section
+from ..security import manage_access, super_admin_only, is_super_admin, require_section
 
 router = APIRouter(prefix="/course-import", tags=["course import"])
-master_roles = require_section("master", "admin")
+master_roles = manage_access  # Master or Admin menu, or HR menu for HR / Admin roles; Super Admin always
 
 CH_WORDS = ("chapter", "session", "topic", "module", "unit", "lesson")
 

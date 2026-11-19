@@ -5,8 +5,8 @@ import Button from './ui/Button';
 import Input from './ui/Input';
 
 /**
- * Forgot password, manager account only: a 6-digit code is emailed to the manager's email on
- * record, then the code and a new password set it. Other employees ask the Manager or Admin.
+ * Forgot password, Super Admin account only: a 6-digit code is emailed to the Super Admin's email on
+ * record, then the code and a new password set it. Other employees ask the Super Admin or Admin.
  */
 export default function ForgotPasswordModal({ open, onClose, initialUserId = '', onDone }) {
   const [step, setStep] = useState('request'); // request | reset
@@ -27,7 +27,7 @@ export default function ForgotPasswordModal({ open, onClose, initialUserId = '',
   };
 
   const send = async () => {
-    if (!form.userId.trim()) return setError('Enter the manager User ID');
+    if (!form.userId.trim()) return setError('Enter the Super Admin User ID');
     setBusy(true);
     setError('');
     try {
@@ -62,8 +62,8 @@ export default function ForgotPasswordModal({ open, onClose, initialUserId = '',
     <Modal
       open={open}
       onClose={close}
-      title="Forgot password (Manager)"
-      description="Only the manager account can reset its password here. Other employees ask the Manager or Admin to set a new one."
+      title="Forgot password (Super Admin)"
+      description="Only the Super Admin account can reset its password here. Other employees ask the Super Admin or Admin to set a new one."
       footer={
         <>
           <Button variant="secondary" onClick={close}>Cancel</Button>
@@ -77,7 +77,7 @@ export default function ForgotPasswordModal({ open, onClose, initialUserId = '',
     >
       <div className="space-y-3">
         {error && <div role="alert" className="rounded-lg border border-danger-500/30 bg-danger-50 px-3 py-2 text-[13px] text-danger-700">{error}</div>}
-        <Input label="Manager User ID" value={form.userId} onChange={set('userId')} readOnly={step === 'reset'} autoComplete="username" />
+        <Input label="Super Admin User ID" value={form.userId} onChange={set('userId')} readOnly={step === 'reset'} autoComplete="username" />
         {step === 'reset' && (
           <>
             <p className="text-sm text-ink-600">

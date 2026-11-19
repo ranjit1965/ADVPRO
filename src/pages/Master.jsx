@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { BookOpen, Mail, Pencil, Plus, Trash2 } from 'lucide-react';
+import { BookOpen, List, ListTree, Mail, Pencil, Plus, Trash2, X } from 'lucide-react';
 import * as api from '../services/api';
 import PageHeader from '../components/ui/PageHeader';
 import Card from '../components/ui/Card';
@@ -14,7 +14,7 @@ import { useAuth } from '../context/AuthContext';
 import { useLookups } from '../context/LookupsContext';
 import { useToast } from '../context/ToastContext';
 import { useConfirm } from '../context/ConfirmContext';
-import { canManage } from '../utils/permissions';
+import { canManage, isSuperAdmin } from '../utils/permissions';
 import { useAsync } from '../hooks/useAsync';
 import { formatDateTime } from '../utils/format';
 import CourseImport from '../components/master/CourseImport';
@@ -33,18 +33,22 @@ export default function Master() {
   const [bulk, setBulk] = useState(null); // Add chapter: { count, rows: [{ no, name }] }
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
+  const [showAll, setShowAll] = useState(false); // "View all courses" list
+  const [allQ, setAllQ] = useState('');
+  const canDelete = isSuperAdmin(user); // Admin / HR add and edit; only the Super Admin deletes
 
   const requests = useAsync(() => (canManage(user) ? api.getCourseRequests() : Promise.resolve([])), []);
   const batchRequests = useAsync(() => (canManage(user) ? api.getBatchRequests() : Promise.resolve([])), []);
   const courses = lookups?.courses ?? [];
   const courseId = selected || courses[0]?.id || '';
   const chapters = useMemo(() => (lookups?.chapters ?? []).filter((c) => c.courseId === courseId).sort((a, b) => a.no - b.no), [lookups, courseId]);
+  const chapterCount = useMemo(() => (lookups?.chapters ?? []).reduce((m, c) => ({ ...m, [c.courseId]: (m[c.courseId] || 0) + 1 }), {}), [lookups]);
 
   if (!canManage(user)) {
     return (
       <>
         <PageHeader title="Master" />
-        <Card><p className="text-sm text-ink-600">Access restricted. Only the manager and admin can change master data.</p></Card>
+        <Card><p className="text-sm text-ink-600">Access restricted. Only the Super Admin and admin can change master data.</p></Card>
       </>
     );
   }
@@ -165,7 +169,7 @@ export default function Master() {
       render: (c) => (
         <div className="flex justify-end gap-1">
           <Button size="sm" variant="ghost" icon={Pencil} aria-label={`Edit chapter ${c.no}`} onClick={() => { setErrors({}); setChapterForm({ no: String(c.no), name: c.name || '', originalNo: c.no }); }} />
-          <Button size="sm" variant="ghost" icon={Trash2} aria-label={`Delete chapter ${c.no}`} onClick={() => removeChapter(c)} />
+          {canDelete && <Button size="sm" variant="ghost" icon={Trash2} aria-label={`Delete chapter ${c.no}`} onClick={() => removeChapter(c)} />}
         </div>
       ),
     },
@@ -174,7 +178,7 @@ export default function Master() {
 
   return (
     <>
-      <PageHeader title="Courses & Chapters" description="Courses (Course ID, Course Name) and their chapters (Chapter No, Chapter Name). The Class entry fills these in automatically." breadcrumb={[{ label: 'Master', to: '/master' }, { label: 'Course' }]} />
+      <PageHeader title="Courses & Chapters" description="Courses (Course ID, Course Name) and their chapters (Chapter No, Chapter Name). The Class entry fills these in automatically." breadcrumb={[{ label: 'Course' }]} />
       {canManage(user) && (
         <div className="mb-5">
           <CourseImport onAdded={() => { reload(); requests.reload(); }} />
@@ -239,8 +243,45 @@ export default function Master() {
           value={courseId}
           onChange={(v) => setSelected(v?.target ? v.target.value : v)}
         />
+        <Button variant="secondary" icon={showAll ? X : List} onClick={() => setShowAll((v) => !v)}>{showAll ? 'Hide all courses' : 'View all courses'}</Button>
         <Button icon={Plus} onClick={() => { setErrors({}); setCourseForm({ ...EMPTY_COURSE, isNew: true }); }}>Add course</Button>
       </Card>
+      {showAll && (
+        <Card
+          className="mb-5"
+          bodyClassName="p-0"
+          title={`All courses (${courses.length})`}
+          description={canDelete ? 'Edit or delete a course, or open its chapters.' : 'Edit a course or open its chapters. Only the Super Admin can delete.'}
+          actions={<Input aria-label="Search courses" className="w-64" placeholder="Search Course ID or name" value={allQ} onChange={(e) => setAllQ(e.target.value)} />}
+        >
+          <div className="max-h-[480px] overflow-auto">
+            <DataTable
+              dense
+              caption="All courses"
+              rowKey="id"
+              rows={courses.filter((c) => !allQ.trim() || `${c.id} ${c.name}`.toLowerCase().includes(allQ.trim().toLowerCase()))}
+              empty={<EmptyState icon={BookOpen} title="No course matches" />}
+              columns={[
+                { key: 'id', header: 'Course ID', render: (c) => <span className="font-medium text-ink-900">{c.id}</span> },
+                { key: 'name', header: 'Course Name', className: 'whitespace-normal' },
+                { key: 'chapters', header: 'Chapters', align: 'right', render: (c) => chapterCount[c.id] || 0 },
+                {
+                  key: 'actions',
+                  header: <span className="sr-only">Actions</span>,
+                  align: 'right',
+                  render: (c) => (
+                    <div className="flex justify-end gap-1 whitespace-nowrap">
+                      <Button size="sm" variant="ghost" icon={ListTree} title="Chapters" aria-label={`Chapters of ${c.id}`} onClick={() => { setSelected(c.id); setShowAll(false); }}>Chapters</Button>
+                      <Button size="sm" variant="ghost" icon={Pencil} title="Edit" aria-label={`Edit ${c.id}`} onClick={() => { setErrors({}); setCourseForm({ ...courseToForm(c), isNew: false }); }}>Edit</Button>
+                      {canDelete && <Button size="sm" variant="ghost" className="hover:!bg-danger-50 hover:!text-danger-600" icon={Trash2} title="Delete" aria-label={`Delete ${c.id}`} onClick={() => removeCourse(c)}>Delete</Button>}
+                    </div>
+                  ),
+                },
+              ]}
+            />
+          </div>
+        </Card>
+      )}
       <div>
         <Card
           title={current ? `${current.id} – ${current.name}` : 'Chapters'}
@@ -249,7 +290,7 @@ export default function Master() {
             current && (
               <div className="flex flex-wrap gap-2">
                 <Button size="sm" variant="secondary" icon={Pencil} onClick={() => { setErrors({}); setCourseForm({ ...courseToForm(current), isNew: false }); }}>Edit course</Button>
-                <Button size="sm" variant="secondary" icon={Trash2} onClick={() => removeCourse(current)}>Delete course</Button>
+                {canDelete && <Button size="sm" variant="secondary" icon={Trash2} onClick={() => removeCourse(current)}>Delete course</Button>}
                 <Button size="sm" icon={Plus} onClick={openBulk}>Add chapter</Button>
               </div>
             )

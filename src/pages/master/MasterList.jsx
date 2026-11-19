@@ -15,7 +15,9 @@ import DataTable from '../../components/ui/DataTable';
 import Pagination from '../../components/ui/Pagination';
 import ErrorState from '../../components/ui/ErrorState';
 import EmptyState from '../../components/ui/EmptyState';
+import { useAuth } from '../../context/AuthContext';
 import { useLookups } from '../../context/LookupsContext';
+import { isSuperAdmin } from '../../utils/permissions';
 import { useToast } from '../../context/ToastContext';
 import { useConfirm } from '../../context/ConfirmContext';
 import { useAsync } from '../../hooks/useAsync';
@@ -61,6 +63,8 @@ function FieldInput({ f, value, error, onChange, lookups }) {
 export default function MasterList() {
   const { key } = useParams();
   const def = masterByKey(key);
+  const { user } = useAuth();
+  const canDelete = isSuperAdmin(user); // only the Super Admin deletes records; Admin / HR view, add and edit
   const { lookups, reload: reloadLookups } = useLookups();
   const toast = useToast();
   const confirm = useConfirm();
@@ -217,7 +221,7 @@ export default function MasterList() {
   const box = 'size-4 cursor-pointer rounded border-ink-300 accent-brand-600';
 
   const columns = [
-    {
+    canDelete && {
       key: 'select',
       header: (
         <input
@@ -235,16 +239,16 @@ export default function MasterList() {
     },
     {
       key: 'actions',
-      header: <span className="sr-only">Edit or delete</span>,
+      header: <span className="sr-only">{canDelete ? 'Edit or delete' : 'Edit'}</span>,
       render: (r) => (
         <div className="flex gap-1 whitespace-nowrap">
           <Button size="sm" variant="ghost" icon={Pencil} aria-label={`Edit ${r[def.titleField] || r.id}`} title="Edit" onClick={() => editRow(r)}>Edit</Button>
-          <Button size="sm" variant="ghost" className="hover:!bg-danger-50 hover:!text-danger-600" icon={Trash2} aria-label={`Delete ${r[def.titleField] || r.id}`} title="Delete" onClick={() => remove(r)}>Delete</Button>
+          {canDelete && <Button size="sm" variant="ghost" className="hover:!bg-danger-50 hover:!text-danger-600" icon={Trash2} aria-label={`Delete ${r[def.titleField] || r.id}`} title="Delete" onClick={() => remove(r)}>Delete</Button>}
         </div>
       ),
     },
     ...def.fields.filter((f) => !f.hideInTable).map((f) => ({ key: f.key, header: f.label, align: f.type === 'number' ? 'right' : undefined, render: (r) => <span className={f.key === def.titleField ? 'font-medium text-ink-900' : ''}>{display(f, r[f.key], lookups)}</span> })),
-  ];
+  ].filter(Boolean);
 
   return (
     <>
@@ -285,7 +289,7 @@ export default function MasterList() {
       <Card bodyClassName="p-0">
         <div className="flex flex-wrap items-end gap-3 border-b border-ink-100 p-4">
           <Input label="Search" className="w-full max-w-xs" placeholder={`Search ${def.label.toLowerCase()}…`} value={q} onChange={(e) => { setQ(e.target.value); setPage(1); }} />
-          {pickedIds.length > 0 && (
+          {canDelete && pickedIds.length > 0 && (
             <div role="status" className="flex flex-wrap items-center gap-2 rounded-lg border border-danger-500/30 bg-danger-50 px-3 py-1.5 text-[13px]">
               <span className="font-medium text-ink-800">{pickedIds.length} selected</span>
               {!allMatching && rows.length > pageIds.length && (
@@ -301,7 +305,7 @@ export default function MasterList() {
               </Button>
             </div>
           )}
-          {pickedIds.length === 0 && rows.length > 0 && (
+          {canDelete && pickedIds.length === 0 && rows.length > 0 && (
             <Button variant="ghost" size="sm" className="mb-1" onClick={() => toggle(rows.map((r) => r.id), true)}>
               Select all {rows.length}{q.trim() ? ' matching' : ''}
             </Button>

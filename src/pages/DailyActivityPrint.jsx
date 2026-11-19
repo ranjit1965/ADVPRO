@@ -26,7 +26,7 @@ export default function DailyActivityPrint() {
   const { lookups } = useLookups();
   const toast = useToast();
   const today = toISODate();
-  // Faculty and staff see only their own sheet; Manager / Admin / HR can pick anyone.
+  // Faculty and staff see only their own sheet; Super Admin / Admin / HR can pick anyone.
   const ownOnly = !canAccess(user, [...MASTER_ROLES, 'HR']);
   const [form, setForm] = useState({
     facultyCode: ownOnly ? user.code : params.get('faculty') || user.code,

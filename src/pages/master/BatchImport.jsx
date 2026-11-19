@@ -16,7 +16,7 @@ import { formatDate, formatDateTime } from '../../utils/format';
 const STATUS_ORDER = ['Running', 'Planned', 'Break', 'Completed'];
 
 /**
- * Master › Batch Import. Admin / Manager choose the BatchMaster Excel file (.xlsx, .xls or .csv,
+ * Master › Batch Import. Admin / Super Admin choose the BatchMaster Excel file (.xlsx, .xls or .csv,
  * any column order) and click Save: the backend reads it and saves each batch in Master › Batch,
  * assigned to the employee whose code matches the faculty short name (FacultyAlloted). Short names
  * that match nobody are listed so they can be linked once; the link is remembered.

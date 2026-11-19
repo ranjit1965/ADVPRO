@@ -18,7 +18,7 @@ import { canManage } from '../../utils/permissions';
 import { formatDateTime, monthLabel, toISODate } from '../../utils/format';
 
 /**
- * Master › Biometric. Admin / Manager choose the device export file (.xlsx, .xls or .csv, any column
+ * Master › Biometric. Admin / Super Admin choose the device export file (.xlsx, .xls or .csv, any column
  * order) and click Save: the backend keeps each person's first punch (Time In) and last punch
  * (Time Out) per day. The monthly report compares those times with the daily entries.
  */
@@ -104,7 +104,7 @@ export default function Biometric() {
           {canEdit ? (
             <FileSaveField label="Biometric file" accept=".xlsx,.xls,.csv,.txt,.tsv,.dat" onSave={upload} saveLabel="Save records" disabled={!!busy} />
           ) : (
-            <p className="text-[13px] text-ink-600">Only Admin and Manager can upload the biometric file.</p>
+            <p className="text-[13px] text-ink-600">Only Admin and Super Admin can upload the biometric file.</p>
           )}
           <p className="mt-3 text-[12px] text-ink-500">
             Columns can be in any order and named in any usual way (Emp Code / Employee ID, Name, Date or Day with a Month column, In Time / Out Time, Punch Time). Day-wise sheets with days 1 to 31 across and the month in a column or the title are read too. People are matched by employee code, login ID or name; link anyone not matched below. Saving a month again replaces those days.

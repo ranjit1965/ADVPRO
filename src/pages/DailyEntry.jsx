@@ -17,7 +17,7 @@ import RequestCourseModal from '../components/entry/RequestCourseModal';
 import RequestBatchModal from '../components/entry/RequestBatchModal';
 import { TAB_COMPONENTS } from '../components/entry/tabs';
 import { useAuth } from '../context/AuthContext';
-import { canManage } from '../utils/permissions';
+import { canManage, makesEntries } from '../utils/permissions';
 import { usePreferences } from '../hooks/usePreferences';
 import { useLookups } from '../context/LookupsContext';
 import { useToast } from '../context/ToastContext';
@@ -262,7 +262,7 @@ export default function DailyEntry() {
   }, []);
 
   /* ---------- Ctrl + A: add college / dept ---------- */
-  // Only Manager and Admin add dropdown values and courses (passed to the tabs only for them).
+  // Only Super Admin and Admin add dropdown values and courses (passed to the tabs only for them).
   const openLookupModal = (kind, apply) => setLookupModal({ kind, apply });
   const submitLookup = async (value) => {
     await api.addLookupValue(lookupModal.kind, value);
@@ -291,6 +291,21 @@ export default function DailyEntry() {
 
   if (lookupsError) return <ErrorState message={lookupsError} onRetry={reloadLookups} />;
   if (!lookups || loadingEntry) return <PageLoader label="Loading form…" />;
+  // HR, Admin and Super Admin do not add entries (the server refuses them too); Admin / Super Admin may still edit one.
+  if (!makesEntries(user) && !routeId) {
+    return (
+      <>
+        <PageHeader title="Daily Activity Entry" breadcrumb={[{ label: 'Faculty' }, { label: 'Daily Activity' }, { label: 'Entry' }]} />
+        <Card>
+          <p className="text-sm text-ink-700">HR, Admin and Super Admin only view faculty entries. They do not add daily entries.</p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <Button icon={ListChecks} onClick={() => navigate('/faculty/daily-activity/history')}>Faculty entries</Button>
+            <Button variant="secondary" onClick={() => navigate('/')}>View a faculty dashboard</Button>
+          </div>
+        </Card>
+      </>
+    );
+  }
 
   const TabPanel = TAB_COMPONENTS[tab];
   const tabErrorCount = Object.values(errors.details).filter(Boolean).length + Object.values(errors.outstation).filter(Boolean).length;

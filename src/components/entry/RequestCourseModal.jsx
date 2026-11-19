@@ -9,7 +9,7 @@ import { useToast } from '../../context/ToastContext';
 
 const EMPTY = { courseName: '', courseId: '', notes: '' };
 
-/** Class tab: asks Manager / Admin by email to add a course that is not in the Course ID list. */
+/** Class tab: asks Super Admin / Admin by email to add a course that is not in the Course ID list. */
 export default function RequestCourseModal({ open, onClose }) {
   const toast = useToast();
   const [form, setForm] = useState(EMPTY);
@@ -52,7 +52,7 @@ export default function RequestCourseModal({ open, onClose }) {
       open={open}
       onClose={onClose}
       title="Request a new course"
-      description="An email and a WhatsApp message, both with your name, go to the Manager and Admin asking them to add this course. Once added, it appears in Course ID."
+      description="An email and a WhatsApp message, both with your name, go to the Super Admin and Admin asking them to add this course. Once added, it appears in Course ID."
       size="sm"
       footer={
         <>

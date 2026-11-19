@@ -11,7 +11,7 @@ import { courseOptions } from './fieldProps';
 
 const EMPTY = { courseId: '', startDate: '', batchTime: '', students: '', notes: '' };
 
-/** Class tab "Request Batch No": email + WhatsApp to Manager / Admin, listed in Master › Course. */
+/** Class tab "Request Batch No": email + WhatsApp to Super Admin / Admin, listed in Master › Course. */
 export default function RequestBatchModal({ open, onClose, lookups, courseId }) {
   const toast = useToast();
   const [form, setForm] = useState(EMPTY);
@@ -60,7 +60,7 @@ export default function RequestBatchModal({ open, onClose, lookups, courseId }) 
       open={open}
       onClose={onClose}
       title="Request Batch No"
-      description="An email and a WhatsApp message, both with your name, go to the Manager and Admin asking them to create a batch for this class. Once created, it appears in Batch No."
+      description="An email and a WhatsApp message, both with your name, go to the Super Admin and Admin asking them to create a batch for this class. Once created, it appears in Batch No."
       size="sm"
       footer={
         <>

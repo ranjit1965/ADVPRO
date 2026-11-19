@@ -7,7 +7,7 @@ Settings in backend/.env:
     WA_TEMPLATE_NAME=...      (approved template name)
     WA_TEMPLATE_ID=...        (template id in Pinbot, kept for reference)
     WA_TEMPLATE_LANG=en
-    WA_NOTIFY_NUMBERS=919xxxxxxxxx,919xxxxxxxxx   (Manager and Admin; a 10-digit number gets 91 in front)
+    WA_NOTIFY_NUMBERS=919xxxxxxxxx,919xxxxxxxxx   (Super Admin and Admin; a 10-digit number gets 91 in front)
     WA_TEMPLATE_PARAMS=employee,code,course,courseId,remarks   (what goes in {{1}}, {{2}} ...)
 
 The default WA_TEMPLATE_PARAMS fits a template with 5 body variables, for example:

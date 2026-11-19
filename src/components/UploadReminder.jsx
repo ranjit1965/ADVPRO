@@ -4,7 +4,7 @@ import * as api from '../services/api';
 import { useAsync } from '../hooks/useAsync';
 import { uploadDue, uploadWindowStart } from '../utils/uploadReminder';
 
-/** Month-end reminder for Admin / Manager to upload the Batch Master and Biometric files. */
+/** Month-end reminder for Admin / Super Admin to upload the Batch Master and Biometric files. */
 export default function UploadReminder() {
   const inWindow = !!uploadWindowStart();
   const { data } = useAsync(

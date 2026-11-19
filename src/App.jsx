@@ -24,6 +24,7 @@ import BatchImport from './pages/master/BatchImport';
 import DataUpload from './pages/admin/DataUpload';
 import HrPolicy from './pages/hr/HrPolicy';
 import HalfyearlyReport from './pages/hr/HalfyearlyReport';
+import CertificationStatus from './pages/hr/CertificationStatus';
 import NotFound from './pages/NotFound';
 import RoleAccess from './pages/master/RoleAccess';
 import DeletedEmployees from './pages/master/DeletedEmployees';
@@ -35,7 +36,7 @@ function RequireAuth({ children }) {
   const location = useLocation();
   if (checking) return <PageLoader label="Checking session…" />;
   if (!user) return <Navigate to="/login" replace state={{ from: location }} />;
-  // A menu the Manager turned off for this role (Master › Role Access) cannot be opened by its address either.
+  // A menu the Super Admin turned off for this role (Master › Role Access) cannot be opened by its address either.
   const section = sectionForPath(location.pathname);
   if (section && ![].concat(section).some((s) => hasSection(user, s))) return <Navigate to="/" replace />;
   return children;
@@ -81,6 +82,7 @@ export default function App() {
               <Route path="hr-report" element={<Navigate to="/hr-report/policy" replace />} />
               <Route path="hr-report/policy" element={<HrPolicy />} />
               <Route path="hr-report/halfyearly" element={<HalfyearlyReport />} />
+              <Route path="hr-report/certification-status" element={<CertificationStatus />} />
               <Route path="users" element={<Navigate to="/master/employees" replace />} />
               <Route path="settings" element={<Settings />} />
               <Route path="*" element={<NotFound />} />

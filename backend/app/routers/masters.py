@@ -1,7 +1,7 @@
 """Generic Master screens: Batch (Registration, Attendence, Product, Old Registrations, Vendor and Assest were removed in v46).
 
 Each master is described in masters.json (same file as src/config/masters.json) and stored in
-its own collection, master_<key>. Admin and Manager maintain them.
+its own collection, master_<key>. Admin and Super Admin maintain them.
 """
 import json
 import re
@@ -13,10 +13,10 @@ from fastapi import APIRouter, Body, Depends, HTTPException
 from pydantic import BaseModel, Field
 
 from .. import db
-from ..security import require_section, require_roles
+from ..security import manage_access, super_admin_only, is_super_admin, require_section, require_roles
 
 router = APIRouter(prefix="/masters", tags=["masters"])
-master_roles = require_section("master", "admin")  # Master or Admin menu ticked for the role
+master_roles = manage_access  # Master or Admin menu, or HR menu for HR / Admin roles; Super Admin always
 MASTERS = {m["key"]: m for m in json.loads((Path(__file__).parent.parent / "masters.json").read_text())["masters"]}
 SYSTEM = {"id", "createdBy", "createdAt", "updatedBy", "updatedAt"}
 
@@ -100,7 +100,7 @@ def create_record(key: str, body: dict = Body(...), me: dict = Depends(master_ro
 
 
 @router.post("/{key}/delete-many")
-def delete_records(key: str, body: DeleteManyIn, _: dict = Depends(master_roles)):
+def delete_records(key: str, body: DeleteManyIn, _: dict = Depends(super_admin_only)):
     """Deletes the selected records (the ticked rows) in one call."""
     res = collection(key).delete_many({"id": {"$in": list(dict.fromkeys(body.ids))}})
     return {"deleted": res.deleted_count}
@@ -118,7 +118,7 @@ def update_record(key: str, rec_id: str, body: dict = Body(...), me: dict = Depe
 
 
 @router.delete("/{key}/{rec_id}")
-def delete_record(key: str, rec_id: str, _: dict = Depends(master_roles)):
+def delete_record(key: str, rec_id: str, _: dict = Depends(super_admin_only)):
     if not collection(key).delete_one({"id": rec_id}).deleted_count:
         raise HTTPException(404, "Record not found")
     return True

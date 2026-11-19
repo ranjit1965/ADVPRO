@@ -12,7 +12,7 @@ import {
   LogOut,
 } from 'lucide-react';
 import { MASTER_MENU } from './masterMenu';
-import { PEOPLE_VIEW_ROLES, WORKING_HOURS_ROLES } from '../utils/permissions';
+import { NO_ENTRY_ROLES, WORKING_HOURS_ROLES } from '../utils/permissions';
 
 /**
  * Sidebar navigation: Dashboard, Master, then the department menus in the agreed
@@ -20,6 +20,18 @@ import { PEOPLE_VIEW_ROLES, WORKING_HOURS_ROLES } from '../utils/permissions';
  * `restricted: true` items were greyed out for the FACULTY role in the legacy app
  * and stay visible-but-locked here; the backend will decide this per role later.
  */
+const ADMIN_PAGES = [
+  { key: 'data-upload', label: 'Data Upload', to: '/admin/data-upload' },
+  { key: 'admin-employees', label: 'Employees', to: '/master/employees' },
+  { key: 'admin-deleted-employees', label: 'Deleted Employees', to: '/master/deleted-employees', roles: ['MANAGER'] },
+  { key: 'admin-batch', label: 'Batch', to: '/master/batches' },
+  { key: 'admin-batch-import', label: 'Batch Import', to: '/master/batch-import' },
+  { key: 'admin-course', label: 'Course', to: '/master/courses' },
+  { key: 'admin-biometric', label: 'Biometric', to: '/master/biometric' },
+  { key: 'admin-dropdown-values', label: 'Dropdown Values', to: '/master/dropdown-values' },
+];
+const HR_PAGE_ROLES = ['HR', 'ADMIN', 'MANAGER'];
+
 export const NAVIGATION = [
   { key: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, to: '/' },
   {
@@ -40,13 +52,14 @@ export const NAVIGATION = [
         key: 'daily-activity',
         label: 'Daily Activity',
         children: [
-          { key: 'entry', label: 'Entry', to: '/faculty/daily-activity/entry' },
-          { key: 'history', label: 'My Entries', to: '/faculty/daily-activity/history' },
+          { key: 'entry', label: 'Entry', to: '/faculty/daily-activity/entry', hideRoles: NO_ENTRY_ROLES }, // HR, Admin, Super Admin only view
+          { key: 'history', label: 'My Entries', to: '/faculty/daily-activity/history', hideRoles: NO_ENTRY_ROLES },
+          { key: 'history-all', label: 'Faculty Entries', to: '/faculty/daily-activity/history', roles: NO_ENTRY_ROLES },
           { key: 'print', label: 'Print', to: '/faculty/daily-activity/print' },
         ],
       },
       { key: 'students-mark-entry', label: 'Students Mark Entry', to: '/faculty/students-mark-entry' },
-      { key: 'others', label: 'Others', to: '/faculty/daily-activity/entry?type=others' },
+      { key: 'others', label: 'Others', to: '/faculty/daily-activity/entry?type=others', hideRoles: NO_ENTRY_ROLES },
       { key: 'monthly-report', label: 'Monthly Report', to: '/faculty/reports/monthly' },
       { key: 'monthly-working-hrs-report', label: 'Monthly Working Hrs Report', to: '/faculty/reports/working-hours', roles: WORKING_HOURS_ROLES },
     ],
@@ -59,16 +72,7 @@ export const NAVIGATION = [
     label: 'Admin',
     icon: ShieldCheck,
     section: 'admin',
-    children: [
-      { key: 'data-upload', label: 'Data Upload', to: '/admin/data-upload' },
-      { key: 'admin-employees', label: 'Employees', to: '/master/employees' },
-      { key: 'admin-deleted-employees', label: 'Deleted Employees', to: '/master/deleted-employees' },
-      { key: 'admin-batch', label: 'Batch', to: '/master/batches' },
-      { key: 'admin-batch-import', label: 'Batch Import', to: '/master/batch-import' },
-      { key: 'admin-course', label: 'Course', to: '/master/courses' },
-      { key: 'admin-biometric', label: 'Biometric', to: '/master/biometric' },
-      { key: 'admin-dropdown-values', label: 'Dropdown Values', to: '/master/dropdown-values' },
-    ],
+    children: ADMIN_PAGES,
   },
   { key: 'marketing', label: 'Marketing', icon: Megaphone, restricted: true, section: 'marketing' },
   {
@@ -77,10 +81,11 @@ export const NAVIGATION = [
     icon: FileBarChart,
     section: 'hr',
     children: [
-      { key: 'employees', label: 'Employees', to: '/master/employees', roles: PEOPLE_VIEW_ROLES },
-      { key: 'deleted-employees', label: 'Deleted Employees', to: '/master/deleted-employees', roles: PEOPLE_VIEW_ROLES },
       { key: 'hr-policy', label: 'HR Policy', to: '/hr-report/policy' },
       { key: 'halfyearly', label: 'Halfyearly Program Report', to: '/hr-report/halfyearly' },
+      { key: 'cert-status', label: 'Certification Status', to: '/hr-report/certification-status', roles: HR_PAGE_ROLES },
+      // The Admin menu pages, also here for the HR and Admin roles (Deleted Employees: Super Admin only).
+      ...ADMIN_PAGES.map((p) => ({ ...p, key: `hr-${p.key}`, roles: p.roles || HR_PAGE_ROLES })),
     ],
   },
 ];

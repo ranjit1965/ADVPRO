@@ -25,7 +25,7 @@ import { formatDate, formatDuration, formatTime, monthLabel, toISODate } from '.
 import { entrySummary } from '../utils/entry';
 import { downloadCsv } from '../utils/export';
 import { cn } from '../utils/cn';
-import { canAccess, PEOPLE_VIEW_ROLES, WORKING_HOURS_ROLES } from '../utils/permissions';
+import { canAccess, PEOPLE_VIEW_ROLES, roleLabel, WORKING_HOURS_ROLES } from '../utils/permissions';
 import { ShieldAlert } from 'lucide-react';
 
 const REPORTS = {
@@ -78,7 +78,7 @@ export default function Reports() {
       <>
         <PageHeader title={meta.title} breadcrumb={[{ label: 'Faculty' }, { label: meta.title }]} />
         <Card>
-          <EmptyState icon={ShieldAlert} title="Access restricted" message="The Monthly Working Hrs Report is available to HR, Admin and Manager accounts only." />
+          <EmptyState icon={ShieldAlert} title="Access restricted" message="The Monthly Working Hrs Report is available to HR, Admin and Super Admin accounts only." />
         </Card>
       </>
     );
@@ -92,7 +92,7 @@ export default function Reports() {
       toast.error(`Could not create the Excel file: ${e.message}`);
     }
   };
-  // HR, Admin and Manager pick anyone; faculty and staff only see their own report.
+  // HR, Admin and Super Admin pick anyone; faculty and staff only see their own report.
   const facultyOpts = viewAll
     ? people.map((f) => ({ value: f.code, label: `${f.name} (${f.code})${f.role && f.role !== 'FACULTY' ? ` · ${f.role}` : ''}` }))
     : [{ value: user.code, label: `${user.name} (${user.code})` }];
@@ -263,7 +263,7 @@ function WorkingHoursView({ data, loading, month }) {
           rowKey="facultyCode"
           columns={[
             { key: 'facultyName', header: 'Employee', render: (r) => <span className="font-medium whitespace-nowrap text-ink-900">{`${r.facultyName} (${r.facultyCode})`}</span> },
-            { key: 'role', header: 'Role', render: (r) => <span className="text-xs text-ink-500">{r.role || 'FACULTY'}</span> },
+            { key: 'role', header: 'Role', render: (r) => <span className="text-xs text-ink-500">{roleLabel(r.role || 'FACULTY')}</span> },
             { key: 'days', header: 'Days', align: 'right' },
             { key: 'entries', header: 'Entries', align: 'right' },
             { key: 'classMinutes', header: 'Class', align: 'right', render: (r) => formatDuration(r.classMinutes) },

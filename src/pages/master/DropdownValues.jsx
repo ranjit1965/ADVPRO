@@ -12,7 +12,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import { useConfirm } from '../../context/ConfirmContext';
 import { useLookups } from '../../context/LookupsContext';
-import { canManage } from '../../utils/permissions';
+import { canManage, isSuperAdmin } from '../../utils/permissions';
 import { formatDateTime } from '../../utils/format';
 import { cn } from '../../utils/cn';
 
@@ -20,7 +20,7 @@ const CONTACTS = '__issueContacts'; // left-list item for the issue alert contac
 const byName = (a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });
 
 /**
- * Master › Dropdown Values (Manager and Admin): add, rename and remove the values of every dropdown
+ * Master › Dropdown Values (Super Admin, Admin and HR): add and rename (remove: Super Admin only) the values of every dropdown
  * list of the entry form. Faculty and staff only pick from these lists. Also sets the managing person
  * of the Center and of each college, who gets the class issue alert with Ranjit sir.
  */
@@ -37,6 +37,8 @@ export default function DropdownValues() {
   const [editing, setEditing] = useState(null); // { index, text }
   const [q, setQ] = useState('');
   const [saving, setSaving] = useState(false);
+  const [renamed, setRenamed] = useState([]); // saved values that were renamed (Admin / HR may rename, not remove)
+  const canRemove = isSuperAdmin(user);
 
   const load = () => {
     setError('');
@@ -55,6 +57,7 @@ export default function DropdownValues() {
   const list = data?.lists.find((l) => l.kind === kind);
   useEffect(() => {
     setValues(list ? [...list.values] : []);
+    setRenamed([]);
     setEditing(null);
     setNewValue('');
     setQ('');
@@ -66,7 +69,7 @@ export default function DropdownValues() {
     return (
       <>
         <PageHeader title="Dropdown Values" />
-        <Card><p className="text-sm text-ink-600">Only the Manager and Admin can change dropdown values.</p></Card>
+        <Card><p className="text-sm text-ink-600">Only the Super Admin, Admin and HR can change dropdown values.</p></Card>
       </>
     );
   }
@@ -90,13 +93,16 @@ export default function DropdownValues() {
     const v = editing.text.trim();
     if (!v) return;
     if (exists(v, editing.index)) return toast.error(`"${v}" is already in the list.`);
+    const old = values[editing.index];
+    if (list.values.includes(old)) setRenamed((r) => [...r, old]);
     setValues((list) => list.map((x, i) => (i === editing.index ? v : x)).sort(byName));
     setEditing(null);
   };
   const save = async () => {
     setSaving(true);
     try {
-      const saved = await api.saveLookupList(kind, values);
+      const saved = await api.saveLookupList(kind, values, renamed);
+      setRenamed([]);
       setData((d) => ({ ...d, lists: d.lists.map((l) => (l.kind === kind ? { ...l, values: saved, updatedBy: user.name, updatedAt: new Date().toISOString() } : l)) }));
       reloadLookups?.();
       toast.success(`${list.label} saved. Entries already saved keep the value they had.`);
@@ -114,7 +120,7 @@ export default function DropdownValues() {
       <PageHeader
         title="Dropdown Values"
         description="Add, rename or remove the values of every dropdown in the entry form. Faculty and staff only pick from these lists."
-        breadcrumb={[{ label: 'Master', to: '/master' }, { label: 'Dropdown Values' }]}
+        breadcrumb={[{ label: 'Dropdown Values' }]}
       />
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-[300px_1fr]">
         <Card title="Lists" bodyClassName="p-2">
@@ -151,7 +157,7 @@ export default function DropdownValues() {
               description={list.updatedAt ? `Last changed ${formatDateTime(list.updatedAt)}${list.updatedBy ? ` by ${list.updatedBy}` : ''}` : `${values.length} values`}
               actions={
                 <>
-                  {changed && <Button size="sm" variant="secondary" icon={X} onClick={() => setValues([...list.values])}>Undo changes</Button>}
+                  {changed && <Button size="sm" variant="secondary" icon={X} onClick={() => { setValues([...list.values]); setRenamed([]); }}>Undo changes</Button>}
                   <Button size="sm" icon={Save} loading={saving} disabled={!changed} onClick={save}>Save</Button>
                 </>
               }
@@ -191,14 +197,14 @@ export default function DropdownValues() {
                         <>
                           <span className="flex-1 text-ink-900">{v}</span>
                           <Button size="sm" variant="ghost" icon={Pencil} onClick={() => setEditing({ index: i, text: v })} aria-label={`Rename ${v}`} title="Rename" />
-                          <Button size="sm" variant="ghost" icon={Trash2} onClick={() => setValues((list) => list.filter((_, j) => j !== i))} aria-label={`Remove ${v}`} title="Remove" />
+                          {canRemove && <Button size="sm" variant="ghost" icon={Trash2} onClick={() => setValues((list) => list.filter((_, j) => j !== i))} aria-label={`Remove ${v}`} title="Remove" />}
                         </>
                       )}
                     </li>
                   ))}
                 </ul>
               )}
-              <p className="mt-3 text-xs text-ink-500">Changes apply after Save. Renaming or removing a value does not change entries already saved with it.</p>
+              <p className="mt-3 text-xs text-ink-500">Changes apply after Save. Renaming or removing a value does not change entries already saved with it.{!canRemove && ' Only the Super Admin can remove values.'}</p>
             </Card>
           )}
 

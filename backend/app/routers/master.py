@@ -6,10 +6,10 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field, field_validator
 
 from .. import db
-from ..security import require_section, require_roles
+from ..security import manage_access, super_admin_only, is_super_admin, require_section, require_roles
 
 router = APIRouter(prefix="/master", tags=["master"])
-master_roles = require_section("master", "admin")  # Master or Admin menu ticked for the role
+master_roles = manage_access  # Master or Admin menu, or HR menu for HR / Admin roles; Super Admin always
 
 
 class CourseIn(BaseModel):
@@ -73,7 +73,7 @@ def update_course(course_id: str, body: CourseIn, _: dict = Depends(master_roles
 
 
 @router.delete("/courses/{course_id:path}")
-def delete_course(course_id: str, _: dict = Depends(master_roles)):
+def delete_course(course_id: str, _: dict = Depends(super_admin_only)):
     db.courses.delete_one({"id": course_id})
     db.chapters.delete_many({"courseId": course_id})
     return True
@@ -131,6 +131,6 @@ def update_chapter(course_id: str, no: int, body: ChapterIn, _: dict = Depends(m
 
 
 @router.delete("/chapters/{course_id:path}/{no}")
-def delete_chapter(course_id: str, no: int, _: dict = Depends(master_roles)):
+def delete_chapter(course_id: str, no: int, _: dict = Depends(super_admin_only)):
     db.chapters.delete_one({"courseId": course_id, "no": no})
     return True

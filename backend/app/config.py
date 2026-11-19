@@ -19,7 +19,7 @@ class Settings(BaseSettings):
     otp_expire_minutes: int = 10
     # Local time shown in emails, as minutes from UTC (330 = India, UTC+05:30).
     utc_offset_minutes: int = 330
-    # Who receives "Request new course" emails (comma separated). Empty = every active Manager and Admin with an email.
+    # Who receives "Request new course" emails (comma separated). Empty = every active Super Admin and Admin with an email.
     course_request_emails: str = "ranjit@vectratech.in,admin@vectratech.in"
     # WhatsApp (Pinbot) message sent with every course request; see app/whatsapp.py. Empty = no WhatsApp.
     wa_api_base: str = "https://partnersv1.pinbot.ai/v3"
@@ -28,12 +28,15 @@ class Settings(BaseSettings):
     wa_template_id: str = ""
     wa_template_name: str = ""
     wa_template_lang: str = "en"
-    wa_notify_numbers: str = ""  # Manager and Admin numbers with country code, comma separated
+    wa_notify_numbers: str = ""  # Super Admin and Admin numbers with country code, comma separated
     # Values for the template's {{1}}, {{2}} ... in order. Names: employee, code, employeeCode, course,
     # courseId, remarks, date, email. Must match the number of variables in the approved template.
     wa_template_params: str = "employee,code,course,courseId,remarks"
 
     # Missing daily entries: make an employee inactive after N working days with no entry (app/auto_inactive.py).
+    # HR › Certification Status: carry unfinished certifications to the next quarter and email the Deferred Report.
+    cert_followup_enabled: bool = True  # run once a day inside the API
+    cert_followup_time: str = "07:00"  # local time of the daily run
     auto_inactive_enabled: bool = True  # run once a day inside the API; false = use cron / Task Scheduler only
     auto_inactive_time: str = "06:00"  # local time (UTC_OFFSET_MINUTES) of the daily run
     auto_inactive_days: int = 3  # consecutive working days without any entry

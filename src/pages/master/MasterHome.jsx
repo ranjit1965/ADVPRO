@@ -11,7 +11,7 @@ export default function MasterHome() {
   const { user } = useAuth();
   return (
     <>
-      <PageHeader title="Master" description="Master data maintained by the Admin and Manager. Each item is stored in its own collection." />
+      <PageHeader title="Master" description="Master data maintained by the Admin and Super Admin. Each item is stored in its own collection." />
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
         {MASTER_MENU.filter((m) => canAccess(user, m.roles)).map((m) => (
           <Link key={m.key} to={m.to} className="group">

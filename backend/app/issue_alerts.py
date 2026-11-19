@@ -1,8 +1,8 @@
 """Issue alert: when a faculty saves any entry with "Issue faced? Yes", tell Ranjit and the managing person.
 
-* Email to COURSE_REQUEST_EMAILS (Ranjit / Admin; or every active Manager and Admin when it is empty)
+* Email to COURSE_REQUEST_EMAILS (Ranjit / Admin; or every active Super Admin and Admin when it is empty)
   and to the managing person of that place: the college of a College / OD class, the college picked in
-  the entry (seminar, marketing ...), or "Center". Their email and phone are set by Manager / Admin in Master › Dropdown Values › Issue contacts.
+  the entry (seminar, marketing ...), or "Center". Their email and phone are set by Super Admin / Admin in Master › Dropdown Values › Issue contacts.
 * WhatsApp to WA_NOTIFY_NUMBERS and the managing person's phone, with the same template as course
   requests ("course" carries the issue, "remarks" the details).
 * Sent once per entry: when the entry is created with an issue, or when an issue is added to it later.
