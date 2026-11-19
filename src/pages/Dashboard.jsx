@@ -21,8 +21,9 @@ import { ACTIVITY_LABEL } from '../utils/constants';
 import { formatDate, formatDuration, formatTime } from '../utils/format';
 import { entrySummary } from '../utils/entry';
 
-/** "12 · 18h 30m": number of entries and their hours. */
-const countHours = (t) => `${t?.count ?? 0} · ${formatDuration(t?.minutes || 0)}`;
+/** Total hours only, e.g. "18h 30m". */
+const hrs = (t) => formatDuration(t?.minutes || 0);
+const days = (n) => `${n ?? 0} day${n === 1 ? '' : 's'}`;
 
 const QUICK_ACTIONS = [
   { label: 'New daily entry', icon: FilePlus2, to: '/faculty/daily-activity/entry' },
@@ -110,8 +111,7 @@ export default function Dashboard() {
         <div className="mb-5 flex flex-wrap items-center gap-3 rounded-xl border border-warning-600/25 bg-warning-50 px-4 py-3 text-[13px] text-warning-700" role="status">
           <AlertTriangle className="size-5 shrink-0" aria-hidden />
           <p className="flex-1">
-            <b>{data.missingDays.length} working day(s)</b> this month have no activity entry{other ? ` from ${other.name}` : ''}: {data.missingDays.slice(0, 5).map(formatDate).join(', ')}
-            {data.missingDays.length > 5 && '…'}
+            {other ? `${other.name} needs to enter the daily entries of the remaining working days this month.` : 'You need to enter your daily entries for the remaining working days this month.'}
           </p>
           {!other && <Link to={`/faculty/daily-activity/entry?date=${data.missingDays[0]}`} className="font-semibold underline-offset-2 hover:underline">
             Add entry
@@ -121,10 +121,10 @@ export default function Dashboard() {
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {/* This month in large type; all time underneath. */}
-        <StatCard label="Days with entries" value={data?.month?.days ?? 0} sub={`This month · ${data?.allTime?.days ?? 0} days all time`} icon={CalendarCheck} tone="success" loading={loading} onClick={other ? undefined : () => navigate('/faculty/daily-activity/history')} />
-        <StatCard label="Total class taken" value={countHours(data?.month?.class)} sub={`This month · all time ${countHours(data?.allTime?.class)}`} icon={GraduationCap} loading={loading} />
-        <StatCard label="Total course preparation" value={countHours(data?.month?.learning)} sub={`This month · all time ${countHours(data?.allTime?.learning)}`} icon={BookOpen} tone="info" loading={loading} />
-        <StatCard label="Total Others time" value={formatDuration(data?.month?.others?.minutes || 0)} sub={`This month · all time ${formatDuration(data?.allTime?.others?.minutes || 0)}`} icon={Coffee} tone="warning" loading={loading} />
+        <StatCard label="Days with entries" value={days(data?.month?.days)} sub={`This month · all time ${days(data?.allTime?.days)}`} icon={CalendarCheck} tone="success" loading={loading} onClick={other ? undefined : () => navigate('/faculty/daily-activity/history')} />
+        <StatCard label="Total class taken" value={hrs(data?.month?.class)} sub={`This month · all time ${hrs(data?.allTime?.class)}`} icon={GraduationCap} loading={loading} />
+        <StatCard label="Total course preparation" value={hrs(data?.month?.learning)} sub={`This month · all time ${hrs(data?.allTime?.learning)}`} icon={BookOpen} tone="info" loading={loading} />
+        <StatCard label="Total Others time" value={hrs(data?.month?.others)} sub={`This month · all time ${hrs(data?.allTime?.others)}`} icon={Coffee} tone="warning" loading={loading} />
       </div>
 
       <div className="mt-5 grid grid-cols-1 gap-5 xl:grid-cols-3">

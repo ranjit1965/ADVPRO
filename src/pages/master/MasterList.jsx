@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Navigate, useParams } from 'react-router-dom';
-import { Download, Pencil, Plus, Trash2, X } from 'lucide-react';
+import { Download, Hash, Pencil, Plus, Trash2, X } from 'lucide-react';
 import * as api from '../../services/api';
 import PageHeader from '../../components/ui/PageHeader';
 import Card from '../../components/ui/Card';
@@ -21,7 +21,7 @@ import { useConfirm } from '../../context/ConfirmContext';
 import { useAsync } from '../../hooks/useAsync';
 import { masterByKey } from '../../config/masterMenu';
 import { lookupLabel, lookupOptions } from '../../components/master/lookupOptions';
-import { formatDate, formatTime } from '../../utils/format';
+import { formatDate, formatDateTime, formatTime } from '../../utils/format';
 import { downloadCsv } from '../../utils/export';
 
 const display = (f, v, lookups) => {
@@ -73,6 +73,10 @@ export default function MasterList() {
   const [saving, setSaving] = useState(false);
   const [picked, setPicked] = useState(() => new Set()); // ids of the ticked rows
   const [deleting, setDeleting] = useState(false);
+  // Batch page: Batch No requests sent by faculty from the Class entry, turned into batches here.
+  const isBatch = key === 'batches';
+  const requests = useAsync(() => (isBatch ? api.getBatchRequests().catch(() => []) : Promise.resolve([])), [key]);
+  const [fromRequest, setFromRequest] = useState(null);
 
   useEffect(() => setPicked(new Set()), [key]);
 
@@ -90,6 +94,7 @@ export default function MasterList() {
 
   const openNew = () => {
     setErrors({});
+    setFromRequest(null);
     setForm(Object.fromEntries(def.fields.map((f) => [f.key, f.default ?? ''])));
   };
   const validate = () => {
@@ -116,6 +121,11 @@ export default function MasterList() {
       });
       await api.saveMasterRecord(key, rec);
       toast.success(form.id ? `${def.label} updated.` : `${def.label} added.`);
+      if (fromRequest) {
+        await api.setBatchRequestStatus(fromRequest, 'Done').catch(() => {});
+        setFromRequest(null);
+        requests.reload();
+      }
       setForm(null);
       reload();
       reloadLookups();
@@ -136,6 +146,37 @@ export default function MasterList() {
     } catch (e) {
       toast.error(e.message);
     }
+  };
+  // "Create batch" on a request: the Add Batch form filled with the course, start date, time and faculty asked for.
+  const createFromRequest = (r) => {
+    setErrors({});
+    setFromRequest(r.id);
+    setForm({
+      ...Object.fromEntries(def.fields.map((f) => [f.key, f.default ?? ''])),
+      courseId: r.courseId || '',
+      startDate: r.startDate || '',
+      timing: r.batchTime || '',
+      facultyCode: r.requestedByCode || '',
+      otherFaculty: '',
+    });
+  };
+  const dismissRequest = async (r) => {
+    if (!(await confirm({ title: 'Dismiss request', message: `Dismiss the Batch No request of ${r.requestedByName} for ${r.courseId}?`, confirmLabel: 'Dismiss' }))) return;
+    try {
+      await api.setBatchRequestStatus(r.id, 'Dismissed');
+      requests.reload();
+    } catch (e) {
+      toast.error(e.message);
+    }
+  };
+  const closeForm = () => {
+    setForm(null);
+    setFromRequest(null);
+  };
+  const editRow = (r) => {
+    setErrors({});
+    setFromRequest(null);
+    setForm({ ...Object.fromEntries(def.fields.map((f) => [f.key, ''])), ...r });
   };
   const toggle = (ids, on) =>
     setPicked((prev) => {
@@ -192,18 +233,17 @@ export default function MasterList() {
       className: 'w-10',
       render: (r) => <input type="checkbox" className={box} aria-label={`Select ${r[def.titleField] || r.id}`} checked={picked.has(r.id)} onChange={(e) => toggle([r.id], e.target.checked)} />,
     },
-    ...def.fields.filter((f) => !f.hideInTable).map((f) => ({ key: f.key, header: f.label, align: f.type === 'number' ? 'right' : undefined, render: (r) => <span className={f.key === def.titleField ? 'font-medium text-ink-900' : ''}>{display(f, r[f.key], lookups)}</span> })),
     {
       key: 'actions',
-      header: '',
-      align: 'right',
+      header: <span className="sr-only">Edit or delete</span>,
       render: (r) => (
-        <div className="flex justify-end gap-1">
-          <Button size="sm" variant="ghost" icon={Pencil} aria-label="Edit" onClick={() => { setErrors({}); setForm({ ...Object.fromEntries(def.fields.map((f) => [f.key, ''])), ...r }); }} />
-          <Button size="sm" variant="ghost" icon={Trash2} aria-label="Delete" onClick={() => remove(r)} />
+        <div className="flex gap-1 whitespace-nowrap">
+          <Button size="sm" variant="ghost" icon={Pencil} aria-label={`Edit ${r[def.titleField] || r.id}`} title="Edit" onClick={() => editRow(r)}>Edit</Button>
+          <Button size="sm" variant="ghost" className="hover:!bg-danger-50 hover:!text-danger-600" icon={Trash2} aria-label={`Delete ${r[def.titleField] || r.id}`} title="Delete" onClick={() => remove(r)}>Delete</Button>
         </div>
       ),
     },
+    ...def.fields.filter((f) => !f.hideInTable).map((f) => ({ key: f.key, header: f.label, align: f.type === 'number' ? 'right' : undefined, render: (r) => <span className={f.key === def.titleField ? 'font-medium text-ink-900' : ''}>{display(f, r[f.key], lookups)}</span> })),
   ];
 
   return (
@@ -219,6 +259,29 @@ export default function MasterList() {
           </>
         }
       />
+      {isBatch && requests.data?.length > 0 && (
+        <Card className="mb-5" title={`Batch No requests (${requests.data.length})`} description="Sent by faculty with Request Batch No in the Class entry. Create batch opens Add Batch filled in from the request; saving it marks the request Done.">
+          <ul className="divide-y divide-ink-100">
+            {requests.data.map((r) => (
+              <li key={r.id} className="flex flex-wrap items-center gap-3 py-2.5">
+                <Hash className="size-4 shrink-0 text-brand-600" aria-hidden />
+                <div className="min-w-[220px] flex-1">
+                  <p className="text-[13px] font-medium text-ink-900">
+                    {r.courseId}{r.courseName ? ` – ${r.courseName}` : ''}
+                    {[r.startDate && `start ${formatDate(r.startDate)}`, r.batchTime, r.students != null && `${r.students} students`].filter(Boolean).map((t) => <span key={t} className="text-xs text-ink-500"> · {t}</span>)}
+                  </p>
+                  <p className="text-xs text-ink-500">
+                    {r.requestedByName} ({r.requestedByCode}) · {formatDateTime(r.createdAt)}
+                    {r.notes ? ` · ${r.notes}` : ''}
+                  </p>
+                </div>
+                <Button size="sm" icon={Plus} onClick={() => createFromRequest(r)}>Create batch</Button>
+                <Button size="sm" variant="secondary" onClick={() => dismissRequest(r)}>Dismiss</Button>
+              </li>
+            ))}
+          </ul>
+        </Card>
+      )}
       <Card bodyClassName="p-0">
         <div className="flex flex-wrap items-end gap-3 border-b border-ink-100 p-4">
           <Input label="Search" className="w-full max-w-xs" placeholder={`Search ${def.label.toLowerCase()}…`} value={q} onChange={(e) => { setQ(e.target.value); setPage(1); }} />
@@ -254,8 +317,8 @@ export default function MasterList() {
         )}
       </Card>
 
-      <Modal open={!!form} onClose={() => setForm(null)} size="lg" title={form?.id ? `Edit ${def.label}` : `Add ${def.label}`}
-        footer={<><Button variant="secondary" onClick={() => setForm(null)}>Cancel</Button><Button loading={saving} onClick={save}>Save</Button></>}>
+      <Modal open={!!form} onClose={closeForm} size="lg" title={form?.id ? `Edit ${def.label}` : fromRequest ? `Add ${def.label} from request` : `Add ${def.label}`}
+        footer={<><Button variant="secondary" onClick={closeForm}>Cancel</Button><Button loading={saving} onClick={save}>Save</Button></>}>
         {form && (
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             {def.fields.map((f) => (

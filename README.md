@@ -376,8 +376,14 @@ missed), the Dashboard and this page remind Admin / Manager until each file is u
   Out Time / Check Out / Last Punch, Date, Day + Month column, Date Time). Day-wise sheets (days 1 to 31
   across, times like "09:02 18:30" in each cell, or In / Out rows per employee, or "Emp. Code: 101 /
   Emp. Name: Ravi" blocks) are read too; the month comes from a Month column or the title row.
-* **Dashboard:** the cards are now Days with entries, Total class taken (count and hours), Total course
-  preparation (count and hours) and Total Others time, for this month with the all-time figure below.
+* **Dashboard:** the cards are now Days with entries, Total class taken, Total course preparation and Total
+  Others time, showing only days or total hours for this month, with the all-time figure below. The warning
+  above them only says that daily entries of the remaining working days are pending (no dates listed).
+* **Master › Batch:** Edit and Delete buttons now sit right after the tick box on every row (they were at
+  the far right, hidden behind the scroll bar), for added and Excel-imported batches alike. Batch No requests
+  from faculty are listed at the top; **Create batch** opens Add Batch filled in from the request (course,
+  start date, time, faculty) and saving it marks the request Done. Note: uploading the BatchMaster file again
+  overwrites the imported fields of batches with the same Batch No.
 * New API: `GET /api/lookups/lists`, `PUT /api/lookups/lists/{kind}`, `PUT /api/lookups/contacts`
   (Master or Admin). `POST /api/lookups/{kind}` and `POST /api/lookups/courses` now need Master or Admin.
 
