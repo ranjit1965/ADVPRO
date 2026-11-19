@@ -12,6 +12,16 @@ export const sortOptions = (options = []) => options.map(toOption).sort((a, b) =
  * First-letter search: only values whose label (or one of its `alt` texts, e.g. a course name)
  * starts with what was typed. Typing "s" lists only names starting with S.
  */
+/** Options whose label (or alt text) contains the typed text anywhere, words in any order ("win pro" finds "Windows Professional"). */
+export const containsFilter = (options, query) => {
+  const words = query.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  if (!words.length) return options;
+  return options.filter((o) => {
+    const text = [o.label, ...(o.alt || [])].join(' ').toLowerCase();
+    return words.every((w) => text.includes(w));
+  });
+};
+
 export const startsWithFilter = (options, query) => {
   const q = query.trim().toLowerCase();
   if (!q) return options;

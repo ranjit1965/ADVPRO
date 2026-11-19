@@ -2,14 +2,14 @@ import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { ChevronDown, Check, Search } from 'lucide-react';
 import FormField from './FormField';
 import { cn } from '../../utils/cn';
-import { sortOptions, startsWithFilter } from '../../utils/options';
+import { sortOptions, containsFilter, startsWithFilter } from '../../utils/options';
 
 /**
  * Type-to-filter dropdown (combobox). Used for Faculty Name and other long lists.
  * options: [{ value, label, alt? }] shown A to Z (sort={false} keeps the given order).
  * Typing filters to the values that START with the typed letters ("s" lists S names only).
  */
-export default function SearchableSelect({ label, required, error, hint, options: rawOptions, value, onChange, placeholder = 'Select', className, aside, onKeyDown: extraKeyDown, id, sort = true, disabled, 'aria-label': ariaLabel }) {
+export default function SearchableSelect({ label, required, error, hint, options: rawOptions, value, onChange, placeholder = 'Select', className, aside, onKeyDown: extraKeyDown, id, sort = true, disabled, match = 'startsWith', 'aria-label': ariaLabel }) {
   const autoId = useId();
   const fieldId = id || autoId;
   const listId = `${fieldId}-list`;
@@ -21,7 +21,7 @@ export default function SearchableSelect({ label, required, error, hint, options
 
   const options = useMemo(() => (sort ? sortOptions(rawOptions) : rawOptions), [rawOptions, sort]);
   const selected = options.find((o) => o.value === value);
-  const filtered = useMemo(() => startsWithFilter(options, query), [options, query]);
+  const filtered = useMemo(() => (match === 'contains' ? containsFilter : startsWithFilter)(options, query), [options, query, match]);
 
   useEffect(() => {
     const close = (e) => !wrapRef.current?.contains(e.target) && setOpen(false);

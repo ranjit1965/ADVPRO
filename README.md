@@ -390,6 +390,10 @@ missed), the Dashboard and this page remind Admin / Manager until each file is u
   (New course / N new chapters / Already added) with **Add** and **Skip** buttons and **Add all**; nothing is
   saved until Add. Existing courses keep their name; only missing chapter numbers are added.
   API: `POST /api/course-import/preview?name=` (raw file) and `POST /api/course-import/add` (Master or Admin).
+* **Master › Course:** the course list is now a searchable dropdown (type any part of the Course ID or name,
+  words in any order). **Add chapter** asks **How many chapters?** and shows that many rows (Chapter No,
+  numbered after the last chapter, and Chapter Name; a blank name saves as "Chapter N"), all saved at once
+  (`POST /api/master/chapters/bulk`). Edit / Delete of one chapter stay on each row.
 * New API: `GET /api/lookups/lists`, `PUT /api/lookups/lists/{kind}`, `PUT /api/lookups/contacts`
   (Master or Admin). `POST /api/lookups/{kind}` and `POST /api/lookups/courses` now need Master or Admin.
 

@@ -93,6 +93,33 @@ def add_chapter(body: ChapterIn, _: dict = Depends(master_roles)):
     return True
 
 
+class ChapterRow(BaseModel):
+    no: int = Field(ge=1, le=999)
+    name: str = Field(min_length=1, max_length=300)
+
+
+class ChaptersIn(BaseModel):
+    """Add chapter → "How many chapters?": several chapters of one course saved at once."""
+    courseId: str
+    chapters: list[ChapterRow] = Field(min_length=1, max_length=500)
+
+
+@router.post("/chapters/bulk", status_code=201)
+def add_chapters(body: ChaptersIn, _: dict = Depends(master_roles)):
+    _check_course(body.courseId)
+    have = {c["no"] for c in db.chapters.find({"courseId": body.courseId}, {"no": 1})}
+    seen, new, skipped = set(), [], []
+    for ch in body.chapters:
+        if ch.no in have or ch.no in seen:
+            skipped.append(ch.no)
+            continue
+        seen.add(ch.no)
+        new.append({"courseId": body.courseId, "no": ch.no, "name": ch.name.strip() or f"Chapter {ch.no}"})
+    if new:
+        db.chapters.insert_many(new)
+    return {"added": len(new), "skipped": skipped}
+
+
 @router.put("/chapters/{course_id:path}/{no}")
 def update_chapter(course_id: str, no: int, body: ChapterIn, _: dict = Depends(master_roles)):
     if body.no != no and db.chapters.find_one({"courseId": course_id, "no": body.no}):

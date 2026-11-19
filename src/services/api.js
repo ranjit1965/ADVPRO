@@ -209,6 +209,11 @@ export async function saveChapter(chapter, originalNo) {
     : request(`/master/chapters/${encodeURIComponent(chapter.courseId)}/${originalNo}`, { method: 'PUT', body: chapter });
 }
 
+/** Several chapters at once (Add chapter → How many chapters?). Returns { added, skipped: [numbers already used] }. */
+export async function addChapters(courseId, chapters) {
+  return request('/master/chapters/bulk', { method: 'POST', body: { courseId, chapters } });
+}
+
 export async function deleteChapter(courseId, no) {
   return request(`/master/chapters/${encodeURIComponent(courseId)}/${no}`, { method: 'DELETE' });
 }

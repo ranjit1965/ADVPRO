@@ -6,6 +6,7 @@ import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
 import Modal from '../components/ui/Modal';
+import SearchableSelect from '../components/ui/SearchableSelect';
 import DataTable from '../components/ui/DataTable';
 import EmptyState from '../components/ui/EmptyState';
 import { PageLoader } from '../components/ui/Loading';
@@ -14,13 +15,11 @@ import { useLookups } from '../context/LookupsContext';
 import { useToast } from '../context/ToastContext';
 import { useConfirm } from '../context/ConfirmContext';
 import { canManage } from '../utils/permissions';
-import { cn } from '../utils/cn';
 import { useAsync } from '../hooks/useAsync';
 import { formatDateTime } from '../utils/format';
 import CourseImport from '../components/master/CourseImport';
 import CourseFormFields, { EMPTY_COURSE, courseBody, courseToForm, validateCourse } from '../components/master/CourseFormFields';
 
-const EMPTY_CHAPTER = { no: '', name: '' };
 
 /** Master › Courses & Chapters: the course list and the chapter / session details the Class tab fills in. */
 export default function Master() {
@@ -30,7 +29,8 @@ export default function Master() {
   const confirm = useConfirm();
   const [selected, setSelected] = useState('');
   const [courseForm, setCourseForm] = useState(null); // { id, name, isNew }
-  const [chapterForm, setChapterForm] = useState(null); // { ...chapter, originalNo }
+  const [chapterForm, setChapterForm] = useState(null); // { ...chapter, originalNo } for editing one chapter
+  const [bulk, setBulk] = useState(null); // Add chapter: { count, rows: [{ no, name }] }
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
 
@@ -91,6 +91,40 @@ export default function Master() {
     if (Object.keys(errs).length) return;
     const ch = { courseId, no: Number(chapterForm.no), name: chapterForm.name.trim() };
     if (await run(() => api.saveChapter(ch, chapterForm.originalNo), chapterForm.originalNo == null ? 'Chapter added.' : 'Chapter updated.')) setChapterForm(null);
+  };
+
+  // Add chapter: ask how many, then one row (No + Name) per chapter, numbered after the last chapter.
+  const MAX_BULK = 200;
+  const openBulk = () => {
+    setErrors({});
+    setBulk({ count: '1', rows: [{ no: String(nextNo), name: '' }] });
+  };
+  const setCount = (value) => {
+    const count = value.replace(/\D/g, '').slice(0, 3);
+    const n = Math.min(Number(count) || 0, MAX_BULK);
+    setBulk((b) => {
+      const rows = Array.from({ length: n }, (_, i) => b.rows[i] || { no: String(Number(b.rows[0]?.no || nextNo) + i), name: '' });
+      return { count, rows };
+    });
+    setErrors({});
+  };
+  const setRow = (i, patch) => setBulk((b) => ({ ...b, rows: b.rows.map((r, j) => (j === i ? { ...r, ...patch } : r)) }));
+  const saveBulk = async () => {
+    const errs = {};
+    const used = new Set(chapters.map((c) => c.no));
+    const seen = new Set();
+    bulk.rows.forEach((r, i) => {
+      const n = Number(r.no);
+      if (!/^\d{1,3}$/.test(r.no) || n < 1) errs[i] = 'Enter a chapter number';
+      else if (used.has(n)) errs[i] = `Chapter ${n} already exists`;
+      else if (seen.has(n)) errs[i] = `Chapter ${n} is listed twice`;
+      seen.add(n);
+    });
+    if (!bulk.rows.length) errs.count = 'Enter how many chapters (1 to 200)';
+    setErrors(errs);
+    if (Object.keys(errs).length) return;
+    const list = bulk.rows.map((r) => ({ no: Number(r.no), name: r.name.trim() || `Chapter ${Number(r.no)}` }));
+    if (await run(() => api.addChapters(courseId, list), `${list.length} chapter${list.length === 1 ? '' : 's'} added.`)) setBulk(null);
   };
 
   const removeChapter = async (c) => {
@@ -195,24 +229,19 @@ export default function Master() {
           </ul>
         </Card>
       )}
-      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[300px_1fr]">
-        <Card title="Courses" actions={<Button size="sm" icon={Plus} onClick={() => { setErrors({}); setCourseForm({ ...EMPTY_COURSE, isNew: true }); }}>Add course</Button>} bodyClassName="p-2">
-          {courses.length === 0 ? (
-            <EmptyState icon={BookOpen} title="No courses yet" message="Add the first course." />
-          ) : (
-            <ul className="space-y-1">
-              {courses.map((c) => (
-                <li key={c.id}>
-                  <button type="button" onClick={() => setSelected(c.id)} className={cn('w-full rounded-lg px-3 py-2 text-left text-[13px] hover:bg-ink-50', c.id === courseId && 'bg-brand-50 text-brand-800 hover:bg-brand-50')}>
-                    <span className="font-semibold">{c.id}</span>
-                    <span className="block truncate text-xs text-ink-500">{c.name}</span>
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
-        </Card>
-
+      <Card className="mb-5" bodyClassName="flex flex-wrap items-end gap-3">
+        <SearchableSelect
+          label={`Course (${courses.length})`}
+          className="min-w-[260px] flex-1"
+          match="contains"
+          placeholder={courses.length ? 'Search by Course ID or name' : 'No courses yet'}
+          options={courses.map((c) => ({ value: c.id, label: `${c.id} – ${c.name}`, alt: [c.name] }))}
+          value={courseId}
+          onChange={(v) => setSelected(v?.target ? v.target.value : v)}
+        />
+        <Button icon={Plus} onClick={() => { setErrors({}); setCourseForm({ ...EMPTY_COURSE, isNew: true }); }}>Add course</Button>
+      </Card>
+      <div>
         <Card
           title={current ? `${current.id} – ${current.name}` : 'Chapters'}
           description={current ? `${chapters.length} chapter${chapters.length === 1 ? '' : 's'} / sessions` : undefined}
@@ -221,7 +250,7 @@ export default function Master() {
               <div className="flex flex-wrap gap-2">
                 <Button size="sm" variant="secondary" icon={Pencil} onClick={() => { setErrors({}); setCourseForm({ ...courseToForm(current), isNew: false }); }}>Edit course</Button>
                 <Button size="sm" variant="secondary" icon={Trash2} onClick={() => removeCourse(current)}>Delete course</Button>
-                <Button size="sm" icon={Plus} onClick={() => { setErrors({}); setChapterForm({ ...EMPTY_CHAPTER, no: String(nextNo), originalNo: null }); }}>Add chapter</Button>
+                <Button size="sm" icon={Plus} onClick={openBulk}>Add chapter</Button>
               </div>
             )
           }
@@ -234,6 +263,25 @@ export default function Master() {
         footer={<><Button variant="secondary" onClick={() => setCourseForm(null)}>Cancel</Button><Button loading={saving} onClick={saveCourse}>Save</Button></>}>
         {courseForm && (
           <CourseFormFields form={courseForm} errors={errors} idReadOnly={!courseForm.isNew} onChange={(f) => { setCourseForm(f); setErrors({}); }} />
+        )}
+      </Modal>
+
+      <Modal open={!!bulk} onClose={() => setBulk(null)} size="lg" title={`Add chapters to ${courseId}`}
+        footer={<><Button variant="secondary" onClick={() => setBulk(null)}>Cancel</Button><Button loading={saving} disabled={!bulk?.rows.length} onClick={saveBulk}>Save {bulk?.rows.length || ''} chapter{bulk?.rows.length === 1 ? '' : 's'}</Button></>}>
+        {bulk && (
+          <div className="space-y-4">
+            <Input label="How many chapters?" required className="max-w-[220px]" inputMode="numeric" value={bulk.count} error={errors.count} hint={`Numbered from ${bulk.rows[0]?.no || nextNo}; up to ${MAX_BULK} at once`} onChange={(e) => setCount(e.target.value)} />
+            {bulk.rows.length > 0 && (
+              <div className="max-h-[50vh] space-y-2 overflow-y-auto pr-1">
+                {bulk.rows.map((r, i) => (
+                  <div key={i} className="grid grid-cols-[90px_1fr] items-start gap-3">
+                    <Input aria-label={`Chapter No ${i + 1}`} inputMode="numeric" maxLength={3} value={r.no} error={errors[i]} onChange={(e) => setRow(i, { no: e.target.value.replace(/\D/g, '') })} />
+                    <Input aria-label={`Chapter Name ${i + 1}`} maxLength={300} value={r.name} placeholder={`Chapter ${r.no || i + 1} name (blank saves "Chapter ${r.no || i + 1}")`} onChange={(e) => setRow(i, { name: e.target.value })} />
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         )}
       </Modal>
 
