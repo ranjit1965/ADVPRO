@@ -143,7 +143,7 @@ export default function Dashboard() {
 
       <div className="mt-5 grid grid-cols-1 gap-5 xl:grid-cols-3">
         <Card title="Activity mix this month" description="Hours by activity type" className="xl:col-span-2">
-          {loading ? (
+          {loading || !data ? (
             <Skeleton className="h-60 w-full" />
           ) : data.byType.length === 0 ? (
             <EmptyState title="No activity this month" />

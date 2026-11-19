@@ -362,7 +362,11 @@ missed), the Dashboard and this page remind Admin / Manager until each file is u
   Delivery ready, per row (filters: Not completed, Current quarter, Carried forward, All completed, All).
 - **Carry over:** when a row's ending month is over, its unfinished target certifications move to the next quarter
   (H1 → H2 ... H6 → H1, same number of months, from the next month) marked *Carried forward*. If HR already
-  assigned that next quarter, they are added to it. Each row is carried once.
+  assigned that next quarter (same start month, or the same quarter label still running), they are added to that
+  row; a course already in it is only marked *Carried forward* (no duplicate). Each row is carried once.
+- **Dashboard certification boxes:** a target certification not finished is red; a delivery ready course not
+  ready yet is amber; finished ones are green.
+- **Class tab › Class mode:** Online, Offline or **Both**.
 - **Deferred Report email:** once per row after the quarter ends, each employee with unfinished certifications gets
   an email at their email in Employees. The Super Admin sets the **HR mail id** in Certification Status; it is the
   Reply-To and gets a copy (CC). The sender address is still `SMTP_FROM` (most SMTP servers do not allow another From).
