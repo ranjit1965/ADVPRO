@@ -384,6 +384,12 @@ missed), the Dashboard and this page remind Admin / Manager until each file is u
   from faculty are listed at the top; **Create batch** opens Add Batch filled in from the request (course,
   start date, time, faculty) and saving it marks the request Done. Note: uploading the BatchMaster file again
   overwrites the imported fields of batches with the same Batch No.
+* **Master › Course › Import from Excel:** choose an .xlsx / .xls / .csv file with Course ID (or Course Code)
+  and Course Name columns, and optionally Chapter No / Session No and Chapter Name / Topic (one row per
+  chapter; blank course cells under a course row belong to it). **Read file** lists every course found
+  (New course / N new chapters / Already added) with **Add** and **Skip** buttons and **Add all**; nothing is
+  saved until Add. Existing courses keep their name; only missing chapter numbers are added.
+  API: `POST /api/course-import/preview?name=` (raw file) and `POST /api/course-import/add` (Master or Admin).
 * New API: `GET /api/lookups/lists`, `PUT /api/lookups/lists/{kind}`, `PUT /api/lookups/contacts`
   (Master or Admin). `POST /api/lookups/{kind}` and `POST /api/lookups/courses` now need Master or Admin.
 

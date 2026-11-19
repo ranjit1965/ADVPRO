@@ -334,6 +334,16 @@ export async function getBatchImportSettings() {
 }
 
 /** Saves the BatchMaster file chosen in the browser (.xlsx, .xls or .csv): read and stored in the database. */
+/** Course import (Master › Course): read the Excel / CSV file and list its courses; nothing is saved. */
+export async function previewCourseImport(file) {
+  return request('/course-import/preview', { method: 'POST', body: file, params: { name: file.name } });
+}
+
+/** Add the courses picked from the import (new courses and their missing chapters). */
+export async function addImportedCourses(courses) {
+  return request('/course-import/add', { method: 'POST', body: { courses } });
+}
+
 export async function uploadBatches(file) {
   return request('/batch-import/upload', { method: 'POST', body: file, params: { name: file.name } });
 }

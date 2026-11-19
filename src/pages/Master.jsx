@@ -17,6 +17,7 @@ import { canManage } from '../utils/permissions';
 import { cn } from '../utils/cn';
 import { useAsync } from '../hooks/useAsync';
 import { formatDateTime } from '../utils/format';
+import CourseImport from '../components/master/CourseImport';
 import CourseFormFields, { EMPTY_COURSE, courseBody, courseToForm, validateCourse } from '../components/master/CourseFormFields';
 
 const EMPTY_CHAPTER = { no: '', name: '' };
@@ -140,6 +141,11 @@ export default function Master() {
   return (
     <>
       <PageHeader title="Courses & Chapters" description="Courses (Course ID, Course Name) and their chapters (Chapter No, Chapter Name). The Class entry fills these in automatically." breadcrumb={[{ label: 'Master', to: '/master' }, { label: 'Course' }]} />
+      {canManage(user) && (
+        <div className="mb-5">
+          <CourseImport onAdded={() => { reload(); requests.reload(); }} />
+        </div>
+      )}
       {requests.data?.length > 0 && (
         <Card className="mb-5" title={`Course requests (${requests.data.length})`} description="Sent by faculty and employees from the Class entry. Add the course, or dismiss the request.">
           <ul className="divide-y divide-ink-100">
@@ -167,7 +173,7 @@ export default function Master() {
         </Card>
       )}
       {batchRequests.data?.length > 0 && (
-        <Card className="mb-5" title={`Batch No requests (${batchRequests.data.length})`} description="Sent by faculty from the Class entry. Create the batch in Master › Batch or Batch Import, then mark the request Done.">
+        <Card className="mb-5" title={`Batch No requests (${batchRequests.data.length})`} description="Sent by faculty from the Class entry. They are also listed in Master › Batch, where Create batch fills in Add Batch from the request and marks it Done.">
           <ul className="divide-y divide-ink-100">
             {batchRequests.data.map((r) => (
               <li key={r.id} className="flex flex-wrap items-center gap-3 py-2.5">
