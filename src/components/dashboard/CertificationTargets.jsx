@@ -7,17 +7,17 @@ import { formatDate } from '../../utils/format';
 import { isCurrent, periodDates } from '../../utils/halfyearly';
 import { cn } from '../../utils/cn';
 
-/** One certification or course as its own box: green when finished, amber while not finished. */
-function Item({ kind, name, courseId, done, doneText, pendingText, extra, carried }) {
+/** One certification or course as its own box: green when finished; a target certification not finished is red, a course not ready amber. */
+function Item({ kind, name, courseId, done, doneText, pendingText, extra, carried, red = false }) {
   return (
-    <li className={cn('flex flex-col rounded-xl border p-4', done ? 'border-success-600/30 bg-success-50' : 'border-warning-600/30 bg-warning-50')}>
+    <li className={cn('flex flex-col rounded-xl border p-4', done ? 'border-success-600/30 bg-success-50' : red ? 'border-danger-600/30 bg-danger-50' : 'border-warning-600/30 bg-warning-50')}>
       <p className="mb-1 flex flex-wrap items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-ink-500">
         {kind}
         {carried && <span className="rounded-full bg-accent-50 px-1.5 py-0.5 text-[10px] text-accent-600 normal-case tracking-normal">Carried forward{carried !== true ? ` from ${carried}` : ''}</span>}
       </p>
       <p className="font-medium text-ink-900">{name}</p>
       {courseId && <p className="text-xs text-ink-500">Course {courseId}</p>}
-      <p className={cn('mt-2 inline-flex items-center gap-1 text-[12px] font-semibold', done ? 'text-success-700' : 'text-warning-700')}>
+      <p className={cn('mt-2 inline-flex items-center gap-1 text-[12px] font-semibold', done ? 'text-success-700' : red ? 'text-danger-700' : 'text-warning-700')}>
         {done ? <CheckCircle2 className="size-4" aria-hidden /> : <Clock3 className="size-4" aria-hidden />}
         {done ? doneText : pendingText}
       </p>
@@ -70,6 +70,7 @@ export default function CertificationTargets({ employeeCode, canUpdate }) {
             done={t.achieved === 'Yes'}
             doneText={`Achieved${t.completionDate ? ` ${formatDate(t.completionDate)}` : ''}`}
             pendingText="Not finished"
+            red
             extra={t.certificationCode && `Code: ${t.certificationCode}`}
             carried={t.carriedForward && (t.carriedFromQuarter || true)}
           />

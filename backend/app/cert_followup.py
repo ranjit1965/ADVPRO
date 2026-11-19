@@ -87,11 +87,20 @@ def carry_over(today: date | None = None, by: str = "System") -> list[str]:
         end = add_months(start, span)
         carried = [{"name": t["name"], "courseId": t.get("courseId", ""), "achieved": None, "completionDate": None, "certificationCode": None,
                     "carriedForward": True, "carriedFrom": row["id"], "carriedFromQuarter": row.get("quarter")} for t in pend]
-        nxt = col.find_one({"employeeCode": row["employeeCode"], "startMonth": start, "id": {"$ne": row["id"]}})
+        # A row HR already assigned for the next quarter (same start month, or the next quarter label still running).
+        nq = next_quarter(row.get("quarter"))
+        alt = [{"startMonth": start}] + ([{"quarter": nq, "endMonth": {"$gte": start}}] if nq else [])
+        nxt = col.find_one({"employeeCode": row["employeeCode"], "id": {"$ne": row["id"]}, "$or": alt}, sort=[("startMonth", 1)])
         if nxt:
-            have = {(t.get("name") or "").lower() for t in nxt.get("targets", [])}
-            add = [t for t in carried if t["name"].lower() not in have]
-            col.update_one({"_id": nxt["_id"]}, {"$push": {"targets": {"$each": add}}, "$set": {"updatedAt": now()}})
+            have = {(t.get("name") or "").lower(): i for i, t in enumerate(nxt.get("targets", []))}
+            targets = list(nxt.get("targets", []))
+            for t in carried:  # already assigned again by HR: just mark it Carried forward
+                i = have.get(t["name"].lower())
+                if i is None:
+                    targets.append(t)
+                else:
+                    targets[i] = {**targets[i], "carriedForward": True, "carriedFrom": row["id"], "carriedFromQuarter": row.get("quarter")}
+            col.update_one({"_id": nxt["_id"]}, {"$set": {"targets": targets, "updatedAt": now()}})
             new_id = nxt["id"]
         else:
             new_id = f"HY-{db.next_seq('halfyearly'):04d}"

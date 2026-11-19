@@ -7,7 +7,7 @@ import ShortLabel from '../../ui/ShortLabel';
 import Textarea from '../../ui/Textarea';
 import OutstationFields from '../OutstationFields';
 import { makeField, courseOptions } from '../fieldProps';
-import { CLASS_CHECKS, CLASS_MODES, DAY_ORDERS } from '../../../utils/entryForm';
+import { CLASS_CHECKS, CLASS_TAB_MODES, DAY_ORDERS } from '../../../utils/entryForm';
 
 export default function ClassTab({ values, errors, set, setMany, lookups, facultyCode, facultyIn, outstation, outstationErrors, setOutstation, onAddLookup, onRequestCourse, onRequestBatch }) {
   const f = makeField('class', values, errors, set);
@@ -102,7 +102,7 @@ export default function ClassTab({ values, errors, set, setMany, lookups, facult
         {!outstationMode && (
           <>
             <Input label="No of Absent" className="lg:col-span-2" placeholder="0" {...digits('noOfAbsent', 4)} />
-            <RadioGroup className="lg:col-span-4" label="Class mode" required name="class-classMode" options={CLASS_MODES} value={values.classMode ?? ''} onChange={(v) => set('classMode', v)} error={errors.classMode} />
+            <RadioGroup className="lg:col-span-4" label="Class mode" required name="class-classMode" options={CLASS_TAB_MODES} value={values.classMode ?? ''} onChange={(v) => set('classMode', v)} error={errors.classMode} />
           </>
         )}
         <Select label={<ShortLabel full="Today's Session Type" short="Session Type" />} className="lg:col-span-4" options={lookups.sessionTypes} {...f('todaySessionType')} />
