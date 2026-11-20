@@ -29,6 +29,9 @@ import NotFound from './pages/NotFound';
 import RoleAccess from './pages/master/RoleAccess';
 import DeletedEmployees from './pages/master/DeletedEmployees';
 import DropdownValues from './pages/master/DropdownValues';
+import AttendanceEntry from './pages/attendance/AttendanceEntry';
+import AttendancePrint from './pages/attendance/AttendancePrint';
+import TimeSheet from './pages/attendance/TimeSheet';
 import { hasSection, sectionForPath } from './utils/permissions';
 
 function RequireAuth({ children }) {
@@ -83,6 +86,10 @@ export default function App() {
               <Route path="hr-report/policy" element={<HrPolicy />} />
               <Route path="hr-report/halfyearly" element={<HalfyearlyReport />} />
               <Route path="hr-report/certification-status" element={<CertificationStatus />} />
+              <Route path="attendance" element={<Navigate to="/attendance/staff/entry" replace />} />
+              <Route path="attendance/staff/entry" element={<AttendanceEntry />} />
+              <Route path="attendance/staff/print" element={<AttendancePrint />} />
+              <Route path="attendance/staff/time-sheet" element={<TimeSheet />} />
               <Route path="users" element={<Navigate to="/master/employees" replace />} />
               <Route path="settings" element={<Settings />} />
               <Route path="*" element={<NotFound />} />

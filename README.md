@@ -344,6 +344,38 @@ missed), the Dashboard and this page remind Admin / Manager until each file is u
   creating the batch (Master › Batch or Batch Import) or **Dismiss** them. Saved in `batch_requests`;
   `POST/GET /api/batch-requests`, `PATCH /api/batch-requests/{id}`.
 
+### Attendance › Staff: Attendance Entry, Print and Time Sheet (v53)
+
+A new **Attendance** menu (HR, Admin and Super Admin) with **Staff** › Attendance Entry, Print and Time Sheet,
+opened by hover like the other menus.
+
+* **Attendance Entry** (`/attendance/staff/entry`): choose the month; the sheet has EMPLOYEE NAME and the days
+  1 … 28/29/30/31 of that month as headings (Sundays shaded), a row per active employee (not the Super Admin).
+  Click a day and press one key, or pick from the cell's dropdown:
+
+  | Key | Code | Meaning |
+  |---|---|---|
+  | S | S | Report Submitted |
+  | L | S(L) | Report Submitted, Late to office |
+  | N or # | # | Report Not Submitted |
+  | P | P | Permission Taken |
+  | X | X | Leave |
+  | W | W | Week off |
+  | H | H | Official Holiday |
+
+  The cursor moves to the next day after a key; arrow keys move, Enter goes down, Backspace / Delete / Space
+  clears. **Save** stores only the changed cells (the button shows how many); **Undo changes** goes back.
+  Stored in `staff_attendance`, one document per employee per month: `{_id: "CODE|YYYY-MM", code, name,
+  month, days: {"1": "S", ...}, updatedBy, updatedAt}`.
+* **Print** (`/attendance/staff/print`): the same sheet read-only with the legend and a count of S, S(L), #, P,
+  X and H per employee; **Print** prints it A4 landscape.
+* **Time Sheet** (`/attendance/staff/time-sheet`): built from the daily entries. For each employee and day, the
+  start time of the first entry of the day (top) and the end time of the last entry (bottom), with the days
+  worked and total hours. Search by name, view and **Print**.
+* API (HR, Admin, Super Admin): `GET /api/attendance/staff?month=YYYY-MM`,
+  `PUT /api/attendance/staff/{month}` `{marks: [{code, day, mark}]}` (empty mark clears),
+  `GET /api/attendance/timesheet?month=YYYY-MM`.
+
 ### Batch, sidebar, biometric month, HR mails and halfyearly dates (v52)
 
 * **Batch create**: the Class Type, Total Hours and Course Type fields are removed (form, table and Batch

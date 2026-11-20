@@ -10,6 +10,7 @@ import {
   FileBarChart,
   Settings,
   LogOut,
+  CalendarCheck,
 } from 'lucide-react';
 import { MASTER_MENU } from './masterMenu';
 import { NO_ENTRY_ROLES, WORKING_HOURS_ROLES } from '../utils/permissions';
@@ -76,6 +77,24 @@ export const NAVIGATION = [
     children: ADMIN_PAGES,
   },
   { key: 'marketing', label: 'Marketing', icon: Megaphone, restricted: true, section: 'marketing' },
+  // Attendance › Staff (v53): HR, Admin and the Super Admin.
+  {
+    key: 'attendance',
+    label: 'Attendance',
+    icon: CalendarCheck,
+    roles: HR_PAGE_ROLES,
+    children: [
+      {
+        key: 'attendance-staff',
+        label: 'Staff',
+        children: [
+          { key: 'attendance-entry', label: 'Attendance Entry', to: '/attendance/staff/entry' },
+          { key: 'attendance-print', label: 'Print', to: '/attendance/staff/print' },
+          { key: 'attendance-timesheet', label: 'Time Sheet', to: '/attendance/staff/time-sheet' },
+        ],
+      },
+    ],
+  },
   {
     key: 'hr-report',
     label: 'HR',

@@ -434,3 +434,21 @@ export async function deleteHalfyearly(id) {
 export async function setAdminAccess(userId, enabled) {
   return request(`/users/${encodeURIComponent(userId)}/admin-access`, { method: 'PUT', body: { enabled } });
 }
+
+/* ----------------------------------------------------------- Attendance */
+// Attendance › Staff (HR, Admin, Super Admin): the monthly attendance sheet and the time sheet from the entries.
+
+/** GET /api/attendance/staff?month=YYYY-MM: employees, the codes and the saved marks {code: {day: mark}}. */
+export async function getStaffAttendance(month) {
+  return request('/attendance/staff', { params: { month } });
+}
+
+/** PUT /api/attendance/staff/{month}: [{code, day, mark}] (empty mark clears the day). */
+export async function saveStaffAttendance(month, marks) {
+  return request(`/attendance/staff/${month}`, { method: 'PUT', body: { marks } });
+}
+
+/** GET /api/attendance/timesheet?month=YYYY-MM: first start / last end of the daily entries per employee per day. */
+export async function getTimeSheet(month) {
+  return request('/attendance/timesheet', { params: { month } });
+}
