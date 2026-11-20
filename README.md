@@ -354,10 +354,27 @@ whose text is fixed by WhatsApp, so it read "New course request from …". Now:
 * **WhatsApp**: its own approved template. Create a **Utility** template in Pinbot, for example `issue_alert`:
 
   ```
-  Issue faced by {{1}} ({{2}}) at {{3}} on {{4}}.
-  Issue: {{5}} ({{6}} min)
-  Details: {{7}}
+  Dear Sir / Madam,
+
+  An issue was reported in the Daily Entry Report.
+
+  Faculty name: {{1}}
+  Employee code: {{2}}
+  Place of the class: {{3}}
+  Date of the entry: {{4}}
+  Type of issue: {{5}}
+  Time lost in minutes: {{6}}
+  Details given by the faculty: {{7}}
+
+  Please check and take the necessary action.
+
+  Regards,
+  Advantage Pro
   ```
+
+  (Meta refuses a short text with many variables: "too many variables for its length".)
+  Samples for approval: SANJAY, JAY, Loyola College, 20 Nov 2026, Internet / network problem, 60,
+  Projector not working during class.
 
   then in backend/.env (Vercel: Environment Variables):
 
