@@ -47,7 +47,7 @@ export const canViewPeople = (user) => canManage(user);
 export const NO_ENTRY_ROLES = [ROLES.HR, ROLES.ADMIN, ROLES.MANAGER];
 export const makesEntries = (user) => !!user && !NO_ENTRY_ROLES.includes(user.role);
 
-const SHARED_PAGES = ['/master/batches', '/master/batch-import', '/master/courses', '/master/biometric', '/master/dropdown-values', '/admin/data-upload'];
+const SHARED_PAGES = ['/master/batches', '/master/externalFaculty', '/master/batch-import', '/master/courses', '/master/biometric', '/master/dropdown-values', '/admin/data-upload'];
 
 /** Which menu(s) a page address belongs to (for blocking typed-in addresses of a hidden menu). */
 export const sectionForPath = (path) => {

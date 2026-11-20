@@ -4,7 +4,7 @@
     {
       "key": "batches",
       "label": "Batch",
-      "description": "Batches, their course, faculty, dates and timing. Uploaded from the BatchMaster Excel file (Master › Batch Import) or added here. Tick the boxes to delete several batches at once. Each faculty sees the batches assigned to them in the Class tab.",
+      "description": "Batches, their course, faculty (internal or external), dates and timing. Uploaded from the BatchMaster Excel file (Master › Batch Import) or added here. Each faculty sees the batches assigned to them in the Class tab.",
       "idPrefix": "BAT",
       "unique": "batchNo",
       "titleField": "batchNo",
@@ -23,51 +23,56 @@
           "required": true
         },
         {
+          "key": "facultyType",
+          "label": "Faculty Type",
+          "type": "toggle",
+          "options": [
+            "Internal",
+            "External"
+          ],
+          "required": true,
+          "default": "Internal"
+        },
+        {
           "key": "facultyCode",
           "label": "Faculty",
           "type": "lookup",
-          "source": "employees",
-          "required": true
+          "source": "faculties",
+          "required": true,
+          "showIf": {
+            "facultyType": "Internal"
+          },
+          "tableMerge": {
+            "key": "externalFacultyId",
+            "source": "externalFaculties"
+          }
+        },
+        {
+          "key": "externalFacultyId",
+          "label": "External Faculty",
+          "type": "lookup",
+          "source": "externalFaculties",
+          "required": true,
+          "showIf": {
+            "facultyType": "External"
+          },
+          "hideInTable": true,
+          "addNew": "externalFaculty",
+          "addNewLabel": "Add external faculty"
         },
         {
           "key": "facultyShort",
           "label": "Short Name",
           "type": "text",
           "hint": "Faculty short name from the BatchMaster file",
-          "required": true
-        },
-        {
-          "key": "otherFacultyType",
-          "label": "Additional Faculty",
-          "type": "toggle",
-          "options": [
-            "None",
-            "Internal",
-            "External"
-          ],
-          "required": true,
-          "default": "None",
-          "hint": "Another faculty for this batch: one of our employees (Internal) or from outside (External)"
+          "required": false,
+          "hidden": true
         },
         {
           "key": "otherFaculty",
-          "label": "Internal Faculty",
-          "type": "lookup",
-          "source": "employees",
-          "required": true,
-          "showIf": {
-            "otherFacultyType": "Internal"
-          }
-        },
-        {
-          "key": "externalFaculty",
-          "label": "External Faculty",
+          "label": "Other Faculty",
           "type": "text",
-          "required": true,
-          "showIf": {
-            "otherFacultyType": "External"
-          },
-          "hint": "Name of the faculty from outside"
+          "hidden": true
         },
         {
           "key": "startDate",
@@ -146,6 +151,46 @@
           ],
           "required": true,
           "default": "Planned"
+        }
+      ]
+    },
+    {
+      "key": "externalFaculty",
+      "label": "External Faculty",
+      "description": "Faculty from outside the company, with phone and email. Chosen as the faculty of a batch (Faculty Type External).",
+      "idPrefix": "EXF",
+      "unique": "email",
+      "titleField": "name",
+      "fields": [
+        {
+          "key": "name",
+          "label": "Name",
+          "type": "text",
+          "required": true
+        },
+        {
+          "key": "phone",
+          "label": "Phone",
+          "type": "phone",
+          "required": true,
+          "hint": "10-digit mobile"
+        },
+        {
+          "key": "email",
+          "label": "Email",
+          "type": "email",
+          "required": true
+        },
+        {
+          "key": "status",
+          "label": "Status",
+          "type": "select",
+          "options": [
+            "Active",
+            "Inactive"
+          ],
+          "default": "Active",
+          "required": true
         }
       ]
     }

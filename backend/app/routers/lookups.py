@@ -141,6 +141,11 @@ def get_lookups(_: dict = Depends(current_user)):
         key=lambda u: natural_key(u["name"]),
     )
     # Batch, asset, register-number and vendor dropdowns come from the Master collections.
+    # External faculty master: the batch form's External faculty dropdown (Active only).
+    out["externalFaculties"] = [
+        {"value": x["id"], "label": f"{x.get('name', '')} ({x.get('phone', '')})"}
+        for x in db.db.master_externalFaculty.find({"status": {"$ne": "Inactive"}}, {"_id": 0, "id": 1, "name": 1, "phone": 1}).sort("name")
+    ]
     out["batches"] = [b["batchNo"] for b in db.db.master_batches.find({}, {"batchNo": 1}).sort("batchNo")]
     # Batches with the employees they are assigned to; the Class tab offers each faculty their own.
     # Open batches, plus completed ones that started in the last 12 months.

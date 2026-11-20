@@ -51,9 +51,9 @@ const rangeError = (v) => {
   return '';
 };
 /** A field with `showIf` is shown (and required) only while another field has that value. */
-const shown = (f, form) => !f.showIf || Object.entries(f.showIf).every(([k, val]) => form[k] === val);
+const shown = (f, form) => !f.hidden && (!f.showIf || Object.entries(f.showIf).every(([k, val]) => form[k] === val));
 
-function FieldInput({ f, value, error, onChange, lookups }) {
+function FieldInput({ f, value, error, onChange, lookups, onAddNew }) {
   if (f.type === 'timerange') {
     // While choosing, one side may still be empty ("10:00 to "), so split loosely and keep both sides.
     const [a, b] = splitRange(value).every(Boolean) ? splitRange(value) : String(value || '').split(' to ').concat(['', '']).slice(0, 2);
@@ -73,7 +73,18 @@ function FieldInput({ f, value, error, onChange, lookups }) {
     case 'select':
       return <Select {...common} options={f.options} />;
     case 'lookup':
-      return <Select {...common} searchable options={lookupOptions(f.source, lookups)} />;
+      return (
+        <Select
+          {...common}
+          searchable
+          options={lookupOptions(f.source, lookups)}
+          aside={f.addNew && onAddNew && (
+            <button type="button" onClick={onAddNew} className="inline-flex items-center gap-1 text-[11px] font-medium text-brand-700 hover:underline">
+              <Plus className="size-3.5" aria-hidden /> {f.addNewLabel || 'Add new'}
+            </button>
+          )}
+        />
+      );
     case 'date':
       return <DatePicker {...common} />;
     case 'time':
@@ -113,6 +124,7 @@ export default function MasterList() {
   const isBatch = key === 'batches';
   const requests = useAsync(() => (isBatch ? api.getBatchRequests().catch(() => []) : Promise.resolve([])), [key]);
   const [fromRequest, setFromRequest] = useState(null);
+  const [addNew, setAddNew] = useState(null); // { field, def, form, errors } : "+ Add external faculty" inside the form
 
   useEffect(() => setPicked(new Set()), [key]);
 
@@ -155,7 +167,7 @@ export default function MasterList() {
     try {
       const rec = { ...form };
       def.fields.forEach((f) => {
-        if (!shown(f, form)) rec[f.key] = '';
+        if (!f.hidden && !shown(f, form)) rec[f.key] = ''; // hidden fields (from the Excel import) keep their value
         if (f.type === 'timerange' && rec[f.key]) rec[f.key] = joinRange(...splitRange(rec[f.key]));
         if (f.type === 'number' && rec[f.key] !== '') rec[f.key] = Number(rec[f.key]);
       });
@@ -213,12 +225,39 @@ export default function MasterList() {
     setForm(null);
     setFromRequest(null);
   };
+  const openAddNew = (f) => {
+    const d = masterByKey(f.addNew);
+    if (d) setAddNew({ field: f.key, def: d, form: Object.fromEntries(d.fields.map((x) => [x.key, x.default ?? ''])), errors: {}, saving: false });
+  };
+  const saveAddNew = async () => {
+    const { def: d, form: rec } = addNew;
+    const errs = {};
+    d.fields.forEach((x) => {
+      const v = rec[x.key];
+      if (x.required && (v === '' || v == null)) errs[x.key] = 'Required';
+      else if (x.type === 'email' && v && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) errs[x.key] = 'Enter a valid email';
+      else if (x.type === 'phone' && v && !/^[0-9+\- ]{6,15}$/.test(v)) errs[x.key] = 'Enter a valid number';
+    });
+    if (Object.keys(errs).length) return setAddNew((a) => ({ ...a, errors: errs }));
+    setAddNew((a) => ({ ...a, saving: true }));
+    try {
+      const saved = await api.saveMasterRecord(d.key, rec);
+      await reloadLookups();
+      setForm((s) => ({ ...s, [addNew.field]: saved.id }));
+      toast.success(`${d.label} ${saved[d.titleField] || ''} added and selected.`);
+      setAddNew(null);
+    } catch (e) {
+      toast.error(e.message);
+      setAddNew((a) => a && { ...a, saving: false });
+    }
+  };
   const editRow = (r) => {
     setErrors({});
     setFromRequest(null);
     const rec = { ...Object.fromEntries(def.fields.map((f) => [f.key, ''])), ...r };
     // Batches saved before the Internal / External choice: an employee in Other Faculty means Internal.
-    if (def.fields.some((f) => f.key === 'otherFacultyType') && !rec.otherFacultyType) rec.otherFacultyType = rec.externalFaculty ? 'External' : rec.otherFaculty ? 'Internal' : 'None';
+    // Batches saved before Faculty Type: a batch with an external faculty is External, every other one Internal.
+    if (def.fields.some((f) => f.key === 'facultyType') && !rec.facultyType) rec.facultyType = rec.externalFacultyId ? 'External' : 'Internal';
     setForm(rec);
   };
   const toggle = (ids, on) =>
@@ -286,7 +325,16 @@ export default function MasterList() {
         </div>
       ),
     },
-    ...def.fields.filter((f) => !f.hideInTable).map((f) => ({ key: f.key, header: f.label, align: f.type === 'number' ? 'right' : undefined, render: (r) => <span className={f.key === def.titleField ? 'font-medium text-ink-900' : ''}>{display(f, r[f.key], lookups)}</span> })),
+    ...def.fields.filter((f) => !f.hideInTable && !f.hidden).map((f) => ({
+      key: f.key,
+      header: f.label,
+      align: f.type === 'number' ? 'right' : undefined,
+      render: (r) => {
+        // tableMerge: an empty value shows the other field instead (Faculty: internal, or the external faculty).
+        const m = f.tableMerge && !r[f.key] && r[f.tableMerge.key] ? display({ type: 'lookup', source: f.tableMerge.source }, r[f.tableMerge.key], lookups) : null;
+        return <span className={f.key === def.titleField ? 'font-medium text-ink-900' : ''}>{m ?? display(f, r[f.key], lookups)}</span>;
+      },
+    })),
   ].filter(Boolean);
 
   return (
@@ -365,7 +413,18 @@ export default function MasterList() {
         {form && (
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             {def.fields.filter((f) => shown(f, form)).map((f) => (
-              <FieldInput key={f.key} f={f} value={form[f.key]} error={errors[f.key]} lookups={lookups} onChange={(v) => setForm((s) => ({ ...s, [f.key]: v }))} />
+              <FieldInput key={f.key} f={f} value={form[f.key]} error={errors[f.key]} lookups={lookups} onChange={(v) => setForm((s) => ({ ...s, [f.key]: v }))} onAddNew={f.addNew ? () => openAddNew(f) : undefined} />
+            ))}
+          </div>
+        )}
+      </Modal>
+
+      <Modal open={!!addNew} onClose={() => setAddNew(null)} title={addNew ? `Add ${addNew.def.label}` : ''}
+        footer={<><Button variant="secondary" onClick={() => setAddNew(null)}>Cancel</Button><Button loading={addNew?.saving} onClick={saveAddNew}>Save</Button></>}>
+        {addNew && (
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            {addNew.def.fields.map((x) => (
+              <FieldInput key={x.key} f={x} value={addNew.form[x.key]} error={addNew.errors[x.key]} lookups={lookups} onChange={(v) => setAddNew((a) => ({ ...a, form: { ...a.form, [x.key]: v }, errors: { ...a.errors, [x.key]: undefined } }))} />
             ))}
           </div>
         )}

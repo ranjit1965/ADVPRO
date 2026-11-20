@@ -377,9 +377,12 @@ missed), the Dashboard and this page remind Admin / Manager until each file is u
   (`CERT_FOLLOWUP_ENABLED`, `CERT_FOLLOWUP_TIME`) and whenever the page is opened.
 - **Halfyearly:** choosing the Starting Month fills the Ending Month with the 6th month (Jan → Jun); it can be changed.
 - **Add / Edit Batch:** every field is required. Timing is chosen with the time picker (From and To, To after From;
-  saved as `10:00 to 12:00`). *Additional Faculty* is a toggle None / Internal / External: Internal asks for the
-  employee (the batch then shows in that employee's Class tab too), External asks for the outside faculty's name.
-  Older imported batches must have their empty fields filled in when they are edited.
+  saved as `10:00 to 12:00`). **Faculty Type** is a toggle Internal / External: Internal shows the faculties
+  (the batch shows in that faculty's Class tab), External shows the external faculties, with **+ Add external
+  faculty** (name, phone, email) right in the form. Short Name is no longer asked (the BatchMaster import still
+  fills it). Older imported batches must have their empty fields filled in when they are edited.
+- **External Faculty** (Admin, HR and Master menus): name, phone, email and status of faculty from outside.
+  They have no login; they are only chosen as the faculty of a batch (Active ones only).
 - **No entries for HR, Admin and Super Admin.** Their Entry and Others menus are hidden and the server refuses a new
   entry from them. Their dashboard shows only *View dashboard of*, listing Faculty and Lab Support people
   (role key or label matching "Lab Support"); picking one shows that person's dashboard. *My Entries* is

@@ -26,6 +26,7 @@ const ADMIN_PAGES = [
   { key: 'admin-deleted-employees', label: 'Deleted Employees', to: '/master/deleted-employees', roles: ['MANAGER'] },
   { key: 'admin-batch', label: 'Batch', to: '/master/batches' },
   { key: 'admin-batch-import', label: 'Batch Import', to: '/master/batch-import' },
+  { key: 'admin-external-faculty', label: 'External Faculty', to: '/master/externalFaculty' },
   { key: 'admin-course', label: 'Course', to: '/master/courses' },
   { key: 'admin-biometric', label: 'Biometric', to: '/master/biometric' },
   { key: 'admin-dropdown-values', label: 'Dropdown Values', to: '/master/dropdown-values' },

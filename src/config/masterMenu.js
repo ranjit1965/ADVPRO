@@ -3,6 +3,7 @@ import { masters } from './masters.json';
 /** Master menu in the legacy order. Generic masters open /master/<key>; the rest have their own screens. */
 export const MASTER_MENU = [
   { key: 'batches', label: 'Batch' },
+  { key: 'externalFaculty', label: 'External Faculty' },
   { key: 'batchImport', label: 'Batch Import', to: '/master/batch-import', description: 'Upload the BatchMaster Excel file and assign each batch to its faculty.' },
   { key: 'employees', label: 'Employees', to: '/master/employees', description: 'Add, edit, disable and delete employee and faculty logins.' },
   { key: 'courses', label: 'Course', to: '/master/courses', description: 'Courses and their chapter / session details.' },

@@ -41,6 +41,9 @@ def validate(defn: dict, body: dict) -> dict:
     out: dict[str, Any] = {}
     for f in defn["fields"]:
         v = body.get(f["key"])
+        if f.get("hidden"):  # not on the form (filled by the BatchMaster import): keep what was sent
+            out[f["key"]] = v.strip() if isinstance(v, str) else (v if v is not None else "")
+            continue
         cond = f.get("showIf")  # shown (and required) only when another field has that value
         if cond and any(str(body.get(k) or "").strip() != val for k, val in cond.items()):
             out[f["key"]] = ""
@@ -60,6 +63,8 @@ def validate(defn: dict, body: dict) -> dict:
             elif t == "date":
                 date.fromisoformat(v)
             elif t == "time" and not re.fullmatch(r"([01]\d|2[0-3]):[0-5]\d", v):
+                raise ValueError
+            elif t == "phone" and not re.fullmatch(r"[0-9+\- ]{6,15}", v):
                 raise ValueError
             elif t == "email" and not re.fullmatch(r"[^\s@]+@[^\s@]+\.[^\s@]+", v):
                 raise ValueError
