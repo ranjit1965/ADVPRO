@@ -17,7 +17,7 @@ from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel, Field
 from pymongo import UpdateOne
 
-from .. import db
+from .. import db, holidays
 from ..biometric_files import ReadResult, read_rows, rows_from_upload
 from ..security import manage_access, super_admin_only, is_super_admin, require_section, current_user, require_roles
 
@@ -70,12 +70,13 @@ def _public(s: dict) -> dict:
     return out
 
 
-def _store_day(code: str, name: str, day: str, times: list[str], files: list[str], now) -> UpdateOne:
+def _store_day(code: str, name: str, day: str, times: list[str], files: list[str], now, mark: str = "") -> UpdateOne:
+    """mark: "H" or "C" from the day cell of the file (v54); kept with the day and shown in attendance."""
     times = sorted(set(times))
     return UpdateOne(
         {"_id": f"{code}|{day}"},
-        {"$set": {"code": code, "name": name, "date": day, "timeIn": times[0], "timeOut": times[-1] if len(times) > 1 else None,
-                  "punches": len(times), "files": sorted(set(files)), "importedAt": now}},
+        {"$set": {"code": code, "name": name, "date": day, "timeIn": times[0] if times else None, "timeOut": times[-1] if len(times) > 1 else None,
+                  "punches": len(times), "mark": mark or None, "files": sorted(set(files)), "importedAt": now}},
         upsert=True,
     )
 
@@ -146,7 +147,7 @@ def save_map(body: MapIn, _: dict = Depends(master_roles)):
         for d in db.db.biometric_unmatched.find({"key": key}):
             have = db.db.biometric_days.find_one({"_id": f"{u['code']}|{d['date']}"}) or {}
             times = list(d.get("times") or []) + [t for t in (have.get("timeIn"), have.get("timeOut")) if t]
-            ops.append(_store_day(u["code"], u["name"], d["date"], times, list(d.get("files") or []) + list(have.get("files") or []), now))
+            ops.append(_store_day(u["code"], u["name"], d["date"], times, list(d.get("files") or []) + list(have.get("files") or []), now, d.get("mark") or have.get("mark") or ""))
         if ops:
             db.db.biometric_days.bulk_write(ops, ordered=False)
         db.db.biometric_unmatched.delete_many({"key": key})
@@ -190,18 +191,20 @@ def run_import(rows: list[list], file_name: str, month: str | None = None, by: s
             dk = p.person_id or p.name
             if _map_key(dk) in ignored:
                 continue
-            item = unmatched.setdefault((_map_key(dk), p.day.isoformat()), {"key": _map_key(dk), "deviceKey": dk, "deviceId": p.person_id, "name": p.name, "date": p.day.isoformat(), "times": [], "files": set()})
+            item = unmatched.setdefault((_map_key(dk), p.day.isoformat()), {"key": _map_key(dk), "deviceKey": dk, "deviceId": p.person_id, "name": p.name, "date": p.day.isoformat(), "times": [], "files": set(), "mark": ""})
             item["times"] += hhmm
+            item["mark"] = p.mark or item["mark"]
             item["files"].add(p.file)
             continue
-        d = days.setdefault((u["code"], p.day.isoformat()), {"code": u["code"], "name": u["name"], "date": p.day.isoformat(), "times": [], "files": set()})
+        d = days.setdefault((u["code"], p.day.isoformat()), {"code": u["code"], "name": u["name"], "date": p.day.isoformat(), "times": [], "files": set(), "mark": ""})
         d["times"] += hhmm
+        d["mark"] = p.mark or d["mark"]
         d["files"].add(p.file)
 
     now = datetime.now(timezone.utc)
     # One bulk write per collection: fast even for a month of punches for everyone.
     if days:
-        db.db.biometric_days.bulk_write([_store_day(code, d["name"], day, d["times"], list(d["files"]), now) for (code, day), d in days.items()], ordered=False)
+        db.db.biometric_days.bulk_write([_store_day(code, d["name"], day, d["times"], list(d["files"]), now, d["mark"]) for (code, day), d in days.items()], ordered=False)
     if unmatched:
         db.db.biometric_unmatched.bulk_write([
             UpdateOne({"_id": f"{k}|{day}"}, {"$set": {**{x: v for x, v in u.items() if x != "files"}, "times": sorted(set(u["times"])), "files": sorted(u["files"])}}, upsert=True)
@@ -247,9 +250,10 @@ def compare_month(code: str, month: str, entries: list[dict]) -> dict:
     by_day: dict[str, list[dict]] = {}
     for e in entries:
         by_day.setdefault(e["activityDate"], []).append(e)
+    hols = holidays.in_month(month)  # dates marked H for everyone (Attendance › Add H)
 
     rows = []
-    for day in sorted(set(bio) | set(by_day)):
+    for day in sorted(set(bio) | set(by_day) | set(hols)):
         b, es = bio.get(day), by_day.get(day, [])
         start = min((e["timeFrom"] for e in es), default=None)
         end = max((e["timeTo"] for e in es), default=None)
@@ -258,7 +262,12 @@ def compare_month(code: str, month: str, entries: list[dict]) -> dict:
         bio_minutes = _minutes(t_out) - _minutes(t_in) if t_in and t_out else None
         in_diff = _minutes(start) - _minutes(t_in) if start and t_in else None  # + : entries start after punch-in
         out_diff = _minutes(t_out) - _minutes(end) if end and t_out else None  # + : punch-out after entries end
-        if not b:
+        mark = "H" if day in hols else (b or {}).get("mark") or None  # H / C from the biometric file
+        if mark == "H":
+            status = "Holiday (H)"
+        elif mark == "C":
+            status = "C"
+        elif not b:
             status = "No biometric"
         elif not es:
             status = "No entries"
@@ -269,7 +278,8 @@ def compare_month(code: str, month: str, entries: list[dict]) -> dict:
         rows.append({
             "date": day, "timeIn": t_in, "timeOut": t_out, "entryStart": start, "entryEnd": end,
             "inDiff": in_diff, "outDiff": out_diff, "bioMinutes": bio_minutes, "enteredMinutes": entered,
-            "hoursDiff": (bio_minutes - entered) if bio_minutes is not None and es else None, "status": status,
+            "hoursDiff": (bio_minutes - entered) if bio_minutes is not None and es else None, "status": status, "mark": mark,
+            "holiday": (hols.get(day) or {}).get("name"),
         })
 
     count = lambda s: sum(r["status"] == s for r in rows)  # noqa: E731
@@ -277,11 +287,11 @@ def compare_month(code: str, month: str, entries: list[dict]) -> dict:
         "rows": rows,
         "month": month_info(month),
         "summary": {
-            "days": len(rows), "present": count("Present"),
+            "days": len(rows), "present": count("Present"), "holidays": count("Holiday (H)"), "c": count("C"),
             "noBiometric": count("No biometric"), "noEntries": count("No entries"), "missingOut": count("Missing out punch"),
             "bioMinutes": sum(r["bioMinutes"] or 0 for r in rows), "enteredMinutes": sum(r["enteredMinutes"] for r in rows if r["timeIn"]),
         },
-        "hasData": bool(bio),
+        "hasData": bool(bio) or bool(hols),
     }
 
 

@@ -452,3 +452,13 @@ export async function saveStaffAttendance(month, marks) {
 export async function getTimeSheet(month) {
   return request('/attendance/timesheet', { params: { month } });
 }
+
+/** POST /api/attendance/holidays: the date becomes H for every employee. */
+export async function addHoliday(date, name) {
+  return request('/attendance/holidays', { method: 'POST', body: { date, name } });
+}
+
+/** DELETE /api/attendance/holidays/{date} (Super Admin). */
+export async function removeHoliday(date) {
+  return request(`/attendance/holidays/${date}`, { method: 'DELETE' });
+}

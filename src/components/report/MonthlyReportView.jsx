@@ -367,6 +367,8 @@ const BIO_TONE = {
   'Missing out punch': 'bg-warning-50 text-warning-700',
   'No entries': 'bg-warning-50 text-warning-700',
   'No biometric': 'bg-ink-100 text-ink-600',
+  'Holiday (H)': 'bg-success-50 text-success-700',
+  C: 'bg-brand-50 text-brand-700',
 };
 
 /** Biometric Time In / Out against the first start and last finish of the day's entries. */
@@ -382,9 +384,10 @@ function BiometricSection({ biometric, days }) {
         <p className="text-[12px] text-ink-500">No biometric data has been imported for this person and month. Master › Biometric reads the device files.</p>
       ) : (
         <>
-          <div className="mb-3 grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-7">
+          <div className="mb-3 grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-8">
             <Kpi label="Days" value={summary.days} />
             <Kpi label="Present" value={summary.present} color="#079455" />
+            <Kpi label="Holiday (H) / C" value={`${summary.holidays ?? 0} / ${summary.c ?? 0}`} sub="From the biometric file and Attendance" />
             <Kpi label="No of records / holidays" value={month ? `${month.records ?? '–'} / ${month.holidays ?? '–'}` : '–'} sub="From the biometric file" />
             <Kpi label="Missing out punch" value={summary.missingOut} color="#dc6803" />
             <Kpi label="No entries" value={summary.noEntries} color="#dc6803" />
@@ -415,7 +418,7 @@ function BiometricSection({ biometric, days }) {
                     <Td className="text-right">{r.bioMinutes === null ? '-' : hmm(r.bioMinutes)}</Td>
                     <Td className="text-right">{r.enteredMinutes ? hmm(r.enteredMinutes) : '-'}</Td>
                     <Td className="text-right">{signedHm(r.hoursDiff)}</Td>
-                    <Td><span className={cn('rounded px-1.5 py-0.5 font-medium whitespace-nowrap', BIO_TONE[r.status])}>{r.status}</span></Td>
+                    <Td><span className={cn('rounded px-1.5 py-0.5 font-medium whitespace-nowrap', BIO_TONE[r.status])} title={r.holiday || undefined}>{r.status}</span></Td>
                   </tr>
                 ))}
               </tbody>

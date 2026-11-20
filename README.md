@@ -344,6 +344,31 @@ missed), the Dashboard and this page remind Admin / Manager until each file is u
   creating the batch (Master › Batch or Batch Import) or **Dismiss** them. Saved in `batch_requests`;
   `POST/GET /api/batch-requests`, `PATCH /api/batch-requests/{id}`.
 
+### Daily Entry Submission: automatic marks, H / C from the biometric file, Add H (v54)
+
+* **Attendance Entry is renamed Daily Entry Submission** (menu, page, sheet title "DAILY ENTRY SUBMISSION -
+  month", print title "DAILY ENTRY SUBMISSION REPORT STATUS - month").
+* **The sheet fills itself.** For each employee and day, unless HR / Admin saved a mark by hand (that always
+  wins), in this order:
+  1. **H** on a date added with **Add H for all** (every employee),
+  2. **H** or **C** written in that day's cell of the biometric time in / time out file,
+  3. **S** when the employee has daily entries that day, **S(L)** when the biometric Time In is later than
+     the start time of the first entry (late),
+  4. **#** when the biometric file has a Time In that day but there is no daily entry.
+
+  Automatic marks show light and italic; pressing a key saves your own mark, Backspace takes your mark back
+  (the automatic one shows again). Print counts the marks as shown (S, S(L), #, P, X, H, C).
+* **Biometric file**: a day cell with only `H` or `C` (any case) is saved for that employee and day
+  (`biometric_days.mark`, no times).
+* **Add H for all** (above the sheet): choose a date (and an optional name); it becomes H for everyone in
+  Daily Entry Submission, its Print and the Monthly Report. The month's holidays are listed; only the Super
+  Admin can remove one. Stored in `holidays` (`_id` = date). API: `GET /api/attendance/holidays?month=`,
+  `POST /api/attendance/holidays {date, name}`, `DELETE /api/attendance/holidays/{date}` (Super Admin).
+* **Monthly Report** (biometric section): days with H (holiday or file) show "Holiday (H)", days with C show
+  "C"; a new card counts them.
+* **Time Sheet**: next to the entry times of each day (first start / last end), the biometric **Punch** Time In
+  / Time Out (or H / C) in blue, in the same cell; totals: days, entry hours, punch hours.
+
 ### Attendance › Staff: Attendance Entry, Print and Time Sheet (v53)
 
 A new **Attendance** menu (HR, Admin and Super Admin) with **Staff** › Attendance Entry, Print and Time Sheet,

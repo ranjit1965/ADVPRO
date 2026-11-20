@@ -11,15 +11,17 @@ import { useAsync } from '../../hooks/useAsync';
 import { formatDateTime } from '../../utils/format';
 import { Legend, MonthBar, SheetTable, monthTitle, thisMonth } from '../../components/attendance/AttendanceSheet';
 import StaffOnly from './StaffOnly';
+import HolidayBar from '../../components/attendance/HolidayBar';
 
 /**
- * Attendance › Staff › Attendance Entry. HR, Admin and the Super Admin fill the month's sheet: a row per employee,
- * the days 1 … 31 across. Each cell takes one key (S, L for S(L), N for #, P, X, W, H) or a pick from its
+ * Attendance › Staff › Daily Entry Submission (was Attendance Entry). HR, Admin and the Super Admin see the
+ * month's sheet: a row per employee, the days 1 … 31 across. It fills itself (H from "Add H" and the biometric
+ * file, C from the biometric file, S / S(L) from the daily entries, # when there is a Time In but no entry); Each cell takes one key (S, L for S(L), N for #, P, X, W, H) or a pick from its
  * dropdown; arrows move, Backspace clears. Save stores only the changed cells.
  */
 export default function AttendanceEntry() {
   return (
-    <StaffOnly title="Attendance Entry">
+    <StaffOnly title="Daily Entry Submission">
       <EntryPage />
     </StaffOnly>
   );
@@ -66,10 +68,11 @@ function EntryPage() {
   return (
     <>
       <PageHeader
-        title="Attendance Entry"
-        breadcrumb={[{ label: 'Attendance' }, { label: 'Staff' }, { label: 'Attendance Entry' }]}
-        description="Click a day and press a key (S, L, N, P, X, W, H) or pick from the dropdown. Arrow keys move, Backspace clears. Then Save."
+        title="Daily Entry Submission"
+        breadcrumb={[{ label: 'Attendance' }, { label: 'Staff' }, { label: 'Daily Entry Submission' }]}
+        description="Filled automatically from holidays, the biometric file (H / C) and the daily entries (light italic). To change a day, click it and press a key (S, L, N, P, X, W, H, C) or pick from the dropdown; arrows move, Backspace takes back your change. Then Save."
       />
+      <HolidayBar month={month} holidays={data?.holidays} onChanged={reload} />
       <MonthBar month={month} setMonth={(m) => (changes.length && !window.confirm('Changes are not saved. Change the month anyway?') ? null : setMonth(m))}>
         <Input label="Employee" className="w-56" placeholder="Search name" value={search} onChange={(e) => setSearch(e.target.value)} />
         <div className="ml-auto flex gap-2">
@@ -79,7 +82,7 @@ function EntryPage() {
       </MonthBar>
       <Card
         bodyClassName="p-3"
-        title={`STAFF ATTENDANCE - ${monthTitle(month)}`}
+        title={`DAILY ENTRY SUBMISSION - ${monthTitle(month)}`}
         description={data?.updatedAt ? `Last saved ${formatDateTime(data.updatedAt)}` : 'Not saved yet for this month'}
       >
         {error ? (
@@ -89,7 +92,7 @@ function EntryPage() {
         ) : (
           <>
             <div className="mb-2"><Legend codes={data.codes} /></div>
-            <SheetTable month={month} days={data.days} employees={employees} codes={data.codes} value={marks} onChange={setMark} editable />
+            <SheetTable month={month} days={data.days} employees={employees} codes={data.codes} value={marks} auto={data.auto} onChange={setMark} editable />
           </>
         )}
       </Card>

@@ -88,7 +88,7 @@ export const NAVIGATION = [
         key: 'attendance-staff',
         label: 'Staff',
         children: [
-          { key: 'attendance-entry', label: 'Attendance Entry', to: '/attendance/staff/entry' },
+          { key: 'attendance-entry', label: 'Daily Entry Submission', to: '/attendance/staff/entry' },
           { key: 'attendance-print', label: 'Print', to: '/attendance/staff/print' },
           { key: 'attendance-timesheet', label: 'Time Sheet', to: '/attendance/staff/time-sheet' },
         ],

@@ -19,7 +19,11 @@ export const CODE_TONE = {
   X: 'text-danger-700',
   W: 'text-ink-500',
   H: 'text-success-700',
+  C: 'text-brand-700',
 };
+
+/** The mark shown: the one saved by hand, else the automatic one. */
+export const effectiveMark = (marks, auto, code, day) => marks?.[code]?.[String(day)] || auto?.[code]?.[String(day)] || '';
 
 /** Month picker shown above the attendance pages (not printed). */
 export function MonthBar({ month, setMonth, children }) {
@@ -51,8 +55,9 @@ export function Legend({ codes }) {
  * `editable`: each cell is a dropdown; typing a code's key (S, L, N, P, X, W, H) fills it and moves to the next
  * day, Backspace / Delete / Space clears it, the arrow keys move between cells.
  * `cell(code, day)` renders a read-only cell (Print and Time Sheet).
+ * `auto`: the automatic marks, shown (lighter, italic) where nothing was saved by hand.
  */
-export function SheetTable({ month, days, employees, codes, value, onChange, editable = false, cell, totals }) {
+export function SheetTable({ month, days, employees, codes, value, auto, onChange, editable = false, cell, totals }) {
   const refs = useRef({});
   const byKey = Object.fromEntries((codes || []).map((c) => [c.key.toUpperCase(), c.code]));
   const focus = (r, d) => refs.current[`${r}-${d}`]?.focus();
@@ -101,17 +106,20 @@ export function SheetTable({ month, days, employees, codes, value, onChange, edi
             <tr key={p.code} className="hover:bg-brand-50/40">
               <td className="sticky left-0 z-10 border border-ink-300 bg-white px-2 py-0.5 font-medium whitespace-nowrap">{p.name}</td>
               {dayList.map((d) => {
-                const v = value?.[p.code]?.[String(d)] || '';
+                const manual = value?.[p.code]?.[String(d)] || '';
+                const v = manual || auto?.[p.code]?.[String(d)] || '';
+                const isAuto = !manual && !!v;
                 return (
                   <td key={d} className={cn('border border-ink-300 p-0 text-center', weekday(month, d) === 0 && 'bg-ink-100')}>
                     {editable ? (
                       <select
                         ref={(el) => (refs.current[`${r}-${d}`] = el)}
                         aria-label={`${p.name}, day ${d}`}
+                        title={isAuto ? 'Filled automatically (holiday, biometric file or daily entries). Press a key to change it.' : undefined}
                         value={v}
                         onChange={(e) => onChange(p.code, d, e.target.value)}
                         onKeyDown={(e) => onKey(e, r, d, p.code)}
-                        className={cn('h-7 w-full min-w-[34px] cursor-pointer appearance-none bg-transparent text-center [text-align-last:center] text-[11px] font-bold outline-none focus:bg-brand-100 focus:ring-2 focus:ring-brand-500', CODE_TONE[v])}
+                        className={cn('h-7 w-full min-w-[34px] cursor-pointer appearance-none bg-transparent text-center [text-align-last:center] text-[11px] font-bold outline-none focus:bg-brand-100 focus:ring-2 focus:ring-brand-500', CODE_TONE[v], isAuto && 'font-medium italic opacity-70')}
                       >
                         <option value="" />
                         {codes.map((c) => (

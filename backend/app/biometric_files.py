@@ -41,6 +41,10 @@ class Punch:
     day: date
     times: list[time] = field(default_factory=list)
     file: str = ""
+    mark: str = ""  # v54: "H" or "C" written in the day cell instead of times
+
+
+DAY_MARKS = {"H", "C"}  # letters in a day cell of the biometric file, kept per employee per day
 
 
 @dataclass
@@ -508,13 +512,17 @@ def _read_day_wise(rows: list[list], file: str, out: ReadResult, file_month: tup
         if not (person[0] or person[1]):
             continue
         for j, d in day_cols.items():
-            times = _times(_cell(row, j))
-            if not times:
+            raw = _cell(row, j)
+            times = _times(raw)
+            mark = str(raw).strip().upper() if isinstance(raw, str) and not times else ""
+            if mark not in DAY_MARKS:
+                mark = ""
+            if not times and not mark:
                 continue
             day = d if isinstance(d, date) else _resolve_day(d, row_month or month)
             if not day:
                 out.skipped_rows += 1
                 continue
-            out.punches.append(Punch(person[0], person[1], day, times, file))
+            out.punches.append(Punch(person[0], person[1], day, times, file, mark))
     if out.skipped_rows and not out.punches:
         out.errors.append(f"{file}: the day columns have no month. Add a Month column or the month in the title.")
