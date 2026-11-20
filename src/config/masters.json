@@ -20,41 +20,73 @@
           "label": "Course",
           "type": "lookup",
           "source": "courses",
-          "required": false
+          "required": true
         },
         {
           "key": "facultyCode",
           "label": "Faculty",
           "type": "lookup",
-          "source": "employees"
+          "source": "employees",
+          "required": true
         },
         {
           "key": "facultyShort",
           "label": "Short Name",
           "type": "text",
-          "hint": "Faculty short name from the BatchMaster file"
+          "hint": "Faculty short name from the BatchMaster file",
+          "required": true
+        },
+        {
+          "key": "otherFacultyType",
+          "label": "Additional Faculty",
+          "type": "toggle",
+          "options": [
+            "None",
+            "Internal",
+            "External"
+          ],
+          "required": true,
+          "default": "None",
+          "hint": "Another faculty for this batch: one of our employees (Internal) or from outside (External)"
         },
         {
           "key": "otherFaculty",
-          "label": "Other Faculty",
+          "label": "Internal Faculty",
+          "type": "lookup",
+          "source": "employees",
+          "required": true,
+          "showIf": {
+            "otherFacultyType": "Internal"
+          }
+        },
+        {
+          "key": "externalFaculty",
+          "label": "External Faculty",
           "type": "text",
-          "hideInTable": true,
-          "hint": "More employee codes for this batch, comma separated"
+          "required": true,
+          "showIf": {
+            "otherFacultyType": "External"
+          },
+          "hint": "Name of the faculty from outside"
         },
         {
           "key": "startDate",
           "label": "Start Date",
-          "type": "date"
+          "type": "date",
+          "required": true
         },
         {
           "key": "endDate",
           "label": "End Date",
-          "type": "date"
+          "type": "date",
+          "required": true
         },
         {
           "key": "timing",
           "label": "Timing",
-          "type": "text"
+          "type": "timerange",
+          "hint": "Class time From and To",
+          "required": true
         },
         {
           "key": "classType",
@@ -63,19 +95,22 @@
           "options": [
             "WeekDays",
             "WeekEnd"
-          ]
+          ],
+          "required": true
         },
         {
           "key": "totalHours",
           "label": "Total Hours",
           "type": "number",
-          "hideInTable": true
+          "hideInTable": true,
+          "required": true
         },
         {
           "key": "courseType",
           "label": "Course Type",
           "type": "text",
-          "hideInTable": true
+          "hideInTable": true,
+          "required": true
         },
         {
           "key": "mode",
@@ -85,7 +120,8 @@
             "Center",
             "At College"
           ],
-          "default": "Center"
+          "default": "Center",
+          "required": true
         },
         {
           "key": "classMode",
@@ -95,7 +131,8 @@
             "Offline",
             "Online"
           ],
-          "default": "Offline"
+          "default": "Offline",
+          "required": true
         },
         {
           "key": "status",

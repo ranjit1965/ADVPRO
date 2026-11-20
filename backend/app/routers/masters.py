@@ -41,6 +41,10 @@ def validate(defn: dict, body: dict) -> dict:
     out: dict[str, Any] = {}
     for f in defn["fields"]:
         v = body.get(f["key"])
+        cond = f.get("showIf")  # shown (and required) only when another field has that value
+        if cond and any(str(body.get(k) or "").strip() != val for k, val in cond.items()):
+            out[f["key"]] = ""
+            continue
         if isinstance(v, str):
             v = v.strip()
         if v in (None, ""):
@@ -59,8 +63,12 @@ def validate(defn: dict, body: dict) -> dict:
                 raise ValueError
             elif t == "email" and not re.fullmatch(r"[^\s@]+@[^\s@]+\.[^\s@]+", v):
                 raise ValueError
-            elif t == "select" and v not in f["options"]:
+            elif t in ("select", "toggle") and v not in f["options"]:
                 raise ValueError
+            elif t == "timerange":  # "HH:MM to HH:MM", To after From
+                m = re.fullmatch(r"((?:[01]\d|2[0-3]):[0-5]\d) to ((?:[01]\d|2[0-3]):[0-5]\d)", v)
+                if not m or m.group(2) <= m.group(1):
+                    raise ValueError
         except (ValueError, TypeError):
             raise HTTPException(422, f"{f['label']} is not valid")
         out[f["key"]] = v

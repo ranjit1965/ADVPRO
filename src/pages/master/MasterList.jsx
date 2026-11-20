@@ -10,6 +10,8 @@ import Select from '../../components/ui/Select';
 import Textarea from '../../components/ui/Textarea';
 import DatePicker from '../../components/ui/DatePicker';
 import TimePicker from '../../components/ui/TimePicker';
+import TimeField from '../../components/ui/TimeField';
+import RadioGroup from '../../components/ui/RadioGroup';
 import Modal from '../../components/ui/Modal';
 import DataTable from '../../components/ui/DataTable';
 import Pagination from '../../components/ui/Pagination';
@@ -35,7 +37,37 @@ const display = (f, v, lookups) => {
   return String(v);
 };
 
+/** Timing stored as "HH:MM to HH:MM" (also the BatchMaster file format). */
+const splitRange = (v) => {
+  const m = /^(\d{1,2}[:.]\d{2})\s*(?:to|-|–)\s*(\d{1,2}[:.]\d{2})$/i.exec(String(v || '').trim());
+  const norm = (t) => (t ? t.replace('.', ':').padStart(5, '0') : '');
+  return m ? [norm(m[1]), norm(m[2])] : ['', ''];
+};
+const joinRange = (a, b) => (a || b ? `${a || ''} to ${b || ''}` : '');
+const rangeError = (v) => {
+  const [a, b] = splitRange(v);
+  if (!a || !b) return 'Choose the From and To time';
+  if (b <= a) return 'To must be after From';
+  return '';
+};
+/** A field with `showIf` is shown (and required) only while another field has that value. */
+const shown = (f, form) => !f.showIf || Object.entries(f.showIf).every(([k, val]) => form[k] === val);
+
 function FieldInput({ f, value, error, onChange, lookups }) {
+  if (f.type === 'timerange') {
+    // While choosing, one side may still be empty ("10:00 to "), so split loosely and keep both sides.
+    const [a, b] = splitRange(value).every(Boolean) ? splitRange(value) : String(value || '').split(' to ').concat(['', '']).slice(0, 2);
+    const pick = (v) => (v?.target ? v.target.value : v) || '';
+    return (
+      <div className="grid grid-cols-2 gap-3">
+        <TimeField label={`${f.label} From`} required={f.required} value={a} error={error} onChange={(v) => onChange(joinRange(pick(v), b))} />
+        <TimeField label={`${f.label} To`} required={f.required} value={b} onChange={(v) => onChange(joinRange(a, pick(v)))} />
+      </div>
+    );
+  }
+  if (f.type === 'toggle') {
+    return <RadioGroup label={f.label} required={f.required} name={f.key} options={f.options} value={value || ''} error={error} onChange={(v) => onChange(v?.target ? v.target.value : v)} />;
+  }
   const common = { label: f.label, required: f.required, hint: f.hint, error, value: value ?? '', onChange: (e) => onChange(e.target.value) };
   switch (f.type) {
     case 'select':
@@ -105,7 +137,9 @@ export default function MasterList() {
     const errs = {};
     def.fields.forEach((f) => {
       const v = form[f.key];
+      if (!shown(f, form)) return;
       if (f.required && (v === '' || v === undefined || v === null)) errs[f.key] = 'Required';
+      else if (f.type === 'timerange' && rangeError(v)) errs[f.key] = rangeError(v);
       else if (v !== '' && v !== undefined) {
         if (f.type === 'number' && Number.isNaN(Number(v))) errs[f.key] = 'Enter a number';
         if (f.type === 'email' && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) errs[f.key] = 'Enter a valid email';
@@ -121,6 +155,8 @@ export default function MasterList() {
     try {
       const rec = { ...form };
       def.fields.forEach((f) => {
+        if (!shown(f, form)) rec[f.key] = '';
+        if (f.type === 'timerange' && rec[f.key]) rec[f.key] = joinRange(...splitRange(rec[f.key]));
         if (f.type === 'number' && rec[f.key] !== '') rec[f.key] = Number(rec[f.key]);
       });
       await api.saveMasterRecord(key, rec);
@@ -180,7 +216,10 @@ export default function MasterList() {
   const editRow = (r) => {
     setErrors({});
     setFromRequest(null);
-    setForm({ ...Object.fromEntries(def.fields.map((f) => [f.key, ''])), ...r });
+    const rec = { ...Object.fromEntries(def.fields.map((f) => [f.key, ''])), ...r };
+    // Batches saved before the Internal / External choice: an employee in Other Faculty means Internal.
+    if (def.fields.some((f) => f.key === 'otherFacultyType') && !rec.otherFacultyType) rec.otherFacultyType = rec.externalFaculty ? 'External' : rec.otherFaculty ? 'Internal' : 'None';
+    setForm(rec);
   };
   const toggle = (ids, on) =>
     setPicked((prev) => {
@@ -325,7 +364,7 @@ export default function MasterList() {
         footer={<><Button variant="secondary" onClick={closeForm}>Cancel</Button><Button loading={saving} onClick={save}>Save</Button></>}>
         {form && (
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            {def.fields.map((f) => (
+            {def.fields.filter((f) => shown(f, form)).map((f) => (
               <FieldInput key={f.key} f={f} value={form[f.key]} error={errors[f.key]} lookups={lookups} onChange={(v) => setForm((s) => ({ ...s, [f.key]: v }))} />
             ))}
           </div>

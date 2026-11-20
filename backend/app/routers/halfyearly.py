@@ -88,6 +88,15 @@ class MailSettingsIn(BaseModel):
     hrEmail: EmailStr | Literal[""] = ""
 
 
+class TemplateIn(BaseModel):
+    subject: str = Field(default="", max_length=300)
+    body: str = Field(default="", max_length=10000)
+
+
+class SendIn(BaseModel):
+    ids: list[str] = Field(default_factory=list, max_length=5000)
+
+
 class StatusIn(BaseModel):
     targets: list[TargetStatus] = Field(default_factory=list, max_length=3)
     deliveries: list[DeliveryStatus] = Field(default_factory=list, max_length=3)
@@ -124,27 +133,46 @@ def list_reports(employeeCode: str | None = None, me: dict = Depends(current_use
     return [_clean(r) for r in col.find(q).sort([("startMonth", -1), ("employeeName", 1)])]
 
 
-# ---------------------------------------------------------------- HR › Certification Status: carry over + Deferred Report
+# ---------------------------------------------------------------- HR › Certification Status: carry over + emails
+
+SAMPLE = {"id": "HY-0000", "employeeCode": "ABC", "quarter": "H1", "startMonth": "2026-01", "endMonth": "2026-06",
+          "targets": [{"name": "Sample certification", "courseId": "C101", "achieved": "Yes", "completionDate": "2026-05-10", "certificationCode": "CERT-123"}]}
+
+
+def _followup() -> dict:
+    cfg = cert_followup.get_settings()
+    samples = {}
+    for kind in cert_followup.KINDS:
+        subject, text = cert_followup.compose(kind, SAMPLE, "<Faculty name>", cfg["hrEmail"], SAMPLE["targets"])
+        samples[kind] = {"subject": subject, "text": text}
+    return {**cfg, "samples": samples, "pending": {k: cert_followup.preview(k) for k in cert_followup.KINDS}}
+
 
 @router.get("/followup")
-def followup_settings(_: dict = Depends(hr_only)):
-    """HR mail id (set by the Super Admin), the last run, and a sample of the Deferred Report email."""
-    sample = {"id": "HY-0000", "employeeCode": "ABC", "quarter": "H1", "startMonth": "2026-01", "endMonth": "2026-06",
-              "targets": [{"name": "Sample certification", "courseId": "C101", "achieved": None}]}
-    cfg = cert_followup.get_settings()
-    subject, text = cert_followup.deferred_mail(sample, "<Faculty name>", cfg["hrEmail"])
-    return {**cfg, "template": {"subject": subject, "text": text}}
+def followup_settings(me: dict = Depends(hr_only)):
+    """HR mail id, both email templates with a sample, and who is waiting for each email."""
+    cert_followup.carry_over(by=me["name"])
+    return _followup()
 
 
 @router.put("/followup")
 def save_followup_settings(body: MailSettingsIn, me: dict = Depends(super_admin_only)):
-    return cert_followup.save_settings(body.hrEmail, me["name"])
+    cert_followup.save_settings(body.hrEmail, me["name"])
+    return _followup()
 
 
-@router.post("/followup/run")
-def run_followup(me: dict = Depends(super_admin_only)):
-    """Carry unfinished certifications of ended quarters forward and email the Deferred Report now (once per row)."""
-    return cert_followup.run(by=me["name"])
+@router.put("/followup/templates/{kind}")
+def save_template(kind: Literal["deferred", "completed"], body: TemplateIn, me: dict = Depends(hr_only)):
+    """HR edits the Deferred Report or Certification Completed email at any time."""
+    cert_followup.save_template(kind, body.subject, body.body, me["name"])
+    return _followup()
+
+
+@router.post("/followup/send/{kind}")
+def send_mails(kind: Literal["deferred", "completed"], body: SendIn | None = None, me: dict = Depends(hr_only)):
+    """Sent only when HR clicks Send: to everyone waiting for this email, or only the rows in `ids`."""
+    res = cert_followup.send(kind, me["name"], (body.ids if body else None) or None)
+    return {**res, "followup": _followup()}
 
 
 @router.post("", status_code=201)

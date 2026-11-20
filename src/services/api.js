@@ -399,7 +399,7 @@ export async function updateHalfyearlyStatus(id, body) {
   return request(`/hr/halfyearly/${encodeURIComponent(id)}/status`, { method: 'PUT', body });
 }
 
-/** GET /api/hr/halfyearly/followup: HR mail id, last run and the Deferred Report email template. */
+/** GET /api/hr/halfyearly/followup: HR mail id, both email templates, and who is waiting for each email. */
 export async function getCertFollowup() {
   return request('/hr/halfyearly/followup');
 }
@@ -409,9 +409,14 @@ export async function saveCertFollowup(hrEmail) {
   return request('/hr/halfyearly/followup', { method: 'PUT', body: { hrEmail } });
 }
 
-/** POST /api/hr/halfyearly/followup/run (Super Admin): carry forward and email now. */
-export async function runCertFollowup() {
-  return request('/hr/halfyearly/followup/run', { method: 'POST' });
+/** PUT /api/hr/halfyearly/followup/templates/{kind} (HR): edit the 'deferred' or 'completed' email. */
+export async function saveCertTemplate(kind, subject, body) {
+  return request(`/hr/halfyearly/followup/templates/${kind}`, { method: 'PUT', body: { subject, body } });
+}
+
+/** POST /api/hr/halfyearly/followup/send/{kind} (HR): send the email to everyone waiting for it (only when clicked). */
+export async function sendCertMails(kind, ids = []) {
+  return request(`/hr/halfyearly/followup/send/${kind}`, { method: 'POST', body: { ids } });
 }
 
 /** DELETE /api/hr/halfyearly/{id} (Super Admin only) */

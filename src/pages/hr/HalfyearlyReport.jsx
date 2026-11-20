@@ -27,6 +27,12 @@ export const QUARTERS = ['H1', 'H2', 'H3', 'H4', 'H5', 'H6'];
 const blankCert = () => ({ courseId: '', name: '' });
 const EMPTY_FORM = { employeeCode: '', quarter: '', startMonth: '', endMonth: '', targets: [blankCert()], deliveries: [blankCert()] };
 
+/** 'YYYY-MM' plus n months. */
+const addMonths = (m, n) => {
+  const [y, mo] = m.split('-').map(Number);
+  const k = y * 12 + (mo - 1) + n;
+  return `${Math.floor(k / 12)}-${String((k % 12) + 1).padStart(2, '0')}`;
+};
 const resize = (list, n) => Array.from({ length: n }, (_, i) => list[i] || blankCert());
 
 /**
@@ -61,6 +67,8 @@ export default function HalfyearlyReport() {
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
   const setF = (k, v) => {
+    // Starting month picked: the ending month becomes the 6th month (Jan -> Jun); it can still be changed.
+    if (k === 'startMonth' && v) return setForm((f) => ({ ...f, startMonth: v, endMonth: addMonths(v, 5) }));
     setForm((f) => ({ ...f, [k]: v }));
     if (k === 'employeeCode' && v) setFilter(v); // the list below shows that person's saved rows
   };

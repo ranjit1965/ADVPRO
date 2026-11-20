@@ -367,11 +367,19 @@ missed), the Dashboard and this page remind Admin / Manager until each file is u
 - **Dashboard certification boxes:** a target certification not finished is red; a delivery ready course not
   ready yet is amber; finished ones are green.
 - **Class tab › Class mode:** Online, Offline or **Both**.
-- **Deferred Report email:** once per row after the quarter ends, each employee with unfinished certifications gets
-  an email at their email in Employees. The Super Admin sets the **HR mail id** in Certification Status; it is the
-  Reply-To and gets a copy (CC). The sender address is still `SMTP_FROM` (most SMTP servers do not allow another From).
-  It runs daily inside the API (`CERT_FOLLOWUP_ENABLED=true`, `CERT_FOLLOWUP_TIME=07:00`); the Super Admin can
-  also click *Run now*. Rows of employees without an email are marked "No email" and skipped.
+- **Certification emails (sent only when HR clicks Send, never automatically):** in HR › Certification Status,
+  *Deferred Report* (certifications not completed when the quarter ended, one per employee and quarter) and
+  *Certification Completed* (each certification marked Completed Yes, once). Each card lists who is waiting, has a
+  **Send** button, and **Edit email text** (subject and text with `{name}`, `{code}`, `{quarter}`, `{period}`,
+  `{courses}`, `{nextQuarter}`, `{nextPeriod}`, `{hrEmail}`), which HR can change at any time or reset to the default.
+  Emails go to the employee's email in Employees; the **HR mail id** (set by the Super Admin) is the Reply-To and
+  gets a copy (CC). The sender address is still `SMTP_FROM`. The carry over still runs daily inside the API
+  (`CERT_FOLLOWUP_ENABLED`, `CERT_FOLLOWUP_TIME`) and whenever the page is opened.
+- **Halfyearly:** choosing the Starting Month fills the Ending Month with the 6th month (Jan → Jun); it can be changed.
+- **Add / Edit Batch:** every field is required. Timing is chosen with the time picker (From and To, To after From;
+  saved as `10:00 to 12:00`). *Additional Faculty* is a toggle None / Internal / External: Internal asks for the
+  employee (the batch then shows in that employee's Class tab too), External asks for the outside faculty's name.
+  Older imported batches must have their empty fields filled in when they are edited.
 - **No entries for HR, Admin and Super Admin.** Their Entry and Others menus are hidden and the server refuses a new
   entry from them. Their dashboard shows only *View dashboard of*, listing Faculty and Lab Support people
   (role key or label matching "Lab Support"); picking one shows that person's dashboard. *My Entries* is
