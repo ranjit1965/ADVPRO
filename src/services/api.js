@@ -307,19 +307,20 @@ export async function getDashboardSummary(facultyCode) {
 
 
 /* ------------------------------------------------------------ Biometric */
-// Master › Biometric / Admin › Data Upload: device file upload, tolerance, and links for unmatched device users.
+// Master › Biometric / Admin › Data Upload: device file upload (with its month), and links for unmatched device users.
 
 export async function getBiometricSettings() {
   return request('/biometric/settings');
 }
 
-export async function saveBiometricSettings(body) {
-  return request('/biometric/settings', { method: 'PUT', body });
+/** Saves the device export file chosen in the browser (.xlsx, .xls or .csv) for `month` ('YYYY-MM', chosen by the Admin). */
+export async function uploadBiometric(file, month) {
+  return request('/biometric/upload', { method: 'POST', body: file, params: { name: file.name, month } });
 }
 
-/** Saves the device export file chosen in the browser (.xlsx, .xls or .csv): read and stored in the database. */
-export async function uploadBiometric(file) {
-  return request('/biometric/upload', { method: 'POST', body: file, params: { name: file.name } });
+/** Months uploaded, newest first, with the No of records and No of holidays from the file. */
+export async function getBiometricMonths() {
+  return request('/biometric/months');
 }
 
 /** Links a device user id / name to an employee code (empty code removes the link) and moves their days. */
@@ -402,11 +403,6 @@ export async function updateHalfyearlyStatus(id, body) {
 /** GET /api/hr/halfyearly/followup: HR mail id, both email templates, and who is waiting for each email. */
 export async function getCertFollowup() {
   return request('/hr/halfyearly/followup');
-}
-
-/** PUT /api/hr/halfyearly/followup (Super Admin): the HR mail id the Deferred Report is sent from. */
-export async function saveCertFollowup(hrEmail) {
-  return request('/hr/halfyearly/followup', { method: 'PUT', body: { hrEmail } });
 }
 
 /** PUT /api/hr/halfyearly/followup/templates/{kind} (HR): edit the 'deferred' or 'completed' email. */

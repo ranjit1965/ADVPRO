@@ -7,8 +7,10 @@ const sizeText = (n) => (n >= 1024 * 1024 ? `${(n / 1024 / 1024).toFixed(1)} MB`
 /**
  * Two steps: "Choose file" picks the Excel / CSV file from this computer, then "Save" sends it to
  * the backend, which reads it and updates the database. onSave(file) must return a promise.
+ * `extra` shows below the chosen file (e.g. the month and year of a biometric file); `check()` returns an
+ * error text that stops the save ('' to go on).
  */
-export default function FileSaveField({ label = 'File', accept = '.xlsx,.xls,.csv', onSave, saveLabel = 'Save', disabled }) {
+export default function FileSaveField({ label = 'File', accept = '.xlsx,.xls,.csv', onSave, saveLabel = 'Save', disabled, extra, check }) {
   const ref = useRef(null);
   const [file, setFile] = useState(null);
   const [saving, setSaving] = useState(false);
@@ -17,6 +19,11 @@ export default function FileSaveField({ label = 'File', accept = '.xlsx,.xls,.cs
   const save = async () => {
     if (!file) {
       setError('Choose a file first');
+      return;
+    }
+    const problem = check?.() || '';
+    if (problem) {
+      setError(problem);
       return;
     }
     setSaving(true);
@@ -68,6 +75,7 @@ export default function FileSaveField({ label = 'File', accept = '.xlsx,.xls,.cs
           {saveLabel}
         </Button>
       </div>
+      {file && extra && <div className="mt-3">{extra}</div>}
       {error && (
         <p role="alert" className="mt-2 text-[12px] text-danger-700">
           {error}

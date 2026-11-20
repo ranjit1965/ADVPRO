@@ -24,7 +24,6 @@ router = APIRouter(prefix="/batch-import", tags=["batch-import"])
 master_roles = manage_access  # Master or Admin menu, or HR menu for HR / Admin roles; Super Admin always
 SETTINGS_ID = "batchImport"
 CLOSE_AFTER_DAYS = 60  # a batch whose end date is older than this is counted as Completed
-CLASS_TYPES = {"weekdays": "WeekDays", "weekday": "WeekDays", "weekend": "WeekEnd", "weekends": "WeekEnd"}
 
 
 class MapIn(BaseModel):
@@ -198,8 +197,6 @@ def run_import(rows: list[list], file_name: str, me: dict) -> dict:
             "startDate": first.startDate.isoformat() if first.startDate else "",
             "endDate": (first.actualEndDate or first.endDate).isoformat() if (first.actualEndDate or first.endDate) else "",
             "timing": timing,
-            "classType": CLASS_TYPES.get(first.classType.lower().replace(" ", ""), ""),
-            "totalHours": first.totalHours if first.totalHours is not None else "",
             "courseType": first.courseType,
             "status": status,
             "source": "Upload",

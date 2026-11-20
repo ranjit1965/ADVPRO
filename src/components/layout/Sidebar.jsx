@@ -18,7 +18,7 @@ const ITEM_ACTIVE = 'bg-brand-100 text-brand-800';
 /* sidebar, like the legacy Advpro menu. Nested groups cascade further. */
 /* ------------------------------------------------------------------ */
 
-function FlyoutPanel({ item, anchor, level = 0, onNavigate, panelRefs }) {
+function FlyoutPanel({ item, anchor, level = 0, onNavigate, panelRefs, hover }) {
   const { user } = useAuth();
   const { pathname } = useLocation();
   const ref = useRef(null);
@@ -52,6 +52,8 @@ function FlyoutPanel({ item, anchor, level = 0, onNavigate, panelRefs }) {
         ref={ref}
         role="menu"
         aria-label={item.label}
+        onMouseEnter={hover?.keep}
+        onMouseLeave={hover?.leave}
         style={{ left: pos.left, top: pos.top }}
         className="no-print fixed z-50 max-h-[calc(100vh-16px)] w-60 overflow-y-auto rounded-xl border border-ink-200 bg-white p-1.5 shadow-pop"
       >
@@ -103,15 +105,15 @@ function FlyoutPanel({ item, anchor, level = 0, onNavigate, panelRefs }) {
           })}
         </ul>
       </div>
-      {sub && <FlyoutPanel key={sub.item.key} item={sub.item} anchor={sub.anchor} level={level + 1} onNavigate={onNavigate} panelRefs={panelRefs} />}
+      {sub && <FlyoutPanel key={sub.item.key} item={sub.item} anchor={sub.anchor} level={level + 1} onNavigate={onNavigate} panelRefs={panelRefs} hover={hover} />}
     </>
   );
 }
 
-function FlyoutGroup({ item, collapsed, flyout, setFlyout }) {
-  const { pathname } = useLocation();
-  const activeInside = containsPath(item, pathname);
+function FlyoutGroup({ item, collapsed, flyout, setFlyout, activeGroup, hover }) {
   const isOpen = flyout?.key === item.key;
+  // Only one section is blue: the one whose menu is open, else the section the current page was picked from.
+  const selected = flyout ? isOpen : activeGroup === item.key;
   const Icon = item.icon;
 
   const open = (el) => {
@@ -124,14 +126,18 @@ function FlyoutGroup({ item, collapsed, flyout, setFlyout }) {
     <li>
       <button
         data-flyout-trigger
-        onClick={(e) => (isOpen ? setFlyout(null) : open(e.currentTarget))}
-        onMouseEnter={(e) => flyout && !isOpen && open(e.currentTarget)}
+        onClick={(e) => !isOpen && open(e.currentTarget)}
+        onMouseEnter={(e) => {
+          hover?.keep();
+          if (!isOpen) open(e.currentTarget); // hovering a section shows its options
+        }}
+        onMouseLeave={hover?.leave}
         aria-haspopup="menu"
         aria-expanded={isOpen}
         title={collapsed ? item.label : undefined}
         className={cn(
           'flex w-full items-center gap-3 rounded-lg px-3 py-1.5 text-left text-[13px] font-medium transition-colors',
-          isOpen || activeInside ? ITEM_ACTIVE : ITEM_IDLE,
+          selected ? ITEM_ACTIVE : ITEM_IDLE,
           collapsed && 'justify-center px-0',
         )}
       >
@@ -151,9 +157,13 @@ function FlyoutGroup({ item, collapsed, flyout, setFlyout }) {
 /* Inline accordion (mobile drawer)                                    */
 /* ------------------------------------------------------------------ */
 
-function NavGroup({ item, depth, onNavigate }) {
+function NavGroup({ item, depth, onNavigate, activeGroup, onPick }) {
   const { pathname } = useLocation();
-  const activeInside = containsPath(item, pathname);
+  const activeInside = depth === 0 ? activeGroup === item.key : containsPath(item, pathname);
+  const pick = () => {
+    if (depth === 0) onPick?.(item.key);
+    onNavigate?.();
+  };
   const [open, setOpen] = useState(activeInside || ['faculty', 'daily-activity'].includes(item.key));
   useEffect(() => {
     if (activeInside) setOpen(true);
@@ -178,7 +188,7 @@ function NavGroup({ item, depth, onNavigate }) {
       {open && (
         <ul className={cn('mt-0.5 space-y-0.5', depth === 0 && 'ml-[21px] border-l border-ink-200 pl-0')}>
           {item.children.map((c) => (
-            <NavItem key={c.key} item={c} depth={depth + 1} onNavigate={onNavigate} />
+            <NavItem key={c.key} item={c} depth={depth + 1} onNavigate={depth === 0 ? pick : onNavigate} />
           ))}
         </ul>
       )}
@@ -186,16 +196,16 @@ function NavGroup({ item, depth, onNavigate }) {
   );
 }
 
-function NavItem({ item, depth = 0, collapsed, flyoutMode, flyout, setFlyout, onNavigate, onAction }) {
+function NavItem({ item, depth = 0, collapsed, flyoutMode, flyout, setFlyout, onNavigate, onAction, activeGroup, onPick, hover }) {
   const { user } = useAuth();
   if (!canSeeItem(user, item) || (item.section && !hasSection(user, item.section))) return null;
   if (item.children) {
-    if (flyoutMode && depth === 0) return <FlyoutGroup item={item} collapsed={collapsed} flyout={flyout} setFlyout={setFlyout} />;
-    return <NavGroup item={item} depth={depth} onNavigate={onNavigate} />;
+    if (flyoutMode && depth === 0) return <FlyoutGroup item={item} collapsed={collapsed} flyout={flyout} setFlyout={setFlyout} activeGroup={activeGroup} hover={hover} />;
+    return <NavGroup item={item} depth={depth} onNavigate={onNavigate} activeGroup={activeGroup} onPick={onPick} />;
   }
   const Icon = item.icon;
   const base = cn('flex w-full items-center gap-3 rounded-lg py-1.5 text-[13px] font-medium transition-colors', depth === 0 ? 'px-3' : depth === 1 ? 'pr-3 pl-4' : 'pr-3 pl-9', collapsed && 'justify-center px-0');
-  const closeFlyout = () => setFlyout?.(null);
+  const closeFlyout = () => depth === 0 && setFlyout?.(null);
 
   if (item.restricted) {
     return (
@@ -214,7 +224,7 @@ function NavItem({ item, depth = 0, collapsed, flyoutMode, flyout, setFlyout, on
   }
   if (item.action) {
     return (
-      <li>
+      <li onMouseEnter={closeFlyout}>
         <button onClick={() => onAction(item.action)} title={collapsed ? item.label : undefined} className={cn(base, ITEM_IDLE)}>
           {Icon && <Icon className="size-[18px] shrink-0" aria-hidden />}
           {!collapsed && <span className="truncate">{item.label}</span>}
@@ -223,11 +233,14 @@ function NavItem({ item, depth = 0, collapsed, flyoutMode, flyout, setFlyout, on
     );
   }
   return (
-    <li>
+    <li onMouseEnter={closeFlyout}>
       <NavLink
         to={item.to}
         end={item.to === '/'}
-        onClick={onNavigate}
+        onClick={() => {
+          if (depth === 0) onPick?.(null);
+          onNavigate?.();
+        }}
         title={collapsed ? item.label : undefined}
         className={({ isActive }) => cn(base, isActive ? ITEM_ACTIVE : ITEM_IDLE)}
       >
@@ -240,8 +253,42 @@ function NavItem({ item, depth = 0, collapsed, flyoutMode, flyout, setFlyout, on
 
 export default function Sidebar({ collapsed, onToggleCollapsed, mobileOpen, onCloseMobile, onLogout }) {
   const { pathname } = useLocation();
+  const { user } = useAuth();
   const [flyout, setFlyout] = useState(null); // { key, item, anchor }
   const panelRefs = useRef([]);
+
+  // The section a page was opened from. Some pages (Employees, Batch, Course ...) are in the Master, Admin and HR
+  // menus; only the section that was picked is shown blue. Kept for the browser tab (sessionStorage).
+  const [picked, setPickedState] = useState(() => {
+    try {
+      return sessionStorage.getItem('der.navSection') || null;
+    } catch {
+      return null;
+    }
+  });
+  const setPicked = (key) => {
+    setPickedState(key);
+    try {
+      if (key) sessionStorage.setItem('der.navSection', key);
+      else sessionStorage.removeItem('der.navSection');
+    } catch {
+      /* storage blocked: highlight still works for this page */
+    }
+  };
+  const visibleGroups = NAVIGATION.filter((g) => g.children && canSeeItem(user, g) && !(g.section && !hasSection(user, g.section)));
+  const pickedGroup = visibleGroups.find((g) => g.key === picked && containsPath(g, pathname));
+  const activeGroup = (pickedGroup || visibleGroups.find((g) => containsPath(g, pathname)))?.key || null;
+
+  // Hover: a section's menu opens on hover and closes shortly after the pointer leaves the section and its menus.
+  const closeTimer = useRef(null);
+  const hover = {
+    keep: () => clearTimeout(closeTimer.current),
+    leave: () => {
+      clearTimeout(closeTimer.current);
+      closeTimer.current = setTimeout(() => setFlyout(null), 250);
+    },
+  };
+  useEffect(() => () => clearTimeout(closeTimer.current), []);
 
   // Close the flyout on navigation, Escape, resize, sidebar scroll or a click outside it.
   useEffect(() => setFlyout(null), [pathname, collapsed]);
@@ -264,7 +311,7 @@ export default function Sidebar({ collapsed, onToggleCollapsed, mobileOpen, onCl
     };
   }, [flyout]);
 
-  const sharedProps = { onNavigate: onCloseMobile, onAction: (a) => a === 'logout' && onLogout() };
+  const sharedProps = { onNavigate: onCloseMobile, onAction: (a) => a === 'logout' && onLogout(), activeGroup, onPick: setPicked, hover };
 
   const content = (isMobile) => {
     const c = isMobile ? false : collapsed;
@@ -311,7 +358,20 @@ export default function Sidebar({ collapsed, onToggleCollapsed, mobileOpen, onCl
     <>
       <aside className={cn('no-print fixed inset-y-0 left-0 z-30 hidden transition-[width] duration-200 lg:block', collapsed ? 'w-[72px]' : 'w-64')}>{content(false)}</aside>
       {flyout &&
-        createPortal(<FlyoutPanel key={flyout.key} item={flyout.item} anchor={flyout.anchor} onNavigate={() => setFlyout(null)} panelRefs={panelRefs} />, document.body)}
+        createPortal(
+          <FlyoutPanel
+            key={flyout.key}
+            item={flyout.item}
+            anchor={flyout.anchor}
+            hover={hover}
+            onNavigate={() => {
+              setPicked(flyout.key);
+              setFlyout(null);
+            }}
+            panelRefs={panelRefs}
+          />,
+          document.body,
+        )}
       {mobileOpen && (
         <div className="no-print fixed inset-0 z-40 lg:hidden">
           <div className="absolute inset-0 bg-ink-900/30" onClick={onCloseMobile} aria-hidden />

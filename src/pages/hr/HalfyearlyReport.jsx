@@ -18,28 +18,22 @@ import { useConfirm } from '../../context/ConfirmContext';
 import { useAsync } from '../../hooks/useAsync';
 import { formatDate } from '../../utils/format';
 import { downloadCsv } from '../../utils/export';
-import { periodDates } from '../../utils/halfyearly';
+import { rowDates, sixMonthsEnd } from '../../utils/halfyearly';
 import { isSuperAdmin } from '../../utils/permissions';
-import ReportRows, { monthLabel, ReportHead } from '../../components/hr/CertificationRows';
+import ReportRows, { ReportHead } from '../../components/hr/CertificationRows';
 
 const COUNTS = ['1', '2', '3'];
 export const QUARTERS = ['H1', 'H2', 'H3', 'H4', 'H5', 'H6'];
 const blankCert = () => ({ courseId: '', name: '' });
-const EMPTY_FORM = { employeeCode: '', quarter: '', startMonth: '', endMonth: '', targets: [blankCert()], deliveries: [blankCert()] };
+const EMPTY_FORM = { employeeCode: '', quarter: '', startDate: '', endDate: '', targets: [blankCert()], deliveries: [blankCert()] };
 
-/** 'YYYY-MM' plus n months. */
-const addMonths = (m, n) => {
-  const [y, mo] = m.split('-').map(Number);
-  const k = y * 12 + (mo - 1) + n;
-  return `${Math.floor(k / 12)}-${String((k % 12) + 1).padStart(2, '0')}`;
-};
 const resize = (list, n) => Array.from({ length: n }, (_, i) => list[i] || blankCert());
 
 /**
  * HR › Halfyearly Program Report.
  * HR, Super Admin and Admin pick an employee and assign, for a quarter (H1 to H6) with its starting and ending month,
- * 1 to 3 target certifications and 1 to 3 delivery ready courses from the course list. The saved rows show below
- * the form (for the employee picked in the form). The status (Completed Yes / date / code) is recorded in
+ * 1 to 3 target certifications and 1 to 3 delivery ready courses from the course list. Below the form, the row
+ * being filled shows live ("Not saved yet") above the saved rows of the employee picked in the form. The status (Completed Yes / date / code) is recorded in
  * HR › Certification Status. The employee sees their own rows read-only (and on the dashboard).
  */
 export default function HalfyearlyReport() {
@@ -67,19 +61,18 @@ export default function HalfyearlyReport() {
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
   const setF = (k, v) => {
-    // Starting month picked: the ending month becomes the 6th month (Jan -> Jun); it can still be changed.
-    if (k === 'startMonth' && v) return setForm((f) => ({ ...f, startMonth: v, endMonth: addMonths(v, 5) }));
+    // Starting date picked: the ending date becomes 6 months later (1 Jan -> 30 Jun); it can still be changed.
+    if (k === 'startDate' && v) return setForm((f) => ({ ...f, startDate: v, endDate: sixMonthsEnd(v) }));
     setForm((f) => ({ ...f, [k]: v }));
-    if (k === 'employeeCode' && v) setFilter(v); // the list below shows that person's saved rows
+    if (k === 'employeeCode') setFilter(v); // the list below shows that person's saved rows (all when cleared)
   };
   const setCount = (list, n) => setForm((f) => ({ ...f, [list]: resize(f[list], Number(n)) }));
   const setCert = (list, i, courseId) => setForm((f) => ({ ...f, [list]: f[list].map((c, j) => (j === i ? { courseId, name: courseName[courseId] || '' } : c)) }));
-  const [startDate, endDate] = periodDates(form.startMonth, form.endMonth);
 
   const reset = () => {
     setEditingId(null);
     setErrors({});
-    setForm((f) => ({ ...EMPTY_FORM, quarter: f.quarter, startMonth: f.startMonth, endMonth: f.endMonth }));
+    setForm((f) => ({ ...EMPTY_FORM, quarter: f.quarter, startDate: f.startDate, endDate: f.endDate }));
   };
 
   const submit = async (e) => {
@@ -87,14 +80,14 @@ export default function HalfyearlyReport() {
     const errs = {};
     if (!form.employeeCode) errs.employeeCode = 'Choose the employee';
     if (!form.quarter) errs.quarter = 'Choose H1 to H6';
-    if (!form.startMonth) errs.startMonth = 'Choose the starting month';
-    if (!form.endMonth) errs.endMonth = 'Choose the ending month';
-    else if (form.startMonth && form.endMonth < form.startMonth) errs.endMonth = 'Must be on or after the starting month';
+    if (!form.startDate) errs.startDate = 'Choose the starting date';
+    if (!form.endDate) errs.endDate = 'Choose the ending date';
+    else if (form.startDate && form.endDate < form.startDate) errs.endDate = 'Must be on or after the starting date';
     form.targets.forEach((c, i) => !c.name && (errs[`targets${i}`] = 'Choose a course'));
     form.deliveries.forEach((c, i) => !c.name && (errs[`deliveries${i}`] = 'Choose a course'));
     setErrors(errs);
     if (Object.keys(errs).length) return toast.error('Please fill the highlighted fields.');
-    const body = { employeeCode: form.employeeCode, quarter: form.quarter, startMonth: form.startMonth, endMonth: form.endMonth, targets: form.targets, deliveries: form.deliveries };
+    const body = { employeeCode: form.employeeCode, quarter: form.quarter, startDate: form.startDate, endDate: form.endDate, targets: form.targets, deliveries: form.deliveries };
     setSaving(true);
     try {
       const saved = editingId ? await api.updateHalfyearly(editingId, body) : await api.assignHalfyearly(body);
@@ -114,7 +107,9 @@ export default function HalfyearlyReport() {
     setEditingId(r.id);
     setErrors({});
     const pick = (list) => (list?.length ? list.map((c) => ({ courseId: c.courseId || '', name: c.name })) : [blankCert()]);
-    setForm({ employeeCode: r.employeeCode, quarter: r.quarter || '', startMonth: r.startMonth, endMonth: r.endMonth, targets: pick(r.targets), deliveries: pick(r.deliveries) });
+    const [from, to] = rowDates(r);
+    setForm({ employeeCode: r.employeeCode, quarter: r.quarter || '', startDate: from, endDate: to, targets: pick(r.targets), deliveries: pick(r.deliveries) });
+    setFilter(r.employeeCode);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -129,6 +124,30 @@ export default function HalfyearlyReport() {
     }
   };
 
+  /* Live preview: the row being filled shows at the top of the list below while HR picks the values. */
+  const draft = useMemo(() => {
+    if (!isHr || !form.employeeCode) return null;
+    const p = people.find((x) => x.value === form.employeeCode);
+    const old = editingId ? (data || []).find((r) => r.id === editingId) : null;
+    const certs = (list, oldList = []) => list.filter((c) => c.name).map((c) => ({ ...(oldList.find((o) => o.name === c.name) || {}), courseId: c.courseId, name: c.name }));
+    return {
+      id: editingId || 'draft',
+      employeeCode: form.employeeCode,
+      employeeName: p ? p.label.replace(/ \([^)]*\)$/, '') : form.employeeCode,
+      quarter: form.quarter,
+      startMonth: form.startDate.slice(0, 7),
+      endMonth: form.endDate.slice(0, 7),
+      startDate: form.startDate,
+      endDate: form.endDate,
+      targets: certs(form.targets, old?.targets),
+      deliveries: certs(form.deliveries, old?.deliveries),
+    };
+  }, [isHr, form, people, editingId, data]);
+  const rows = useMemo(() => {
+    const saved = (data || []).filter((r) => r.id !== editingId);
+    return draft ? [{ ...draft, draft: true }, ...saved] : saved;
+  }, [data, draft, editingId]);
+
   const exportCsv = () => {
     const lines = (data || []).flatMap((r) =>
       Array.from({ length: Math.max(r.targets.length, r.deliveries.length, 1) }, (_, i) => ({ r, t: r.targets[i] || {}, d: r.deliveries[i] || {} })),
@@ -136,8 +155,8 @@ export default function HalfyearlyReport() {
     downloadCsv('halfyearly-program-report.csv', [
       { header: 'Employee', value: (x) => `${x.r.employeeName} (${x.r.employeeCode})` },
       { header: 'Quarter', value: (x) => x.r.quarter || '' },
-      { header: 'Starting Month', value: (x) => monthLabel(x.r.startMonth) },
-      { header: 'Ending Month', value: (x) => monthLabel(x.r.endMonth) },
+      { header: 'Starting Date', value: (x) => formatDate(rowDates(x.r)[0]) },
+      { header: 'Ending Date', value: (x) => formatDate(rowDates(x.r)[1]) },
       { header: 'Target Certification', value: (x) => x.t.name || '' },
       { header: 'Completed', value: (x) => x.t.achieved || '' },
       { header: 'Date of Completion', value: (x) => (x.t.completionDate ? formatDate(x.t.completionDate) : '') },
@@ -187,8 +206,8 @@ export default function HalfyearlyReport() {
           <form onSubmit={submit} noValidate className="grid grid-cols-1 gap-4 md:grid-cols-12">
             <SearchableSelect label="Employee / Faculty" required className="md:col-span-6" options={people} placeholder="Search employee" value={form.employeeCode} onChange={(v) => setF('employeeCode', v)} error={errors.employeeCode} />
             <Select label="Quarter" required sort={false} className="md:col-span-2" options={QUARTERS} placeholder="Select" value={form.quarter} onChange={(e) => setF('quarter', e.target.value)} error={errors.quarter} />
-            <Input label="Starting Month" type="month" required className="md:col-span-2" value={form.startMonth} onChange={(e) => setF('startMonth', e.target.value)} error={errors.startMonth} hint={startDate && `Start date ${formatDate(startDate)}`} />
-            <Input label="Ending Month" type="month" required className="md:col-span-2" value={form.endMonth} min={form.startMonth || undefined} onChange={(e) => setF('endMonth', e.target.value)} error={errors.endMonth} hint={endDate && `End date ${formatDate(endDate)}`} />
+            <Input label="Starting Date" type="date" required className="md:col-span-2" value={form.startDate} onChange={(e) => setF('startDate', e.target.value)} error={errors.startDate} hint="Ending date fills 6 months later" />
+            <Input label="Ending Date" type="date" required className="md:col-span-2" value={form.endDate} min={form.startDate || undefined} onChange={(e) => setF('endDate', e.target.value)} error={errors.endDate} hint={form.endDate && formatDate(form.endDate)} />
             <fieldset className="rounded-xl border border-ink-200 p-4 md:col-span-12">
               <legend className="px-1 text-[13px] font-semibold text-ink-700">Target Certification</legend>
               {certFields('targets', 'Target Certification')}
@@ -217,13 +236,12 @@ export default function HalfyearlyReport() {
         description={isHr ? (
           <>Saved rows. Record Completed Yes and the date in <Link to="/hr-report/certification-status" className="font-medium text-brand-700 hover:underline">Certification Status</Link>.</>
         ) : 'Read-only: HR records the status.'}
-        actions={isHr && <Select aria-label="Filter by employee" searchable className="w-64" placeholder="All employees" options={people} value={filter} onChange={(e) => setFilter(e.target.value)} />}
       >
         {error ? (
           <ErrorState message={error} onRetry={reload} />
         ) : loading ? (
           <p className="p-5 text-sm text-ink-500">Loading…</p>
-        ) : !data?.length ? (
+        ) : !rows.length ? (
           <EmptyState icon={Award} title="No certifications assigned" message={isHr ? 'Assign certifications above.' : 'HR has not assigned a certification to you yet.'} />
         ) : (
           <div className="overflow-x-auto">
@@ -231,9 +249,13 @@ export default function HalfyearlyReport() {
               <caption className="sr-only">Halfyearly program report</caption>
               <ReportHead actions={isHr} />
               <tbody>
-                {data.map((r) => (
-                  <ReportRows key={r.id} row={r} highlight={r.id === lastSaved} onEdit={isHr ? () => startEdit(r) : undefined} onDelete={isSuperAdmin(user) ? () => remove(r) : undefined} />
-                ))}
+                {rows.map((r) =>
+                  r.draft ? (
+                    <ReportRows key={`draft-${r.id}`} row={r} draft />
+                  ) : (
+                    <ReportRows key={r.id} row={r} highlight={r.id === lastSaved} onEdit={isHr ? () => startEdit(r) : undefined} onDelete={isSuperAdmin(user) ? () => remove(r) : undefined} />
+                  ),
+                )}
               </tbody>
             </table>
           </div>

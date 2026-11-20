@@ -136,7 +136,7 @@ export async function downloadMonthlyExcel(report, faculty, courses, biometric) 
 
   // Biometric Time In / Out vs entries
   if (biometric?.hasData) {
-    const bs = sheet(wb, 'Biometric', 'Biometric time in / out vs entries', `Differences up to ${biometric.toleranceMinutes} minutes count as matched.`, [
+    const bs = sheet(wb, 'Biometric', 'Biometric time in / out vs entries', biometric.month ? `No of records ${biometric.month.records ?? '-'} · No of holidays ${biometric.month.holidays ?? '-'}` : '', [
       { key: 'date', header: 'Date', width: 12 }, { key: 'bioIn', header: 'Bio In', width: 8 }, { key: 'start', header: 'Entries start', width: 10 }, { key: 'inDiff', header: 'In diff', width: 9 },
       { key: 'bioOut', header: 'Bio Out', width: 8 }, { key: 'end', header: 'Entries end', width: 10 }, { key: 'outDiff', header: 'Out diff', width: 9 },
       { key: 'bioHrs', header: 'Bio hrs', width: 8 }, { key: 'entHrs', header: 'Entered hrs', width: 10 }, { key: 'hrsDiff', header: 'Hours diff', width: 10 }, { key: 'status', header: 'Status', width: 18 },
@@ -146,7 +146,7 @@ export async function downloadMonthlyExcel(report, faculty, courses, biometric) 
       bioHrs: r.bioMinutes === null ? '-' : hmm(r.bioMinutes), entHrs: r.enteredMinutes ? hmm(r.enteredMinutes) : '-', hrsDiff: signedHm(r.hoursDiff), status: r.status,
     }));
     const s = biometric.summary;
-    foot(bs.addRow({ date: 'Total', bioHrs: hmm(s.bioMinutes), entHrs: hmm(s.enteredMinutes), hrsDiff: signedHm(s.bioMinutes - s.enteredMinutes), status: `${s.matched} matched · ${s.different} different` }));
+    foot(bs.addRow({ date: 'Total', bioHrs: hmm(s.bioMinutes), entHrs: hmm(s.enteredMinutes), hrsDiff: signedHm(s.bioMinutes - s.enteredMinutes), status: `${s.present} present` }));
   }
 
   const buf = await wb.xlsx.writeBuffer();

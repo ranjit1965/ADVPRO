@@ -298,9 +298,9 @@ missed), the Dashboard and this page remind Admin / Manager until each file is u
   link is reused for every later upload.
 * The **Monthly Report** has a "Biometric time in / out vs entries" section (and a
   Biometric sheet in the Excel download): Bio In vs first entry start, Bio Out vs last entry
-  end, biometric hours vs entered hours, and a status per day (Matched, Difference, Missing
-  out punch, No entries, No biometric). The tolerance (default 15 minutes) is set on the
-  Biometric page.
+  end, biometric hours vs entered hours, and a status per day (Present, Missing out punch,
+  No entries, No biometric). There is no tolerance (removed in v52): the differences are shown
+  as they are. See v52 below for the month and year chosen on upload.
 
 ### Batch import (Master › Batch Import)
 
@@ -344,6 +344,40 @@ missed), the Dashboard and this page remind Admin / Manager until each file is u
   creating the batch (Master › Batch or Batch Import) or **Dismiss** them. Saved in `batch_requests`;
   `POST/GET /api/batch-requests`, `PATCH /api/batch-requests/{id}`.
 
+### Batch, sidebar, biometric month, HR mails and halfyearly dates (v52)
+
+* **Batch create**: the Class Type and Total Hours fields are removed (form, table and Batch Import).
+  Old batches keep the values in the database, they are just not shown or asked.
+* **Sidebar**: hovering a section (Master, Faculty, Admin, HR ...) opens its options, the same for every
+  section; it closes shortly after the pointer leaves. Only one section is blue: the open one while a menu
+  is open, otherwise the section the page was picked from. Pages that are in several menus (Employees,
+  Batch, Course ...) no longer turn Master, Admin and HR blue together.
+* **Biometric file** (Master › Biometric and Admin › Data Upload): first row `Employee Name` and the days
+  `1 2 3 … 31`, the time in / time out under each day, last rows `No.of Records 20` and
+  `No of Holidays : 6`. The file has no month, so after **Choose file** the Admin picks the **Month** and
+  **Year** (required), then **Save**. Day numbers use that month; dates of another month are skipped.
+  Time In / Time Out per employee per day go to `biometric_days` (for the monthly report); the no of
+  records and no of holidays go to `biometric_months` (`_id` = `YYYY-MM`, with file, people, days, who
+  and when). `GET /api/biometric/months` lists them. The tolerance field, `PUT /api/biometric/settings`
+  and the Matched / Difference logic are removed.
+* **HR › Certification Status emails**: no mail id inputs any more. The **HR mail** is the email of the HR
+  user in Employees (the HR who clicks Send; if the sender is not HR, the first active HR user with an
+  email). The **Super Admin mail** (CC) is the email of the Super Admin's record. Emails are sent from the
+  HR mail (From and Reply-To) with the Super Admin in CC, using the same editable templates. Without an
+  HR email, Send stops with "No HR mail". `PUT /api/hr/halfyearly/followup` is removed.
+  Note: the SMTP account still signs in as `SMTP_FROM`. Gmail / Outlook show the HR address as From only
+  when it is a verified "Send mail as" alias of that account; otherwise they show `SMTP_FROM` and replies
+  still go to HR (Reply-To).
+* **HR › Halfyearly Program Report**:
+  * Starting Date and Ending Date are full date pickers (day, month, year). Picking the starting date
+    fills the ending date 6 months later (1 Jan → 30 Jun, 15 Jan → 14 Jul); it can be changed. The dates
+    are saved as `startDate` / `endDate`; `startMonth` / `endMonth` are still saved from them for the
+    quarter logic (carry over, running quarter). Rows saved before v52 show their whole months.
+  * While HR fills the form, the row shows live at the top of the list below ("Not saved yet"), above the
+    saved rows of the employee picked. When editing, the row being edited shows the changes live.
+  * The employee filter dropdown above the list is removed; the list follows the employee in the form
+    (all rows when none is picked).
+
 ### Super Admin, HR menu, certification status and dashboards (v50)
 
 - **Super Admin:** the Manager role is shown as *Super Admin* everywhere. The stored role key stays `MANAGER`, so
@@ -372,8 +406,12 @@ missed), the Dashboard and this page remind Admin / Manager until each file is u
   *Certification Completed* (each certification marked Completed Yes, once). Each card lists who is waiting, has a
   **Send** button, and **Edit email text** (subject and text with `{name}`, `{code}`, `{quarter}`, `{period}`,
   `{courses}`, `{nextQuarter}`, `{nextPeriod}`, `{hrEmail}`), which HR can change at any time or reset to the default.
-  Emails go to the employee's email in Employees; the **HR mail id** (set by the Super Admin) is the Reply-To and
-  gets a copy (CC). The sender address is still `SMTP_FROM`. The carry over still runs daily inside the API
+  Emails go to the employee's email in Employees. HR sets the **HR mail id** (shown as sender name "HR", Reply-To,
+  gets a copy) and the **Super Admin mail id** (gets a copy, CC) next to it. The sending address is still
+  `SMTP_FROM`; to send from the HR mailbox itself, put the HR mailbox in the `SMTP_*` settings.
+  **Check completed / not completed** refreshes both lists from the records: completed certifications under
+  Certification Completed, not completed ones under Deferred Report (ended quarters can be sent; quarters still
+  running are listed separately and are not emailed until the quarter ends). The carry over still runs daily inside the API
   (`CERT_FOLLOWUP_ENABLED`, `CERT_FOLLOWUP_TIME`) and whenever the page is opened.
 - **Halfyearly:** choosing the Starting Month fills the Ending Month with the 6th month (Jan → Jun); it can be changed.
 - **Add / Edit Batch:** every field is required. Timing is chosen with the time picker (From and To, To after From;
@@ -606,7 +644,7 @@ Every page reads and writes data only through `src/services/api.js`, which calls
 | `getStudentMarks`, `saveStudentMarks` | `/api/student-marks` |
 | `getNotifications` | `GET /api/notifications` |
 | `getBatchImportSettings`, `uploadBatches`, `saveBatchFacultyMap` (manager, admin) | `GET /api/batch-import/settings`, `POST /api/batch-import/upload?name=` (raw file body), `PUT /api/batch-import/map` |
-| `getBiometricSettings`, `saveBiometricSettings`, `uploadBiometric`, `saveBiometricMap`, `getBiometricRecords` | `GET/PUT /api/biometric/settings` (tolerance), `POST /api/biometric/upload?name=` (raw file body), `PUT /api/biometric/map`, `GET /api/biometric/records` |
+| `getBiometricSettings`, `uploadBiometric`, `getBiometricMonths`, `saveBiometricMap`, `getBiometricRecords` | `GET /api/biometric/settings`, `POST /api/biometric/upload?name=&month=YYYY-MM` (raw file body), `GET /api/biometric/months`, `PUT /api/biometric/map`, `GET /api/biometric/records` |
 | `requestBatch`, `getBatchRequests`, `setBatchRequestStatus` | `POST/GET /api/batch-requests`, `PATCH /api/batch-requests/{id}` |
 | `requestCourse`, `getCourseRequests`, `setCourseRequestStatus` | `POST/GET /api/course-requests`, `PATCH /api/course-requests/{id}` |
 | `getRoleAccess`, `saveRoleAccess`, `addRole`, `deleteRole` (Manager), `getRoles` | `GET/PUT /api/access`, `POST /api/access/roles`, `PATCH/DELETE /api/access/roles/{role}`, `GET /api/access/roles` |

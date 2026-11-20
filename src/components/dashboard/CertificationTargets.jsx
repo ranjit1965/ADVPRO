@@ -4,7 +4,7 @@ import Card from '../ui/Card';
 import { useAsync } from '../../hooks/useAsync';
 import { getHalfyearly } from '../../services/api';
 import { formatDate } from '../../utils/format';
-import { isCurrent, periodDates } from '../../utils/halfyearly';
+import { isCurrent, rowDates } from '../../utils/halfyearly';
 import { cn } from '../../utils/cn';
 
 /** One certification or course as its own box: green when finished; a target certification not finished is red, a course not ready amber. */
@@ -37,7 +37,7 @@ export default function CertificationTargets({ employeeCode, canUpdate }) {
   const targets = current.flatMap((r) => r.targets);
   const deliveries = current.flatMap((r) => r.deliveries);
   const quarters = current.map((r) => {
-    const [from, to] = periodDates(r.startMonth, r.endMonth);
+    const [from, to] = rowDates(r);
     return `${r.quarter ? `${r.quarter} · ` : ''}${formatDate(from)} to ${formatDate(to)}`;
   });
   return (

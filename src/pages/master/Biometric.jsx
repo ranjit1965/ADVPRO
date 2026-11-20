@@ -1,15 +1,15 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Save, Fingerprint, UserX } from 'lucide-react';
+import { Fingerprint, UserX } from 'lucide-react';
 import * as api from '../../services/api';
 import PageHeader from '../../components/ui/PageHeader';
 import Card from '../../components/ui/Card';
-import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
 import Select from '../../components/ui/Select';
 import DataTable from '../../components/ui/DataTable';
 import EmptyState from '../../components/ui/EmptyState';
 import ErrorState from '../../components/ui/ErrorState';
 import FileSaveField from '../../components/ui/FileSaveField';
+import MonthYearPicker, { draftMonth, monthName } from '../../components/biometric/MonthYearPicker';
 import { useAuth } from '../../context/AuthContext';
 import { useLookups } from '../../context/LookupsContext';
 import { useToast } from '../../context/ToastContext';
@@ -18,9 +18,10 @@ import { canManage } from '../../utils/permissions';
 import { formatDateTime, monthLabel, toISODate } from '../../utils/format';
 
 /**
- * Master › Biometric. Admin / Super Admin choose the device export file (.xlsx, .xls or .csv, any column
- * order) and click Save: the backend keeps each person's first punch (Time In) and last punch
- * (Time Out) per day. The monthly report compares those times with the daily entries.
+ * Master › Biometric. Admin / Super Admin choose the device export file (.xlsx, .xls or .csv): "Employee Name"
+ * and the days 1 to 31, without the month. After choosing the file they pick the month and year, then Save:
+ * the backend keeps each person's first punch (Time In) and last punch (Time Out) per day, and the
+ * "No.of Records" / "No of Holidays" of the last rows for that month. The monthly report uses those times.
  */
 export default function Biometric() {
   const { user } = useAuth();
@@ -28,9 +29,9 @@ export default function Biometric() {
   const { lookups } = useLookups();
   const toast = useToast();
   const settings = useAsync(() => api.getBiometricSettings(), []);
-  const [tolerance, setTolerance] = useState('15');
-  const [errors, setErrors] = useState({});
   const [busy, setBusy] = useState('');
+  const [fileMonth, setFileMonth] = useState({ month: '', year: '' });
+  const monthsInfo = useAsync(() => api.getBiometricMonths(), []);
   const [summary, setSummary] = useState(null);
   const [month, setMonth] = useState(toISODate().slice(0, 7));
   const [person, setPerson] = useState('');
@@ -38,34 +39,18 @@ export default function Biometric() {
   const people = useMemo(() => (lookups?.employees || []).map((p) => ({ value: p.code, label: `${p.name} (${p.code})` })), [lookups]);
 
   useEffect(() => {
-    if (settings.data) {
-      setTolerance(String(settings.data.toleranceMinutes ?? 15));
-      setSummary(settings.data.lastImport || null);
-    }
+    if (settings.data) setSummary(settings.data.lastImport || null);
   }, [settings.data]);
 
-  const saveTolerance = async () => {
-    if (!/^\d+$/.test(tolerance) || Number(tolerance) > 240) {
-      setErrors({ toleranceMinutes: 'Minutes, 0 to 240' });
-      return;
-    }
-    setErrors({});
-    setBusy('save');
-    try {
-      await api.saveBiometricSettings({ toleranceMinutes: Number(tolerance) });
-      toast.success('Tolerance saved.');
-    } catch (e) {
-      setErrors({ toleranceMinutes: e.message });
-    } finally {
-      setBusy('');
-    }
-  };
-
   const upload = async (file) => {
-    const s = await api.uploadBiometric(file);
+    const ym = draftMonth(fileMonth);
+    const s = await api.uploadBiometric(file, ym);
     setSummary(s);
-    toast.success(`Saved ${s.daysStored} day record(s) for ${s.people} people.`);
+    setMonth(ym); // the list below shows the month just saved
+    monthsInfo.reload();
+    toast.success(`Saved ${s.daysStored} day record(s) for ${s.people} people for ${monthName(ym)}.`);
   };
+  const info = (monthsInfo.data || []).find((m) => m.month === month);
 
   const link = async (deviceKey, code) => {
     setBusy(`map-${deviceKey}`);
@@ -102,30 +87,26 @@ export default function Biometric() {
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-12">
         <Card className="lg:col-span-7" title="Upload biometric file" description="Choose the device export (Excel) from this computer, then click Save.">
           {canEdit ? (
-            <FileSaveField label="Biometric file" accept=".xlsx,.xls,.csv,.txt,.tsv,.dat" onSave={upload} saveLabel="Save records" disabled={!!busy} />
+            <FileSaveField
+              label="Biometric file"
+              accept=".xlsx,.xls,.csv,.txt,.tsv,.dat"
+              onSave={upload}
+              saveLabel="Save records"
+              disabled={!!busy}
+              check={() => (draftMonth(fileMonth) ? '' : 'Choose the month and year of this file')}
+              extra={
+                <div className="rounded-lg border border-brand-200 bg-brand-50/40 p-3">
+                  <p className="mb-2 text-[13px] font-medium text-ink-800">Which month is this file? The file has only the days 1 to 31.</p>
+                  <MonthYearPicker draft={fileMonth} setDraft={setFileMonth} />
+                </div>
+              }
+            />
           ) : (
             <p className="text-[13px] text-ink-600">Only Admin and Super Admin can upload the biometric file.</p>
           )}
           <p className="mt-3 text-[12px] text-ink-500">
-            Columns can be in any order and named in any usual way (Emp Code / Employee ID, Name, Date or Day with a Month column, In Time / Out Time, Punch Time). Day-wise sheets with days 1 to 31 across and the month in a column or the title are read too. People are matched by employee code, login ID or name; link anyone not matched below. Saving a month again replaces those days.
+            First row: Employee Name, then the days 1, 2, 3 … 31 with the time in and time out under each day. Last rows: No.of Records and No of Holidays (saved for the month). People are matched by name, employee code or login ID; link anyone not matched below. Saving a month again replaces those days.
           </p>
-          <div className="mt-4 flex flex-wrap items-end gap-2 border-t border-ink-100 pt-4">
-            <Input
-              label="Tolerance (min)"
-              className="w-40"
-              inputMode="numeric"
-              value={tolerance}
-              error={errors.toleranceMinutes}
-              disabled={!canEdit || settings.loading}
-              hint="Difference counted as matched"
-              onChange={(e) => setTolerance(e.target.value)}
-            />
-            {canEdit && (
-              <Button icon={Save} variant="secondary" loading={busy === 'save'} onClick={saveTolerance} className="mb-6">
-                Save tolerance
-              </Button>
-            )}
-          </div>
         </Card>
 
         <Card className="lg:col-span-5" title="Last upload" description={summary ? formatDateTime(summary.at) : 'Not uploaded yet'}>
@@ -133,6 +114,16 @@ export default function Biometric() {
             <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-[13px]">
               <dt className="text-ink-500">File</dt>
               <dd className="truncate font-medium">{(summary.files || []).join(', ')}</dd>
+              {summary.month && (
+                <>
+                  <dt className="text-ink-500">Month</dt>
+                  <dd className="font-medium">{monthName(summary.month)}</dd>
+                  <dt className="text-ink-500">No of records</dt>
+                  <dd className="font-medium">{summary.records ?? '—'}</dd>
+                  <dt className="text-ink-500">No of holidays</dt>
+                  <dd className="font-medium">{summary.holidays ?? '—'}</dd>
+                </>
+              )}
               <dt className="text-ink-500">Punch rows</dt>
               <dd className="font-medium">{summary.punchRows}</dd>
               <dt className="text-ink-500">Day records stored</dt>
@@ -187,7 +178,7 @@ export default function Biometric() {
         className="mt-5"
         bodyClassName="p-0"
         title="Imported time in / out"
-        description={monthLabel(month)}
+        description={`${monthLabel(month)}${info ? ` · No of records ${info.records ?? '—'} · No of holidays ${info.holidays ?? '—'}` : ''}`}
         actions={
           <div className="flex flex-wrap items-end gap-3">
             <Input aria-label="Month" type="month" value={month} onChange={(e) => setMonth(e.target.value)} />

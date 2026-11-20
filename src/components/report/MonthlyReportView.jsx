@@ -363,8 +363,7 @@ export default function MonthlyReportView({ report, faculty, courses, biometric 
 }
 
 const BIO_TONE = {
-  Matched: 'bg-success-50 text-success-700',
-  Difference: 'bg-danger-50 text-danger-700',
+  Present: 'bg-success-50 text-success-700',
   'Missing out punch': 'bg-warning-50 text-warning-700',
   'No entries': 'bg-warning-50 text-warning-700',
   'No biometric': 'bg-ink-100 text-ink-600',
@@ -372,12 +371,11 @@ const BIO_TONE = {
 
 /** Biometric Time In / Out against the first start and last finish of the day's entries. */
 function BiometricSection({ biometric, days }) {
-  const { rows, summary, toleranceMinutes } = biometric;
-  const diffCls = (m) => (m === null || m === undefined ? '' : Math.abs(m) > toleranceMinutes ? 'font-semibold text-danger-700' : 'text-success-700');
+  const { rows, summary, month } = biometric;
   return (
     <Section
       title="Biometric time in / out vs entries"
-      note={`Time In / Time Out from the biometric device against the first start and last finish of the day's entries. Differences up to ${toleranceMinutes} minutes count as matched. In diff + means entries start after punch-in; Out diff + means punch-out is after the last entry.`}
+      note="Time In / Time Out from the biometric file next to the first start and last finish of the day's entries. In diff + means entries start after punch-in; Out diff + means punch-out is after the last entry." 
       breakBefore
     >
       {!biometric.hasData ? (
@@ -385,9 +383,9 @@ function BiometricSection({ biometric, days }) {
       ) : (
         <>
           <div className="mb-3 grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-7">
-            <Kpi label="Days compared" value={summary.days} />
-            <Kpi label="Matched" value={summary.matched} color="#079455" />
-            <Kpi label="Difference" value={summary.different} color="#d92d20" />
+            <Kpi label="Days" value={summary.days} />
+            <Kpi label="Present" value={summary.present} color="#079455" />
+            <Kpi label="No of records / holidays" value={month ? `${month.records ?? '–'} / ${month.holidays ?? '–'}` : '–'} sub="From the biometric file" />
             <Kpi label="Missing out punch" value={summary.missingOut} color="#dc6803" />
             <Kpi label="No entries" value={summary.noEntries} color="#dc6803" />
             <Kpi label="Biometric hours" value={hm(summary.bioMinutes)} />
@@ -410,10 +408,10 @@ function BiometricSection({ biometric, days }) {
                     <Td>{days.find((d) => d.date === r.date)?.dayName}</Td>
                     <Td className="text-center">{r.timeIn || '-'}</Td>
                     <Td className="text-center">{r.entryStart || '-'}</Td>
-                    <Td className={cn('text-right', diffCls(r.inDiff))}>{signedHm(r.inDiff)}</Td>
+                    <Td className="text-right">{signedHm(r.inDiff)}</Td>
                     <Td className="text-center">{r.timeOut || '-'}</Td>
                     <Td className="text-center">{r.entryEnd || '-'}</Td>
-                    <Td className={cn('text-right', diffCls(r.outDiff))}>{signedHm(r.outDiff)}</Td>
+                    <Td className="text-right">{signedHm(r.outDiff)}</Td>
                     <Td className="text-right">{r.bioMinutes === null ? '-' : hmm(r.bioMinutes)}</Td>
                     <Td className="text-right">{r.enteredMinutes ? hmm(r.enteredMinutes) : '-'}</Td>
                     <Td className="text-right">{signedHm(r.hoursDiff)}</Td>

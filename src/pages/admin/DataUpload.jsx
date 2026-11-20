@@ -6,6 +6,7 @@ import PageHeader from '../../components/ui/PageHeader';
 import Card from '../../components/ui/Card';
 import Select from '../../components/ui/Select';
 import FileSaveField from '../../components/ui/FileSaveField';
+import MonthYearPicker, { draftMonth, monthName } from '../../components/biometric/MonthYearPicker';
 import { useAuth } from '../../context/AuthContext';
 import { useLookups } from '../../context/LookupsContext';
 import { canAccess, canManage, MASTER_ROLES } from '../../utils/permissions';
@@ -39,12 +40,15 @@ export const UPLOAD_TYPES = {
     icon: Fingerprint,
     to: '/master/biometric',
     page: 'Master › Biometric',
-    help: 'The biometric device export, in any column order: an employee code or name column and a date with time, or In / Out time columns. Time In and Time Out are saved per employee per day and compared with the entries in the monthly report. Saving a month again replaces those days.',
+    help: 'The biometric device export: first row Employee Name and the days 1 to 31, last rows No.of Records and No of Holidays. The file has no month, so choose the month and year after choosing the file. Time In and Time Out are saved per employee per day for the monthly report. Saving a month again replaces those days.',
     load: () => api.getBiometricSettings(),
-    upload: (file) => api.uploadBiometric(file),
-    done: (s) => `Saved ${s.daysStored} day record(s) for ${s.people} people.`,
+    upload: (file, month) => api.uploadBiometric(file, month),
+    done: (s) => `Saved ${s.daysStored} day record(s) for ${s.people} people for ${monthName(s.month)}.`,
     result: (s) => [
       ['File', (s.files || []).join(', ')],
+      ['Month', s.month ? monthName(s.month) : null],
+      ['No of records', s.records],
+      ['No of holidays', s.holidays],
       ['Punch rows', s.punchRows],
       ['Day records saved', s.daysStored],
       ['Employees', s.people],
@@ -74,6 +78,7 @@ function DataUploadPage() {
   const toast = useToast();
   const { reload: reloadLookups } = useLookups();
   const [type, setType] = useState('batch');
+  const [fileMonth, setFileMonth] = useState({ month: '', year: '' });
   const batch = useAsync(() => UPLOAD_TYPES.batch.load(), []);
   const bio = useAsync(() => UPLOAD_TYPES.biometric.load(), []);
   const last = { batch: batch.data?.lastImport, biometric: bio.data?.lastImport };
@@ -81,7 +86,7 @@ function DataUploadPage() {
   const due = Object.keys(UPLOAD_TYPES).filter((k) => (k === 'batch' ? batch.data : bio.data) && uploadDue(last[k]?.at));
 
   const upload = async (file) => {
-    const s = await t.upload(file);
+    const s = await t.upload(file, draftMonth(fileMonth));
     toast.success(t.done(s), `${t.label} saved`);
     (type === 'batch' ? batch : bio).reload();
     if (type === 'batch') reloadLookups?.();
@@ -102,7 +107,22 @@ function DataUploadPage() {
         <Card title="Upload file" className="xl:col-span-2">
           <Select label="Upload type" className="sm:max-w-xs" value={type} onChange={(e) => setType(e.target.value || 'batch')} options={Object.entries(UPLOAD_TYPES).map(([value, x]) => ({ value, label: x.label }))} />
           <div className="mt-4">
-            <FileSaveField key={type} label={`${t.label} file`} accept={ACCEPT} onSave={upload} saveLabel="Save" />
+            <FileSaveField
+              key={type}
+              label={`${t.label} file`}
+              accept={ACCEPT}
+              onSave={upload}
+              saveLabel="Save"
+              check={type === 'biometric' ? () => (draftMonth(fileMonth) ? '' : 'Choose the month and year of this file') : undefined}
+              extra={
+                type === 'biometric' && (
+                  <div className="rounded-lg border border-brand-200 bg-brand-50/40 p-3">
+                    <p className="mb-2 text-[13px] font-medium text-ink-800">Which month is this file? The file has only the days 1 to 31.</p>
+                    <MonthYearPicker draft={fileMonth} setDraft={setFileMonth} />
+                  </div>
+                )
+              }
+            />
           </div>
           <p className="mt-4 flex items-start gap-2 text-[13px] text-ink-600">
             <FileSpreadsheet className="mt-0.5 size-4 shrink-0 text-ink-400" aria-hidden /> {t.help} Files: .xlsx, .xls or .csv.

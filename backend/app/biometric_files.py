@@ -49,6 +49,35 @@ class ReadResult:
     files: list[str] = field(default_factory=list)
     skipped_rows: int = 0
     errors: list[str] = field(default_factory=list)
+    records: int | None = None  # "No.of Records 20" in the last rows of the file
+    holidays: int | None = None  # "No of Holidays : 6"
+
+
+FOOTER_RE = {
+    "records": re.compile(r"no\.?\s*of\.?\s*records?\s*[:\-=]?\s*(\d+)?", re.I),
+    "holidays": re.compile(r"no\.?\s*of\.?\s*holidays?\s*[:\-=]?\s*(\d+)?", re.I),
+}
+
+
+def _row_text(row: list) -> str:
+    return " ".join(str(int(c)) if isinstance(c, float) and c.is_integer() else str(c) for c in row if c not in (None, ""))
+
+
+def split_footer(rows: list[list], out: ReadResult) -> list[list]:
+    """Takes the "No.of Records 20" / "No of Holidays : 6" rows out of the table and keeps the two numbers
+    (the label and the number can be in one cell or in two cells)."""
+    kept = []
+    for row in rows:
+        text = _row_text(row)
+        hit = False
+        for key, rx in FOOTER_RE.items():
+            for m in rx.finditer(text):
+                hit = True
+                if m.group(1) is not None and getattr(out, key) is None:
+                    setattr(out, key, int(m.group(1)))
+        if not hit:
+            kept.append(row)
+    return kept
 
 
 def _key(h: str) -> str:
@@ -360,17 +389,32 @@ def _file_month(rows: list[list]) -> tuple[int, int] | None:
     return None
 
 
-def read_rows(rows: list[list], file: str, out: ReadResult) -> None:
+def read_rows(rows: list[list], file: str, out: ReadResult, month: tuple[int, int] | None = None) -> None:
     """Reads one sheet in any of three layouts (columns in any order, any header wording):
     1. a column table: code / name, date (or day + month), time in / time out (or one punch per row);
     2. a day-wise sheet: a row of days 1 to 31 with the times under each day, one row (or In / Out rows)
        per employee, or "Emp Code: 101  Name: Ravi" blocks; the month comes from a Month column or the title;
-    3. a headerless punch log: code, then date and time."""
-    file_month = _file_month(rows)
+    3. a headerless punch log: code, then date and time.
+    `month` (year, month): chosen by the Admin on upload (v52: the file has only "Employee Name" and the days
+    1 to 31, no month). It is used for the day numbers, and punches of another month are left out.
+    The "No.of Records" / "No of Holidays" rows are read into out.records / out.holidays."""
+    rows = split_footer(rows, out)
+    if month:
+        before = len(out.punches)
+        _read(rows, file, out, month, forced=True)
+        keep = [p for p in out.punches[before:] if (p.day.year, p.day.month) == month]
+        out.skipped_rows += len(out.punches) - before - len(keep)
+        out.punches[before:] = keep
+        return
+    _read(rows, file, out, None)
+
+
+def _read(rows: list[list], file: str, out: ReadResult, month: tuple[int, int] | None, forced: bool = False) -> None:
+    file_month = month or _file_month(rows)
     day_header = next((i for i, r in enumerate(rows[:40]) if _day_columns(r)), None)
     found = _find_header(rows)
     if day_header is not None and (found is None or found[0] >= day_header or ({"in", "out", "time", "datetime"} & found[1].keys()) == set()):
-        _read_day_wise(rows, file, out, file_month)
+        _read_day_wise(rows, file, out, file_month, forced)
         return
     if not found:
         # Headerless punch log: first column = person id, then a date-time.
@@ -394,8 +438,8 @@ def read_rows(rows: list[list], file: str, out: ReadResult) -> None:
         if not pid and not name:
             out.skipped_rows += 1
             continue
-        month = month_in_text(_cell(row, c.get("month"))) if "month" in c else None
-        month = month or file_month
+        row_month = month_in_text(_cell(row, c.get("month"))) if "month" in c and not forced else None
+        row_month = row_month or file_month
         times: list[time] = []
         day = None
         if "datetime" in c:
@@ -404,11 +448,11 @@ def read_rows(rows: list[list], file: str, out: ReadResult) -> None:
                 day, times = dt.date(), [dt.time()]
         if day is None and "date" in c:
             raw_date = _cell(row, c["date"])
-            day = _resolve_day(raw_date, month)
+            day = _resolve_day(raw_date, row_month)
             if isinstance(raw_date, datetime) and not ({"in", "out", "time"} & c.keys()) and (raw_date.hour or raw_date.minute):
                 times = [raw_date.time()]
         if day is None and "day" in c:
-            day = _resolve_day(_cell(row, c["day"]), month)
+            day = _resolve_day(_cell(row, c["day"]), row_month)
         if "in" in c or "out" in c:
             t_in = (_times(_cell(row, c.get("in"))) or [None])[0] if "in" in c else None
             t_out = (_times(_cell(row, c.get("out"))) or [None])[-1] if "out" in c else None
@@ -426,7 +470,7 @@ def read_rows(rows: list[list], file: str, out: ReadResult) -> None:
 SKIP_LABELS = ("status", "duration", "total", "late", "early", "overtime", "shift", "break", "hrs", "hours", "remark", "present", "absent", "leave", "weekoff", "holiday", "worked")
 
 
-def _read_day_wise(rows: list[list], file: str, out: ReadResult, file_month: tuple[int, int] | None) -> None:
+def _read_day_wise(rows: list[list], file: str, out: ReadResult, file_month: tuple[int, int] | None, forced: bool = False) -> None:
     person = ("", "")
     day_cols: dict[int, object] = {}
     id_col = name_col = month_col = None
@@ -444,12 +488,12 @@ def _read_day_wise(rows: list[list], file: str, out: ReadResult, file_month: tup
                 person = (pid, name)
             elif name and not pid:
                 person = (person[0] if not person[1] else "", name)
-            row_month = next((month_in_text(c) for c in row if isinstance(c, str) and "month" in c.lower() and month_in_text(c)), None)
+            row_month = None if forced else next((month_in_text(c) for c in row if isinstance(c, str) and "month" in c.lower() and month_in_text(c)), None)
             month = row_month or month
             if not any(_times(_cell(row, j)) for j in day_cols):
                 continue
         if not day_cols:
-            m = next((month_in_text(c) for c in row if isinstance(c, str) and month_in_text(c)), None)
+            m = None if forced else next((month_in_text(c) for c in row if isinstance(c, str) and month_in_text(c)), None)
             month = m or month
             continue
         cell_id, cell_name = str(_cell(row, id_col) or "").strip(), str(_cell(row, name_col) or "").strip()
@@ -457,7 +501,7 @@ def _read_day_wise(rows: list[list], file: str, out: ReadResult, file_month: tup
             cell_id = str(int(_cell(row, id_col)))
         if cell_id or cell_name:
             person = (cell_id, cell_name)
-        row_month = month_in_text(_cell(row, month_col)) if month_col is not None else None
+        row_month = month_in_text(_cell(row, month_col)) if month_col is not None and not forced else None
         label = " ".join(_key(c) for j, c in enumerate(row) if j not in day_cols and j not in (id_col, name_col, month_col) and isinstance(c, str))
         if any(w in label for w in SKIP_LABELS):
             continue

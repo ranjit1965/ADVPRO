@@ -94,23 +94,6 @@
           "required": true
         },
         {
-          "key": "classType",
-          "label": "Class Type",
-          "type": "select",
-          "options": [
-            "WeekDays",
-            "WeekEnd"
-          ],
-          "required": true
-        },
-        {
-          "key": "totalHours",
-          "label": "Total Hours",
-          "type": "number",
-          "hideInTable": true,
-          "required": true
-        },
-        {
           "key": "courseType",
           "label": "Course Type",
           "type": "text",

@@ -3,6 +3,7 @@ import logging
 import smtplib
 import ssl
 from email.message import EmailMessage
+from email.utils import formataddr, parseaddr
 
 from .config import settings
 
@@ -17,14 +18,19 @@ def smtp_configured() -> bool:
     return bool(settings.smtp_host and settings.smtp_from)
 
 
-def send_mail(to: list[str] | str, subject: str, text: str, reply_to: str | None = None, cc: list[str] | None = None) -> None:
+def send_mail(to: list[str] | str, subject: str, text: str, reply_to: str | None = None, cc: list[str] | None = None, from_name: str | None = None, from_addr: str | None = None) -> None:
     """Sends a plain-text email through the SMTP server in backend/.env. Raises MailNotConfigured or an SMTP error."""
     if not smtp_configured():
         raise MailNotConfigured("Email is not set up on the server. Fill in SMTP_HOST, SMTP_USER, SMTP_PASSWORD and SMTP_FROM in backend/.env.")
     recipients = [to] if isinstance(to, str) else list(to)
     msg = EmailMessage()
     msg["Subject"] = subject
-    msg["From"] = settings.smtp_from
+    # from_addr (e.g. the HR mail) is the From shown; the envelope sender stays SMTP_FROM, the account the server
+    # signs in with. Gmail / Outlook show from_addr only when it is a verified "Send mail as" alias of that account,
+    # otherwise they show SMTP_FROM; Reply-To still sends the answers to the HR mail.
+    envelope = parseaddr(settings.smtp_from)[1]
+    address = from_addr or envelope
+    msg["From"] = formataddr((from_name, address)) if from_name else (from_addr or settings.smtp_from)
     msg["To"] = ", ".join(recipients)
     if cc:
         msg["Cc"] = ", ".join(cc)
@@ -41,7 +47,7 @@ def send_mail(to: list[str] | str, subject: str, text: str, reply_to: str | None
             s.starttls(context=ctx)
         if settings.smtp_user:
             s.login(settings.smtp_user, settings.smtp_password)
-        s.send_message(msg)  # To and Cc both receive it
+        s.send_message(msg, from_addr=envelope)  # To and Cc both receive it
     log.info("Mail '%s' sent to %s", subject, ", ".join(recipients))
 
 

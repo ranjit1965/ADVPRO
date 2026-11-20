@@ -6,7 +6,7 @@ import Input from '../ui/Input';
 import Select from '../ui/Select';
 import { useToast } from '../../context/ToastContext';
 import { formatDate } from '../../utils/format';
-import { periodDates } from '../../utils/halfyearly';
+import { rowDates } from '../../utils/halfyearly';
 
 const YES_NO = ['Yes', 'No'];
 export const monthLabel = (m) => (m ? new Date(`${m}-01T00:00:00`).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' }) : '');
@@ -41,7 +41,7 @@ const statusOf = (row) => ({
  * Completed Yes / date / code and Delivery ready in place. Otherwise the status is read-only.
  * `onEdit` / `onDelete` add the Edit and Delete buttons (Delete: Super Admin only).
  */
-export default function ReportRows({ row, editStatus = false, onSaved, onEdit, onDelete, highlight = false }) {
+export default function ReportRows({ row, editStatus = false, onSaved, onEdit, onDelete, highlight = false, draft = false }) {
   const isHr = editStatus;
   const toast = useToast();
   const [v, setV] = useState(() => statusOf(row));
@@ -76,7 +76,7 @@ export default function ReportRows({ row, editStatus = false, onSaved, onEdit, o
     }
   };
 
-  const [from, to] = periodDates(row.startMonth, row.endMonth);
+  const [from, to] = rowDates(row);
   const dash = <span className="text-ink-400">–</span>;
   return (
     <>
@@ -86,7 +86,7 @@ export default function ReportRows({ row, editStatus = false, onSaved, onEdit, o
         const d = row.deliveries[i];
         const yes = tv?.achieved === 'Yes';
         return (
-          <tr key={i} className={`${i === 0 ? 'border-t border-ink-200 align-top' : 'align-top'}${highlight ? ' bg-brand-50/60' : ''}`}>
+          <tr key={i} className={`${i === 0 ? 'border-t border-ink-200 align-top' : 'align-top'}${draft ? ' bg-amber-50/70' : highlight ? ' bg-brand-50/60' : ''}`}>
             {i === 0 && (
               <>
                 <td rowSpan={n} className="px-3 py-2.5">
@@ -94,10 +94,11 @@ export default function ReportRows({ row, editStatus = false, onSaved, onEdit, o
                   <div className="text-xs text-ink-500">{row.employeeCode}</div>
                 </td>
                 <td rowSpan={n} className="whitespace-nowrap px-3 py-2.5">
+                  {draft && <div className="mb-0.5 inline-flex rounded-full bg-amber-100 px-1.5 py-0.5 text-[11px] font-semibold text-amber-800">Not saved yet</div>}
                   {row.quarter && <div className="font-semibold text-ink-900">{row.quarter}</div>}
                   {row.carriedForward && <div className="text-[11px] font-semibold text-accent-600">Carried forward</div>}
-                  <div className="tabular-nums">{monthLabel(row.startMonth)} – {monthLabel(row.endMonth)}</div>
-                  <div className="text-xs text-ink-500">{formatDate(from)} to {formatDate(to)}</div>
+                  {row.startMonth && <div className="tabular-nums">{monthLabel(row.startMonth)} – {monthLabel(row.endMonth)}</div>}
+                  {from && <div className="text-xs text-ink-500">{formatDate(from)} to {to ? formatDate(to) : '…'}</div>}
                 </td>
               </>
             )}

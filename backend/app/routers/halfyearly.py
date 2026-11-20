@@ -10,7 +10,7 @@ from datetime import date, datetime, timezone
 from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel, EmailStr, Field, model_validator
+from pydantic import BaseModel, Field, model_validator
 
 from .. import cert_followup, db
 from ..schemas import Form
@@ -54,13 +54,25 @@ class CertIn(BaseModel):
 class AssignIn(Form):
     employeeCode: str = Field(min_length=1, max_length=40)
     quarter: Literal[QUARTERS] | None = None  # type: ignore[valid-type]
-    startMonth: str = Field(pattern=MONTH_RE)
-    endMonth: str = Field(pattern=MONTH_RE)
+    # v52: HR picks full dates (starting date and ending date). The months are kept for the quarter logic
+    # (carry over, running quarter); rows saved before v52 have only the months.
+    startDate: date | None = None
+    endDate: date | None = None
+    startMonth: str | None = Field(default=None, pattern=MONTH_RE)
+    endMonth: str | None = Field(default=None, pattern=MONTH_RE)
     targets: list[CertIn] = Field(min_length=1, max_length=3)
     deliveries: list[CertIn] = Field(min_length=1, max_length=3)
 
     @model_validator(mode="after")
     def check(self):
+        if self.startDate:
+            self.startMonth = self.startDate.isoformat()[:7]
+        if self.endDate:
+            self.endMonth = self.endDate.isoformat()[:7]
+        if not self.startMonth or not self.endMonth:
+            raise ValueError("Choose the starting date and the ending date")
+        if self.startDate and self.endDate and self.endDate < self.startDate:
+            raise ValueError("Ending date must be on or after the starting date")
         if self.endMonth < self.startMonth:
             raise ValueError("Ending month must be on or after the starting month")
         return self
@@ -82,10 +94,6 @@ class TargetStatus(Form):
 
 class DeliveryStatus(Form):
     ready: Literal["Yes", "No"] | None = None
-
-
-class MailSettingsIn(BaseModel):
-    hrEmail: EmailStr | Literal[""] = ""
 
 
 class TemplateIn(BaseModel):
@@ -139,47 +147,42 @@ SAMPLE = {"id": "HY-0000", "employeeCode": "ABC", "quarter": "H1", "startMonth":
           "targets": [{"name": "Sample certification", "courseId": "C101", "achieved": "Yes", "completionDate": "2026-05-10", "certificationCode": "CERT-123"}]}
 
 
-def _followup() -> dict:
-    cfg = cert_followup.get_settings()
+def _followup(me: dict | None = None) -> dict:
+    cfg = cert_followup.get_settings(me)
     samples = {}
     for kind in cert_followup.KINDS:
         subject, text = cert_followup.compose(kind, SAMPLE, "<Faculty name>", cfg["hrEmail"], SAMPLE["targets"])
         samples[kind] = {"subject": subject, "text": text}
-    return {**cfg, "samples": samples, "pending": {k: cert_followup.preview(k) for k in cert_followup.KINDS}}
+    return {**cfg, "samples": samples, "pending": {k: cert_followup.preview(k) for k in cert_followup.KINDS},
+            "running": cert_followup.running_not_completed(), "checkedAt": cert_followup.now()}
 
 
 @router.get("/followup")
 def followup_settings(me: dict = Depends(hr_only)):
-    """HR mail id, both email templates with a sample, and who is waiting for each email."""
+    """HR mail and Super Admin mail (from the employee records), both email templates with a sample, and who is waiting for each email."""
     cert_followup.carry_over(by=me["name"])
-    return _followup()
-
-
-@router.put("/followup")
-def save_followup_settings(body: MailSettingsIn, me: dict = Depends(super_admin_only)):
-    cert_followup.save_settings(body.hrEmail, me["name"])
-    return _followup()
+    return _followup(me)
 
 
 @router.put("/followup/templates/{kind}")
 def save_template(kind: Literal["deferred", "completed"], body: TemplateIn, me: dict = Depends(hr_only)):
     """HR edits the Deferred Report or Certification Completed email at any time."""
     cert_followup.save_template(kind, body.subject, body.body, me["name"])
-    return _followup()
+    return _followup(me)
 
 
 @router.post("/followup/send/{kind}")
 def send_mails(kind: Literal["deferred", "completed"], body: SendIn | None = None, me: dict = Depends(hr_only)):
     """Sent only when HR clicks Send: to everyone waiting for this email, or only the rows in `ids`."""
-    res = cert_followup.send(kind, me["name"], (body.ids if body else None) or None)
-    return {**res, "followup": _followup()}
+    res = cert_followup.send(kind, me["name"], (body.ids if body else None) or None, me)
+    return {**res, "followup": _followup(me)}
 
 
 @router.post("", status_code=201)
 def assign(body: AssignIn, me: dict = Depends(hr_only)):
     u = _employee(body.employeeCode)
     doc = {
-        **body.model_dump(exclude={"targets", "deliveries"}),
+        **body.model_dump(mode="json", exclude={"targets", "deliveries"}),
         "id": f"HY-{db.next_seq('halfyearly'):04d}",
         "employeeName": u["name"],
         "targets": _merge(body.targets, [], TARGET_KEYS),
@@ -200,7 +203,7 @@ def update_assignment(rid: str, body: AssignIn, me: dict = Depends(hr_only)):
     row = upgrade(row)
     u = _employee(body.employeeCode)
     patch = {
-        **body.model_dump(exclude={"targets", "deliveries"}),
+        **body.model_dump(mode="json", exclude={"targets", "deliveries"}),
         "employeeName": u["name"],
         "targets": _merge(body.targets, row["targets"], TARGET_KEYS),
         "deliveries": _merge(body.deliveries, row["deliveries"], DELIVERY_KEYS),

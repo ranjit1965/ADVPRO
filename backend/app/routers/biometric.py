@@ -1,7 +1,9 @@
 """Biometric time in / time out (Master › Biometric and Admin › Data Upload).
 
 Admin / Super Admin upload the device export (.xlsx, .xls or .csv; .txt / .tsv / .dat logs too).
-"Save" keeps the first and last punch of each person per day in
+v52: the file has "Employee Name" and the days 1 to 31 (no month), so after choosing the file the Admin picks
+the month and year; the last rows "No.of Records 20" / "No of Holidays : 6" are saved for that month in
+`biometric_months`. "Save" keeps the first and last punch of each person per day in
 `biometric_days`; uploading a day again replaces it. People the system cannot match are kept in
 `biometric_unmatched` until they are linked to an employee. The monthly report compares those
 times with the person's daily entries. There is no folder path.
@@ -23,11 +25,7 @@ router = APIRouter(prefix="/biometric", tags=["biometric"])
 master_roles = manage_access  # Master or Admin menu, or HR menu for HR / Admin; Super Admin always
 view_roles = require_section("master", "admin", "hr", roles=("ADMIN", "HR"))
 SETTINGS_ID = "biometric"
-DEFAULT_TOLERANCE = 15  # minutes of difference still counted as matching
-
-
-class SettingsIn(BaseModel):
-    toleranceMinutes: int = Field(default=DEFAULT_TOLERANCE, ge=0, le=240)
+MONTH_RE = r"^\d{4}-(0[1-9]|1[0-2])$"
 
 
 class MapIn(BaseModel):
@@ -36,7 +34,7 @@ class MapIn(BaseModel):
 
 
 def _settings() -> dict:
-    return db.db.settings.find_one({"_id": SETTINGS_ID}) or {"_id": SETTINGS_ID, "toleranceMinutes": DEFAULT_TOLERANCE, "idMap": {}}
+    return db.db.settings.find_one({"_id": SETTINGS_ID}) or {"_id": SETTINGS_ID, "idMap": {}}
 
 
 def _norm(text: str) -> str:
@@ -65,8 +63,7 @@ def _unmatched() -> list[dict]:
 
 
 def _public(s: dict) -> dict:
-    out = {k: s.get(k) for k in ("toleranceMinutes", "lastImport", "updatedBy", "updatedAt")}
-    out["toleranceMinutes"] = out["toleranceMinutes"] if out["toleranceMinutes"] is not None else DEFAULT_TOLERANCE
+    out = {k: s.get(k) for k in ("lastImport", "updatedBy", "updatedAt")}
     out["idMap"] = s.get("idMap") or {}
     if out["lastImport"]:
         out["lastImport"] = {**out["lastImport"], "unmatched": _unmatched()}
@@ -88,19 +85,28 @@ def get_settings(_: dict = Depends(view_roles)):
     return _public(_settings())
 
 
-@router.put("/settings")
-def save_settings(body: SettingsIn, me: dict = Depends(master_roles)):
-    db.db.settings.update_one(
-        {"_id": SETTINGS_ID},
-        {"$set": {"toleranceMinutes": body.toleranceMinutes, "updatedBy": me["name"], "updatedAt": datetime.now(timezone.utc).isoformat()}},
-        upsert=True,
-    )
-    return _public(_settings())
+def month_info(month: str) -> dict | None:
+    """No of records and no of holidays saved for the month (from the last rows of the biometric file)."""
+    return db.db.biometric_months.find_one({"_id": month}, {"_id": 0})
+
+
+@router.get("/months")
+def months(_: dict = Depends(view_roles)):
+    """The months uploaded, newest first, with the no of records and no of holidays of each."""
+    return list(db.db.biometric_months.find({}, {"_id": 0}).sort("month", -1))
 
 
 @router.post("/upload")
-async def upload(request: Request, name: str = Query(..., min_length=1, max_length=200), me: dict = Depends(master_roles)):
-    """Admin / Super Admin upload the file (raw body, .xlsx / .xls / .csv); it is read and saved to the database."""
+async def upload(
+    request: Request,
+    name: str = Query(..., min_length=1, max_length=200),
+    month: str | None = Query(None, pattern=MONTH_RE),
+    me: dict = Depends(master_roles),
+):
+    """Admin / Super Admin upload the file (raw body, .xlsx / .xls / .csv) for the month and year they chose;
+    it is read and saved to the database."""
+    if not month:
+        raise HTTPException(422, "Choose the month and year of the biometric file")
     data = await request.body()
     try:
         rows = await run_in_threadpool(rows_from_upload, name, data)
@@ -108,7 +114,7 @@ async def upload(request: Request, name: str = Query(..., min_length=1, max_leng
         raise HTTPException(400, f"Could not read the file: {exc}") from exc
     if not rows:
         raise HTTPException(400, "The file has no rows")
-    return await run_in_threadpool(run_import, rows, name)
+    return await run_in_threadpool(run_import, rows, name, month, me["name"])
 
 
 @router.put("/map")
@@ -135,10 +141,11 @@ def save_map(body: MapIn, _: dict = Depends(master_roles)):
     return _public(_settings())["lastImport"] or {"unmatched": _unmatched()}
 
 
-def run_import(rows: list[list], file_name: str) -> dict:
+def run_import(rows: list[list], file_name: str, month: str | None = None, by: str = "") -> dict:
     result = ReadResult()
+    ym = tuple(int(x) for x in month.split("-")) if month else None
     try:
-        read_rows(rows, file_name, result)
+        read_rows(rows, file_name, result, ym)
     except Exception as exc:  # noqa: BLE001
         raise HTTPException(400, f"Could not read the file: {exc}") from exc
     if not result.punches:
@@ -186,6 +193,9 @@ def run_import(rows: list[list], file_name: str) -> dict:
 
     summary = {
         "at": now.isoformat(),
+        "month": month,
+        "records": result.records,
+        "holidays": result.holidays,
         "files": result.files,
         "punchRows": len(result.punches),
         "skippedRows": result.skipped_rows,
@@ -194,6 +204,11 @@ def run_import(rows: list[list], file_name: str) -> dict:
         "errors": result.errors,
     }
     db.db.settings.update_one({"_id": SETTINGS_ID}, {"$set": {"lastImport": summary}}, upsert=True)
+    if month:
+        db.db.biometric_months.update_one({"_id": month}, {"$set": {
+            "month": month, "records": result.records, "holidays": result.holidays, "file": file_name,
+            "people": summary["people"], "daysStored": summary["daysStored"], "uploadedBy": by, "uploadedAt": summary["at"],
+        }}, upsert=True)
     return {**summary, "unmatched": _unmatched()}
 
 
@@ -207,8 +222,8 @@ def records(month: str = Query(..., pattern=r"^\d{4}-\d{2}$"), code: str | None 
 
 
 def compare_month(code: str, month: str, entries: list[dict]) -> dict:
-    """Day-by-day comparison of biometric Time In / Out with the first start and last finish of the entries."""
-    tol = int(_settings().get("toleranceMinutes") or DEFAULT_TOLERANCE)
+    """Day-by-day biometric Time In / Out next to the first start and last finish of the entries (no tolerance:
+    the differences are shown as they are), with the no of records / holidays of the month."""
     y, m = map(int, month.split("-"))
     last = f"{month}-{calendar.monthrange(y, m)[1]:02d}"
     bio = {b["date"]: b for b in db.db.biometric_days.find({"code": code, "date": {"$gte": f"{month}-01", "$lte": last}}, {"_id": 0})}
@@ -232,10 +247,8 @@ def compare_month(code: str, month: str, entries: list[dict]) -> dict:
             status = "No entries"
         elif not t_out:
             status = "Missing out punch"
-        elif abs(in_diff) <= tol and abs(out_diff) <= tol:
-            status = "Matched"
         else:
-            status = "Difference"
+            status = "Present"
         rows.append({
             "date": day, "timeIn": t_in, "timeOut": t_out, "entryStart": start, "entryEnd": end,
             "inDiff": in_diff, "outDiff": out_diff, "bioMinutes": bio_minutes, "enteredMinutes": entered,
@@ -244,10 +257,10 @@ def compare_month(code: str, month: str, entries: list[dict]) -> dict:
 
     count = lambda s: sum(r["status"] == s for r in rows)  # noqa: E731
     return {
-        "toleranceMinutes": tol,
         "rows": rows,
+        "month": month_info(month),
         "summary": {
-            "days": len(rows), "matched": count("Matched"), "different": count("Difference"),
+            "days": len(rows), "present": count("Present"),
             "noBiometric": count("No biometric"), "noEntries": count("No entries"), "missingOut": count("Missing out punch"),
             "bioMinutes": sum(r["bioMinutes"] or 0 for r in rows), "enteredMinutes": sum(r["enteredMinutes"] for r in rows if r["timeIn"]),
         },

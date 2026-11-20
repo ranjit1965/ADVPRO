@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { BadgeCheck, Mail, Pencil, Save, Send } from 'lucide-react';
+import { BadgeCheck, ListChecks, Mail, Pencil, Save, Send } from 'lucide-react';
 import * as api from '../../services/api';
 import PageHeader from '../../components/ui/PageHeader';
 import Card from '../../components/ui/Card';
@@ -17,7 +17,6 @@ import { useConfirm } from '../../context/ConfirmContext';
 import { useAsync } from '../../hooks/useAsync';
 import { formatDateTime } from '../../utils/format';
 import { isCurrent } from '../../utils/halfyearly';
-import { isSuperAdmin } from '../../utils/permissions';
 
 const SHOW = [
   { value: 'pending', label: 'Not completed' },
@@ -107,31 +106,32 @@ export default function CertificationStatus() {
   );
 }
 
-/** HR mail id (the Super Admin sets it), then the two emails HR sends with a button: Deferred Report and Certification Completed. */
+/** HR mail and Super Admin mail (CC), taken from the employee records, then the two emails HR sends with a button: Deferred Report and Certification Completed. */
 function FollowupCard({ onRun, refreshKey }) {
-  const { user } = useAuth();
   const toast = useToast();
-  const superAdmin = isSuperAdmin(user);
   const { data, error, reload, setData } = useFollowup(refreshKey);
-  const [email, setEmail] = useState('');
-  const [busy, setBusy] = useState(false);
-  useEffect(() => setEmail(data?.hrEmail || ''), [data?.hrEmail]);
+  const [checking, setChecking] = useState(false);
+  // Check: who completed (Certification Completed card) and who did not (Deferred Report card), freshly from the records.
+  const check = async () => {
+    setChecking(true);
+    try {
+      const d = await api.getCertFollowup();
+      setData(d);
+      onRun?.();
+      const done = d.pending.completed.length;
+      const notDone = d.pending.deferred.length + (d.running || []).length;
+      toast.success(`Checked: ${done} completed (waiting for the email), ${notDone} not completed.`);
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setChecking(false);
+    }
+  };
 
   if (error) return <ErrorState message={error} onRetry={reload} />;
   if (!data) return null;
 
-  const save = async (e) => {
-    e.preventDefault();
-    setBusy(true);
-    try {
-      setData(await api.saveCertFollowup(email.trim()));
-      toast.success(email.trim() ? 'HR mail id saved.' : 'HR mail id removed.');
-    } catch (err) {
-      toast.error(err.message);
-    } finally {
-      setBusy(false);
-    }
-  };
+  const who = (u, email) => (email ? <><span className="font-medium text-ink-900">{email}</span>{u?.name && <span className="text-ink-500"> ({u.name})</span>}</> : <span className="font-medium text-red-600">Not found</span>);
 
   return (
     <>
@@ -139,15 +139,20 @@ function FollowupCard({ onRun, refreshKey }) {
         className="mb-5"
         title={<span className="flex items-center gap-2"><Mail className="size-5 text-brand-600" aria-hidden /> Certification emails</span>}
         description="Emails go only when HR clicks Send, to each employee's email in Employees. Unfinished certifications move to the next quarter automatically when a quarter ends."
+        actions={<Button size="sm" variant="secondary" icon={ListChecks} loading={checking} onClick={check}>Check completed / not completed</Button>}
       >
-        {superAdmin ? (
-          <form onSubmit={save} className="flex flex-wrap items-end gap-3">
-            <Input label="HR mail id" type="email" className="w-full sm:w-80" maxLength={120} value={email} onChange={(e) => setEmail(e.target.value)} placeholder="hr@example.com" hint="Reply-To of the emails, and gets a copy" />
-            <Button type="submit" icon={Save} loading={busy} disabled={email.trim() === (data.hrEmail || '')}>Save</Button>
-          </form>
-        ) : (
-          <p className="text-[13px] text-ink-700">HR mail id: <b>{data.hrEmail || 'not set'}</b> <span className="text-ink-500">(set by the Super Admin)</span></p>
-        )}
+        <dl className="grid grid-cols-1 gap-3 text-[13px] sm:grid-cols-2">
+          <div className="rounded-xl border border-ink-200 p-3">
+            <dt className="text-xs font-semibold uppercase tracking-wide text-ink-500">From: HR mail</dt>
+            <dd className="mt-1">{who(data.hrUser, data.hrEmail)}</dd>
+            <dd className="mt-0.5 text-xs text-ink-500">The email of the HR user in Employees (the HR who clicks Send). Replies come here.</dd>
+          </div>
+          <div className="rounded-xl border border-ink-200 p-3">
+            <dt className="text-xs font-semibold uppercase tracking-wide text-ink-500">CC: Super Admin mail</dt>
+            <dd className="mt-1">{who(data.superAdminUser, data.ccEmail)}</dd>
+            <dd className="mt-0.5 text-xs text-ink-500">The Super Admin's email in their record. Gets a copy of every email.</dd>
+          </div>
+        </dl>
       </Card>
       <div className="mb-5 grid grid-cols-1 gap-5 xl:grid-cols-2">
         <MailCard kind="deferred" title="Deferred Report email" note="For certifications not completed when the quarter ended. One email per employee and quarter." data={data} setData={setData} onSent={onRun} />
@@ -238,7 +243,20 @@ function MailCard({ kind, title, note, data, setData, onSent }) {
           ))}
         </ul>
       ) : (
-        <p className="mb-3 text-[13px] text-ink-500">Nobody is waiting for this email.</p>
+        <p className="mb-3 text-[13px] text-ink-500">{kind === 'deferred' ? 'No ended quarter has certifications waiting for this email.' : 'No completed certification is waiting for this email.'}</p>
+      )}
+      {kind === 'deferred' && data.running?.length > 0 && (
+        <div className="mb-3 rounded-lg border border-warning-600/25 bg-warning-50 p-2.5">
+          <p className="mb-1 text-[12px] font-semibold text-warning-700">Not completed yet, quarter still running ({data.running.length}). The Deferred Report can be sent after the quarter ends.</p>
+          <ul className="max-h-40 space-y-1 overflow-auto text-[13px]">
+            {data.running.map((p) => (
+              <li key={p.id} className="border-b border-warning-600/15 pb-1 last:border-0">
+                <span className="font-medium text-ink-900">{p.name}</span> <span className="text-xs text-ink-500">({p.employeeCode}) · {p.quarter} · ends {p.endLabel}</span>
+                <span className="block text-xs text-ink-600">{p.courses.join(', ')}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
       )}
       <p className="text-xs text-ink-500">
         {last ? `Last sent ${formatDateTime(last.at)} by ${last.by}: ${last.sent} sent${last.skipped ? `, ${last.skipped} without email` : ''}${last.failed ? `, ${last.failed} failed` : ''}.` : 'Not sent yet.'}
