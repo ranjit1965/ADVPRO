@@ -346,8 +346,16 @@ missed), the Dashboard and this page remind Admin / Manager until each file is u
 
 ### Batch, sidebar, biometric month, HR mails and halfyearly dates (v52)
 
-* **Batch create**: the Class Type and Total Hours fields are removed (form, table and Batch Import).
-  Old batches keep the values in the database, they are just not shown or asked.
+* **Batch create**: the Class Type, Total Hours and Course Type fields are removed (form, table and Batch
+  Import). Old batches keep the values in the database, they are just not shown or asked.
+* **Not matched lists** (Master › Biometric "Device users not matched" and Master › Batch Import "Faculty
+  short names not matched"): each row has a **Remove** button. Removed names are saved
+  (`settings.biometric.ignored` / `settings.batchImport.dismissed`) and not listed again on later uploads;
+  a removed device user's unmatched days are deleted. After linking a name to an employee, it shows under
+  "Linked to an employee" with a **Dismiss** button. API: `POST /api/biometric/dismiss {deviceKey}`,
+  `POST /api/batch-import/dismiss {shortName}`.
+* **Deleted Employees** is no longer in the HR menu at all; it is only in the Admin and Master menus for the
+  Super Admin (the page and API were already Super Admin only).
 * **Sidebar**: hovering a section (Master, Faculty, Admin, HR ...) opens its options, the same for every
   section; it closes shortly after the pointer leaves. Only one section is blue: the open one while a menu
   is open, otherwise the section the page was picked from. Pages that are in several menus (Employees,

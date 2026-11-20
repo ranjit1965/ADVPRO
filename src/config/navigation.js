@@ -85,8 +85,9 @@ export const NAVIGATION = [
       { key: 'hr-policy', label: 'HR Policy', to: '/hr-report/policy' },
       { key: 'halfyearly', label: 'Halfyearly Program Report', to: '/hr-report/halfyearly' },
       { key: 'cert-status', label: 'Certification Status', to: '/hr-report/certification-status', roles: HR_PAGE_ROLES },
-      // The Admin menu pages, also here for the HR and Admin roles (Deleted Employees: Super Admin only).
-      ...ADMIN_PAGES.map((p) => ({ ...p, key: `hr-${p.key}`, roles: p.roles || HR_PAGE_ROLES })),
+      // The Admin menu pages, also here for the HR and Admin roles.
+      // Deleted Employees is left out of the HR menu: Super Admin only, in the Admin menu.
+      ...ADMIN_PAGES.filter((p) => p.key !== 'admin-deleted-employees').map((p) => ({ ...p, key: `hr-${p.key}`, roles: p.roles || HR_PAGE_ROLES })),
     ],
   },
 ];

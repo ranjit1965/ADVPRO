@@ -323,6 +323,11 @@ export async function getBiometricMonths() {
   return request('/biometric/months');
 }
 
+/** Removes a device user from "not matched" (not an employee); not listed again on later uploads. */
+export async function dismissBiometricUser(deviceKey) {
+  return request('/biometric/dismiss', { method: 'POST', body: { deviceKey } });
+}
+
 /** Links a device user id / name to an employee code (empty code removes the link) and moves their days. */
 export async function saveBiometricMap(deviceKey, code) {
   return request('/biometric/map', { method: 'PUT', body: { deviceKey, code: code || null } });
@@ -357,6 +362,11 @@ export async function uploadBatches(file) {
 /** Links a faculty short name from the file to an employee code (empty code removes the link) and assigns its batches. */
 export async function saveBatchFacultyMap(shortName, code) {
   return request('/batch-import/map', { method: 'PUT', body: { shortName, code: code || null } });
+}
+
+/** Removes a faculty short name from "not matched"; not listed again on later uploads. */
+export async function dismissBatchShortName(shortName) {
+  return request('/batch-import/dismiss', { method: 'POST', body: { shortName } });
 }
 
 /** GET /api/reports/monthly?month=YYYY-MM&facultyCode= */

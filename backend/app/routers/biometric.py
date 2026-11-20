@@ -117,6 +117,20 @@ async def upload(
     return await run_in_threadpool(run_import, rows, name, month, me["name"])
 
 
+class DismissIn(BaseModel):
+    deviceKey: str = Field(min_length=1, max_length=200)
+
+
+@router.post("/dismiss")
+def dismiss(body: DismissIn, _: dict = Depends(master_roles)):
+    """Removes a device user from "not matched" (not an employee): their unmatched days are deleted and they are
+    not listed again on later uploads."""
+    key = _map_key(body.deviceKey)
+    db.db.settings.update_one({"_id": SETTINGS_ID}, {"$addToSet": {"ignored": key}}, upsert=True)
+    db.db.biometric_unmatched.delete_many({"key": key})
+    return _public(_settings())["lastImport"] or {"unmatched": _unmatched()}
+
+
 @router.put("/map")
 def save_map(body: MapIn, _: dict = Depends(master_roles)):
     """Links a device user (id or name the system could not match) to an employee and moves
@@ -158,6 +172,7 @@ def run_import(rows: list[list], file_name: str, month: str | None = None, by: s
     by_user_id = {_norm(u["userId"]): u for u in users if u.get("userId")}
     by_name = {_norm(u["name"]): u for u in users}
     id_map = s.get("idMap") or {}
+    ignored = set(s.get("ignored") or [])  # device users dismissed from "not matched"
 
     def match(pid: str, name: str):
         for key in (pid, name):
@@ -173,6 +188,8 @@ def run_import(rows: list[list], file_name: str, month: str | None = None, by: s
         hhmm = [t.strftime("%H:%M") for t in p.times]
         if not u:
             dk = p.person_id or p.name
+            if _map_key(dk) in ignored:
+                continue
             item = unmatched.setdefault((_map_key(dk), p.day.isoformat()), {"key": _map_key(dk), "deviceKey": dk, "deviceId": p.person_id, "name": p.name, "date": p.day.isoformat(), "times": [], "files": set()})
             item["times"] += hhmm
             item["files"].add(p.file)

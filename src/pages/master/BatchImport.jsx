@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Database, UserX, ArrowRight } from 'lucide-react';
+import { Database, UserX, ArrowRight, CheckCircle2, X } from 'lucide-react';
 import * as api from '../../services/api';
 import PageHeader from '../../components/ui/PageHeader';
 import Card from '../../components/ui/Card';
+import Button from '../../components/ui/Button';
 import Select from '../../components/ui/Select';
 import EmptyState from '../../components/ui/EmptyState';
 import FileSaveField from '../../components/ui/FileSaveField';
@@ -26,6 +27,7 @@ export default function BatchImport() {
   const toast = useToast();
   const settings = useAsync(() => api.getBatchImportSettings(), []);
   const [busy, setBusy] = useState('');
+  const [linked, setLinked] = useState([]); // linked in this visit: shown as "Linked to ..." until dismissed
   const [summary, setSummary] = useState(null);
   const people = useMemo(() => (lookups?.employees || []).map((p) => ({ value: p.code, label: `${p.name} (${p.code})` })), [lookups]);
 
@@ -48,6 +50,19 @@ export default function BatchImport() {
     setBusy(`map-${shortName}`);
     try {
       done(await api.saveBatchFacultyMap(shortName, code), `${shortName} linked and its batches assigned.`);
+      setLinked((l) => [...l.filter((x) => x.key !== shortName), { key: shortName, to: people.find((p) => p.value === code)?.label || code }]);
+    } catch (e) {
+      toast.error(e.message);
+    } finally {
+      setBusy('');
+    }
+  };
+
+  const dismiss = async (shortName) => {
+    setBusy(`dismiss-${shortName}`);
+    try {
+      setSummary(await api.dismissBatchShortName(shortName));
+      toast.success(`${shortName} removed from the list.`);
     } catch (e) {
       toast.error(e.message);
     } finally {
@@ -110,6 +125,20 @@ export default function BatchImport() {
         </Card>
       </div>
 
+      {linked.length > 0 && (
+        <Card className="mt-5" title="Linked to an employee">
+          <div className="divide-y divide-ink-100">
+            {linked.map((l) => (
+              <div key={l.key} className="flex items-center gap-3 py-2">
+                <CheckCircle2 className="size-4 text-success-600" aria-hidden />
+                <p className="flex-1 text-[13px] text-ink-800"><span className="font-medium">{l.key}</span> linked to {l.to}</p>
+                <Button size="sm" variant="secondary" icon={X} onClick={() => setLinked((x) => x.filter((y) => y.key !== l.key))}>Dismiss</Button>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
+
       {summary?.unmatched?.length > 0 && (
         <Card
           className="mt-5"
@@ -140,6 +169,9 @@ export default function BatchImport() {
                   disabled={!!busy}
                   onChange={(e) => e.target.value && link(u.shortName, e.target.value)}
                 />
+                <Button variant="secondary" icon={X} loading={busy === `dismiss-${u.shortName}`} disabled={!!busy} onClick={() => dismiss(u.shortName)} title="Remove from this list">
+                  Remove
+                </Button>
               </div>
             ))}
           </div>

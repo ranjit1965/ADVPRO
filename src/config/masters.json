@@ -94,13 +94,6 @@
           "required": true
         },
         {
-          "key": "courseType",
-          "label": "Course Type",
-          "type": "text",
-          "hideInTable": true,
-          "required": true
-        },
-        {
           "key": "mode",
           "label": "Mode",
           "type": "select",

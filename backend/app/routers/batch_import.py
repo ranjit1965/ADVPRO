@@ -31,6 +31,10 @@ class MapIn(BaseModel):
     code: str | None = None  # employee code; empty removes the link
 
 
+class DismissIn(BaseModel):
+    shortName: str = Field(min_length=1, max_length=50)
+
+
 def _settings() -> dict:
     return db.db.settings.find_one({"_id": SETTINGS_ID}) or {"_id": SETTINGS_ID, "facultyMap": {}}
 
@@ -110,6 +114,18 @@ def save_map(body: MapIn, me: dict = Depends(master_roles)):
         last["assigned"] = col.count_documents({"importedAt": last.get("at"), "facultyCode": {"$ne": ""}})
         db.db.settings.update_one({"_id": SETTINGS_ID}, {"$set": {"lastImport": last}})
     return {**last, "linked": len(ops)}
+
+
+@router.post("/dismiss")
+def dismiss(body: DismissIn, _: dict = Depends(master_roles)):
+    """Removes a short name from "not matched" (e.g. a guest faculty); it is not listed again on later uploads."""
+    key = _map_key(body.shortName)
+    db.db.settings.update_one({"_id": SETTINGS_ID}, {"$addToSet": {"dismissed": key}}, upsert=True)
+    last = _settings().get("lastImport") or {}
+    if last:
+        last["unmatched"] = [u for u in last.get("unmatched") or [] if _map_key(u["shortName"]) != key]
+        db.db.settings.update_one({"_id": SETTINGS_ID}, {"$set": {"lastImport": last}})
+    return last
 
 
 def run_import(rows: list[list], file_name: str, me: dict) -> dict:
@@ -197,7 +213,6 @@ def run_import(rows: list[list], file_name: str, me: dict) -> dict:
             "startDate": first.startDate.isoformat() if first.startDate else "",
             "endDate": (first.actualEndDate or first.endDate).isoformat() if (first.actualEndDate or first.endDate) else "",
             "timing": timing,
-            "courseType": first.courseType,
             "status": status,
             "source": "Upload",
             "importedAt": now,
@@ -234,7 +249,7 @@ def run_import(rows: list[list], file_name: str, me: dict) -> dict:
         "faculty": len(faculty_codes),
         "status": dict(status_count),
         "renamed": renamed,
-        "unmatched": sorted(unmatched.values(), key=lambda v: (-v["batches"], v["shortName"])),
+        "unmatched": sorted((u for u in unmatched.values() if _map_key(u["shortName"]) not in set(s.get("dismissed") or [])), key=lambda v: (-v["batches"], v["shortName"])),
         "missingCourses": sorted(missing_courses),
     }
     db.db.settings.update_one({"_id": SETTINGS_ID}, {"$set": {"lastImport": summary}}, upsert=True)

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Fingerprint, UserX } from 'lucide-react';
+import { CheckCircle2, Fingerprint, UserX, X } from 'lucide-react';
+import Button from '../../components/ui/Button';
 import * as api from '../../services/api';
 import PageHeader from '../../components/ui/PageHeader';
 import Card from '../../components/ui/Card';
@@ -30,6 +31,7 @@ export default function Biometric() {
   const toast = useToast();
   const settings = useAsync(() => api.getBiometricSettings(), []);
   const [busy, setBusy] = useState('');
+  const [linked, setLinked] = useState([]); // linked in this visit: shown as "Linked to ..." until dismissed
   const [fileMonth, setFileMonth] = useState({ month: '', year: '' });
   const monthsInfo = useAsync(() => api.getBiometricMonths(), []);
   const [summary, setSummary] = useState(null);
@@ -56,8 +58,22 @@ export default function Biometric() {
     setBusy(`map-${deviceKey}`);
     try {
       const s = await api.saveBiometricMap(deviceKey, code);
+      const u = summary?.unmatched?.find((x) => x.deviceKey === deviceKey);
+      setLinked((l) => [...l.filter((x) => x.key !== deviceKey), { key: deviceKey, name: u?.name || deviceKey, to: people.find((p) => p.value === code)?.label || code }]);
       setSummary(s);
       toast.success('Linked; that person\'s days are saved.');
+    } catch (e) {
+      toast.error(e.message);
+    } finally {
+      setBusy('');
+    }
+  };
+
+  const dismiss = async (deviceKey) => {
+    setBusy(`dismiss-${deviceKey}`);
+    try {
+      setSummary(await api.dismissBiometricUser(deviceKey));
+      toast.success('Removed from the list.');
     } catch (e) {
       toast.error(e.message);
     } finally {
@@ -144,6 +160,20 @@ export default function Biometric() {
         </Card>
       </div>
 
+      {linked.length > 0 && (
+        <Card className="mt-5" title="Linked to an employee">
+          <div className="divide-y divide-ink-100">
+            {linked.map((l) => (
+              <div key={l.key} className="flex items-center gap-3 py-2">
+                <CheckCircle2 className="size-4 text-success-600" aria-hidden />
+                <p className="flex-1 text-[13px] text-ink-800"><span className="font-medium">{l.name}</span> linked to {l.to}</p>
+                <Button size="sm" variant="secondary" icon={X} onClick={() => setLinked((x) => x.filter((y) => y.key !== l.key))}>Dismiss</Button>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
+
       {summary?.unmatched?.length > 0 && (
         <Card className="mt-5" title="Device users not matched" description="Link each one to an employee. The link is saved and their days are moved to that employee.">
           <div className="divide-y divide-ink-100">
@@ -167,6 +197,11 @@ export default function Biometric() {
                     disabled={busy.startsWith('map-')}
                     onChange={(e) => e.target.value && link(u.deviceKey, e.target.value)}
                   />
+                )}
+                {canEdit && (
+                  <Button variant="secondary" icon={X} loading={busy === `dismiss-${u.deviceKey}`} disabled={!!busy} onClick={() => dismiss(u.deviceKey)} title="Not an employee: remove from this list">
+                    Remove
+                  </Button>
                 )}
               </div>
             ))}
