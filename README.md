@@ -344,6 +344,33 @@ missed), the Dashboard and this page remind Admin / Manager until each file is u
   creating the batch (Master › Batch or Batch Import) or **Dismiss** them. Saved in `batch_requests`;
   `POST/GET /api/batch-requests`, `PATCH /api/batch-requests/{id}`.
 
+### Issue alert: its own WhatsApp template and a cleaner email (v54)
+
+The issue alert (entry saved with "Issue faced? Yes") was sent on WhatsApp with the course request template,
+whose text is fixed by WhatsApp, so it read "New course request from …". Now:
+
+* **Email**: subject "Issue faced by NAME at PLACE: ISSUE (N min)", and a plain "Label: value" body
+  (faculty, place, activity and date, course / batch, issue, time lost, details, entry no, managing person).
+* **WhatsApp**: its own approved template. Create a **Utility** template in Pinbot, for example `issue_alert`:
+
+  ```
+  Issue faced by {{1}} ({{2}}) at {{3}} on {{4}}.
+  Issue: {{5}} ({{6}} min)
+  Details: {{7}}
+  ```
+
+  then in backend/.env (Vercel: Environment Variables):
+
+  ```
+  WA_ISSUE_TEMPLATE_NAME=issue_alert
+  WA_ISSUE_TEMPLATE_LANG=en
+  WA_ISSUE_TEMPLATE_PARAMS=faculty,code,place,date,issueType,minutes,details
+  ```
+
+  Names for the params: faculty, code, place, activity, date, time, course, issueType, minutes, details,
+  entryId; as many as the template has variables. Until `WA_ISSUE_TEMPLATE_NAME` is set, no WhatsApp is sent
+  for issues (the email still goes; the entry's issueAlert notes why). Course requests keep `WA_TEMPLATE_NAME`.
+
 ### Daily Entry Submission: automatic marks, H / C from the biometric file, Add H (v54)
 
 * **Attendance Entry is renamed Daily Entry Submission** (menu, page, sheet title "DAILY ENTRY SUBMISSION -

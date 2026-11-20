@@ -30,8 +30,8 @@ from .config import settings
 log = logging.getLogger("der.whatsapp")
 
 
-def configured() -> bool:
-    return bool(settings.wa_api_key and settings.wa_phone_number_id and settings.wa_template_name and notify_numbers())
+def configured(template: str | None = None) -> bool:
+    return bool(settings.wa_api_key and settings.wa_phone_number_id and (template or settings.wa_template_name) and notify_numbers())
 
 
 def _number(n: str) -> str:
@@ -43,13 +43,13 @@ def notify_numbers() -> list[str]:
     return [_number(n) for n in settings.wa_notify_numbers.split(",") if n.strip()]
 
 
-def template_params(values: dict) -> list[str]:
-    """The template's body variables, in WA_TEMPLATE_PARAMS order, from the named values."""
-    names = [k.strip() for k in settings.wa_template_params.split(",") if k.strip()]
+def template_params(values: dict, spec: str | None = None) -> list[str]:
+    """The template's body variables, in WA_TEMPLATE_PARAMS (or `spec`) order, from the named values."""
+    names = [k.strip() for k in (spec or settings.wa_template_params).split(",") if k.strip()]
     return [str(values.get(k) or "-") for k in names]
 
 
-def send_template(to: str, params: list[str]) -> None:
+def send_template(to: str, params: list[str], template: str | None = None, lang: str | None = None) -> None:
     """Sends the configured template to one number with the given body variables. Raises on failure."""
     url = f"{settings.wa_api_base.rstrip('/')}/{settings.wa_phone_number_id}/messages"
     body = {
@@ -58,8 +58,8 @@ def send_template(to: str, params: list[str]) -> None:
         "to": to,
         "type": "template",
         "template": {
-            "name": settings.wa_template_name,
-            "language": {"code": settings.wa_template_lang or "en"},
+            "name": template or settings.wa_template_name,
+            "language": {"code": lang or settings.wa_template_lang or "en"},
             "components": [{"type": "body", "parameters": [{"type": "text", "text": (p or "-")[:900]} for p in params]}],
         },
     }
@@ -72,17 +72,18 @@ def send_template(to: str, params: list[str]) -> None:
         raise RuntimeError(f"HTTP {e.code}: {e.read()[:300].decode(errors='replace')}") from e
 
 
-def notify(values: dict, extra_numbers: list[str] | None = None) -> dict:
-    """Sends the template to every WA_NOTIFY_NUMBERS number (and extra_numbers, e.g. a college's managing person).
+def notify(values: dict, extra_numbers: list[str] | None = None, template: str | None = None, spec: str | None = None, lang: str | None = None) -> dict:
+    """Sends the template (the course request one, or `template` with its params `spec`) to every
+    WA_NOTIFY_NUMBERS number (and extra_numbers, e.g. a college's managing person).
     Returns {"sent": n, "errors": [...]}, never raises."""
-    params = template_params(values)
-    if not configured():
+    params = template_params(values, spec)
+    if not configured(template):
         return {"sent": 0, "errors": ["WhatsApp is not configured (WA_* settings in backend/.env)"]}
     sent, errors = 0, []
     numbers = list(dict.fromkeys(notify_numbers() + [_number(n) for n in (extra_numbers or []) if n and n.strip()]))
     for n in numbers:
         try:
-            send_template(n, params)
+            send_template(n, params, template, lang)
             sent += 1
         except Exception as exc:  # noqa: BLE001 - keep going with the other numbers
             log.warning("WhatsApp to %s failed: %s", n, exc)

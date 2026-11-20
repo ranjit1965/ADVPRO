@@ -3,8 +3,9 @@
 * Email to COURSE_REQUEST_EMAILS (Ranjit / Admin; or every active Super Admin and Admin when it is empty)
   and to the managing person of that place: the college of a College / OD class, the college picked in
   the entry (seminar, marketing ...), or "Center". Their email and phone are set by Super Admin / Admin in Master › Dropdown Values › Issue contacts.
-* WhatsApp to WA_NOTIFY_NUMBERS and the managing person's phone, with the same template as course
-  requests ("course" carries the issue, "remarks" the details).
+* WhatsApp to WA_NOTIFY_NUMBERS and the managing person's phone with the issue template
+  (WA_ISSUE_TEMPLATE_NAME, its own approved text; v54). It no longer uses the course request template,
+  whose fixed text said "New course request". No issue template set = no WhatsApp, the email still goes.
 * Sent once per entry: when the entry is created with an issue, or when an issue is added to it later.
 * It runs after the save, in the background, and a failure never stops the entry from being saved. The
   result is kept on the entry as issueAlert.
@@ -38,29 +39,54 @@ def _recipients() -> list[str]:
     return sorted({u["email"] for u in db.users.find({"role": {"$in": ["MANAGER", "ADMIN"]}, "active": True, "email": {"$nin": [None, ""]}}, {"email": 1})})
 
 
-def _text(e: dict, place: str, contact: dict) -> str:
+def _date(d: str) -> str:
+    try:
+        return datetime.strptime(d, "%Y-%m-%d").strftime("%d %b %Y")
+    except (TypeError, ValueError):
+        return d or "-"
+
+
+def values(e: dict, place: str) -> dict:
+    """The issue's details by name: used by the email and the WhatsApp issue template."""
     d = e.get("details") or {}
+    return {
+        "faculty": e["facultyName"], "code": e["facultyCode"], "place": place,
+        "activity": ACTIVITY.get(e["activityType"], e["activityType"]), "date": _date(e["activityDate"]),
+        "time": f"{e['timeFrom']} to {e['timeTo']}",
+        "course": " / ".join(x for x in (d.get("courseId"), d.get("batchNo")) if x) or "-",
+        "issueType": d.get("issueType") or "-", "minutes": str(d.get("issueMinutes") or "-"),
+        "details": d.get("issueDetails") or "-", "entryId": e["id"],
+    }
+
+
+def subject(e: dict, place: str) -> str:
+    d = e.get("details") or {}
+    return f"Issue faced by {e['facultyName']} at {place}: {d.get('issueType') or 'issue'} ({d.get('issueMinutes') or '?'} min)"
+
+
+def _text(e: dict, place: str, contact: dict) -> str:
+    v = values(e, place)
     when = datetime.fromisoformat(e["createdAt"]).astimezone(timezone(timedelta(minutes=settings.utc_offset_minutes))).strftime("%d %b %Y, %I:%M %p")
     lines = [
         "Dear Sir / Madam,",
         "",
-        f"Sub: Issue faced at {place}",
+        f"An issue was reported in a daily entry by {v['faculty']} ({v['code']}).",
         "",
-        f"    Faculty              : {e['facultyName']} ({e['facultyCode']})",
-        f"    Activity             : {ACTIVITY.get(e['activityType'], e['activityType'])}, {e['activityDate']}, {e['timeFrom']} to {e['timeTo']} ({'College / OD' if e.get('facultyIn') == 'Outstation' else 'Center'})",
-        f"    Place                : {place}",
-        f"    Course / Batch       : {d.get('courseId') or '-'} {('/ ' + d['batchNo']) if d.get('batchNo') else ''}",
-        f"    Issue type           : {d.get('issueType') or '-'}",
-        f"    Time lost            : {d.get('issueMinutes') or '-'} minutes",
-        f"    Details              : {d.get('issueDetails') or '-'}",
-        f"    Entry No             : {e['id']} (saved {when})",
+        f"Faculty: {v['faculty']} ({v['code']})",
+        f"Place: {place}",
+        f"Activity: {v['activity']} on {v['date']}, {v['time']}",
+        f"Course / Batch: {v['course']}",
+        f"Issue: {v['issueType']}",
+        f"Time lost: {v['minutes']} minutes",
+        f"Details: {v['details']}",
+        f"Entry No: {v['entryId']} (saved {when})",
         "",
         f"Managing person of {place}: {contact.get('name') or '-'}" if contact else f"No managing person is set for {place} in Master > Dropdown Values.",
         "",
         "Issues of more than 1 hour are listed in the Monthly Report > Issues section.",
         "",
-        "--",
-        "Sent from Daily Entry Report, Advantage Pro",
+        "Regards,",
+        "Daily Entry Report, Advantage Pro",
     ]
     return "\n".join(lines)
 
@@ -77,19 +103,21 @@ def send(entry_id: str) -> dict:
     to = list(dict.fromkeys(_recipients() + ([contact["email"]] if contact.get("email") else [])))
     if to:
         try:
-            send_mail(to, f"Issue faced: {e['facultyName']} at {place}, {d.get('issueType') or 'issue'} ({d.get('issueMinutes') or '?'} min)", _text(e, place, contact))
+            send_mail(to, subject(e, place), _text(e, place, contact))
             result["emailedTo"] = to
         except Exception as exc:  # noqa: BLE001 - mail is down or not set up: keep the entry
             log.warning("Issue alert email for %s failed: %s", entry_id, exc)
             result["errors"].append(f"Email: {exc}")
-    wa = whatsapp.notify(
-        {
-            "employee": e["facultyName"], "code": e["facultyCode"], "employeeCode": f"{e['facultyName']} ({e['facultyCode']})",
-            "course": f"Issue at {place}: {d.get('issueType') or '-'} ({d.get('issueMinutes') or '?'} min)", "courseId": d.get("courseId") or "-",
-            "remarks": d.get("issueDetails") or "-", "date": e["activityDate"], "email": "",
-        },
-        extra_numbers=[contact["phone"]] if contact.get("phone") else None,
-    )
+    if settings.wa_issue_template_name:
+        wa = whatsapp.notify(
+            values(e, place),
+            extra_numbers=[contact["phone"]] if contact.get("phone") else None,
+            template=settings.wa_issue_template_name,
+            spec=settings.wa_issue_template_params,
+            lang=settings.wa_issue_template_lang or None,
+        )
+    else:  # the course request template's fixed text would say "New course request": no WhatsApp until set
+        wa = {"sent": 0, "errors": ["WhatsApp issue template not set (WA_ISSUE_TEMPLATE_NAME in backend/.env)"]}
     result["whatsappTo"] = wa["sent"]
     result["errors"] += wa["errors"]
     db.entries.update_one({"id": entry_id}, {"$set": {"issueAlert": result}})

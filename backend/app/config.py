@@ -32,6 +32,12 @@ class Settings(BaseSettings):
     # Values for the template's {{1}}, {{2}} ... in order. Names: employee, code, employeeCode, course,
     # courseId, remarks, date, email. Must match the number of variables in the approved template.
     wa_template_params: str = "employee,code,course,courseId,remarks"
+    # Issue alert (entry saved with "Issue faced? Yes"): its own approved template, because a template's text is
+    # fixed by WhatsApp. Empty name = no WhatsApp for issues (the email still goes). Names for the params:
+    # faculty, code, place, activity, date, time, course, issueType, minutes, details, entryId.
+    wa_issue_template_name: str = ""
+    wa_issue_template_lang: str = ""  # empty = WA_TEMPLATE_LANG
+    wa_issue_template_params: str = "faculty,code,place,date,issueType,minutes,details"
 
     # Missing daily entries: make an employee inactive after N working days with no entry (app/auto_inactive.py).
     # HR › Certification Status: carry unfinished certifications to the next quarter and email the Deferred Report.
