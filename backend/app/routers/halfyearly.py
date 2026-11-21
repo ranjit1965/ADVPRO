@@ -14,7 +14,7 @@ from pydantic import BaseModel, Field, model_validator
 
 from .. import cert_followup, db
 from ..schemas import Form
-from ..security import manage_access, super_admin_only, is_super_admin, require_section, current_user, require_roles
+from ..security import manage_access, is_super_admin, require_section, current_user, require_roles
 from .hr import HR_ROLES
 
 router = APIRouter(prefix="/hr/halfyearly", tags=["halfyearly program report"])
@@ -31,7 +31,11 @@ def now() -> str:
 def _clean(r: dict) -> dict:
     r.pop("_id", None)
     r.pop("period", None)  # Period was removed in v41
-    return upgrade(r)
+    r = upgrade(r)
+    # v58: the row shows "Carried forward" only while it holds a carried certification (not because it was
+    # once made by the carry over and HR then changed its certifications).
+    r["carriedForward"] = any(t.get("carriedForward") for t in r.get("targets", []))
+    return r
 
 
 def upgrade(r: dict) -> dict:
@@ -136,6 +140,7 @@ DELIVERY_KEYS = ("ready",)
 @router.get("")
 def list_reports(employeeCode: str | None = None, me: dict = Depends(current_user)):
     cert_followup.carry_over(by=me["name"])  # unfinished targets of an ended quarter show in the next one at once
+    cert_followup.undo_completed_carries()  # completed later in their own quarter: not carried any more
     if me["role"] not in HR_ROLES:
         employeeCode = me["code"]  # employees and faculty see only their own rows
     q = {"employeeCode": employeeCode} if employeeCode else {}
@@ -224,12 +229,13 @@ def update_status(rid: str, body: StatusIn, me: dict = Depends(hr_only)):
     row = upgrade(row)
     targets = [{**t, **(body.targets[i].model_dump(mode="json") if i < len(body.targets) else {})} for i, t in enumerate(row["targets"])]
     deliveries = [{**d, **(body.deliveries[i].model_dump(mode="json") if i < len(body.deliveries) else {})} for i, d in enumerate(row["deliveries"])]
-    res = col.find_one_and_update({"id": rid}, {"$set": {"targets": targets, "deliveries": deliveries, "statusBy": me["name"], "updatedAt": now()}}, return_document=True)
-    return _clean(res)
+    col.update_one({"id": rid}, {"$set": {"targets": targets, "deliveries": deliveries, "statusBy": me["name"], "updatedAt": now()}})
+    cert_followup.undo_completed_carries()
+    return _clean(col.find_one({"id": rid}))
 
 
 @router.delete("/{rid}")
-def delete(rid: str, _: dict = Depends(super_admin_only)):
+def delete(rid: str, _: dict = Depends(hr_only)):  # v58: HR and Admin delete too (was Super Admin only)
     if not col.delete_one({"id": rid}).deleted_count:
         raise HTTPException(404, "Report row not found")
     return True

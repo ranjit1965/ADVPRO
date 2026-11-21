@@ -344,6 +344,19 @@ missed), the Dashboard and this page remind Admin / Manager until each file is u
   creating the batch (Master › Batch or Batch Import) or **Dismiss** them. Saved in `batch_requests`;
   `POST/GET /api/batch-requests`, `PATCH /api/batch-requests/{id}`.
 
+### Halfyearly: HR delete and edit, Carried forward fixed (v58)
+
+* HR and Admin can now delete halfyearly rows (before, only the Super Admin could), on Halfyearly Program Report
+  and on Certification Status. Certification Status also has an Edit button, which opens the row in Halfyearly
+  Program Report.
+* "Carried forward" under the quarter now shows only while the row really holds a carried certification.
+  Before, a row made by the carry over kept the label even after HR changed its certifications.
+* A certification marked Completed Yes in its own quarter after it was carried forward stops being carried.
+  Its untouched copy is removed from the next quarter(s), and a next-quarter row that only held carried copies
+  is deleted. This also cleans up rows saved earlier, the next time the list is opened.
+* Carry over bug fixed: when two ended quarters of the same employee were carried in one run, the second one
+  overwrote the certifications the first one had just carried into it.
+
 ### Batch auto Completed at the end date and end time (v57)
 
 * A batch now becomes Completed only once its **end date and its class end time** have passed (local time).

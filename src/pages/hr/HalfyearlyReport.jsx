@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useEffect, useMemo, useState } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import { Award, Download, Mail, X } from 'lucide-react';
 import * as api from '../../services/api';
 import PageHeader from '../../components/ui/PageHeader';
@@ -19,7 +19,6 @@ import { useAsync } from '../../hooks/useAsync';
 import { formatDate } from '../../utils/format';
 import { downloadCsv } from '../../utils/export';
 import { rowDates, sixMonthsEnd } from '../../utils/halfyearly';
-import { isSuperAdmin } from '../../utils/permissions';
 import ReportRows, { ReportHead } from '../../components/hr/CertificationRows';
 
 const COUNTS = ['1', '2', '3'];
@@ -111,6 +110,17 @@ export default function HalfyearlyReport() {
     setFilter(r.employeeCode);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
+
+  // Edit from HR › Certification Status opens here with ?edit=<row id>.
+  const [params, setParams] = useSearchParams();
+  const editParam = params.get('edit');
+  useEffect(() => {
+    if (!editParam || !data || !isHr) return;
+    const r = data.find((x) => x.id === editParam);
+    if (r) startEdit(r);
+    setParams({}, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editParam, data]);
 
   const remove = async (r) => {
     if (!(await confirm({ title: 'Delete row', message: `Delete the ${r.quarter || ''} certifications of ${r.employeeName}?`, confirmLabel: 'OK, delete', tone: 'danger' }))) return;
@@ -253,7 +263,7 @@ export default function HalfyearlyReport() {
                   r.draft ? (
                     <ReportRows key={`draft-${r.id}`} row={r} draft />
                   ) : (
-                    <ReportRows key={r.id} row={r} highlight={r.id === lastSaved} onEdit={isHr ? () => startEdit(r) : undefined} onDelete={isSuperAdmin(user) ? () => remove(r) : undefined} />
+                    <ReportRows key={r.id} row={r} highlight={r.id === lastSaved} onEdit={isHr ? () => startEdit(r) : undefined} onDelete={isHr ? () => remove(r) : undefined} />
                   ),
                 )}
               </tbody>

@@ -425,7 +425,7 @@ export async function sendCertMails(kind, ids = []) {
   return request(`/hr/halfyearly/followup/send/${kind}`, { method: 'POST', body: { ids } });
 }
 
-/** DELETE /api/hr/halfyearly/{id} (Super Admin only) */
+/** DELETE /api/hr/halfyearly/{id} (HR, Admin, Super Admin) */
 export async function deleteHalfyearly(id) {
   return request(`/hr/halfyearly/${encodeURIComponent(id)}`, { method: 'DELETE' });
 }

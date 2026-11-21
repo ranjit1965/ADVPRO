@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { BadgeCheck, ListChecks, Mail, Pencil, Save, Send } from 'lucide-react';
 import * as api from '../../services/api';
 import PageHeader from '../../components/ui/PageHeader';
@@ -53,6 +54,19 @@ export default function CertificationStatus() {
     return [...seen.values()].map((p) => ({ value: p.code, label: `${p.name} (${p.code})` }));
   }, [lookups]);
   const rows = (data || []).filter(FILTERS[show]);
+  const navigate = useNavigate();
+  const confirmBox = useConfirm();
+  const toast = useToast();
+  const remove = async (r) => {
+    if (!(await confirmBox({ title: 'Delete row', message: `Delete the ${r.quarter || ''} certifications of ${r.employeeName}?`, confirmLabel: 'OK, delete', tone: 'danger' }))) return;
+    try {
+      await api.deleteHalfyearly(r.id);
+      toast.success('Row deleted.');
+      reload();
+    } catch (err) {
+      toast.error(err.message);
+    }
+  };
 
   if (!isHr) {
     return (
@@ -95,7 +109,7 @@ export default function CertificationStatus() {
               <ReportHead actions />
               <tbody>
                 {rows.map((r) => (
-                  <ReportRows key={r.id} row={r} editStatus onSaved={reload} />
+                  <ReportRows key={r.id} row={r} editStatus onSaved={reload} onEdit={() => navigate(`/hr-report/halfyearly?edit=${encodeURIComponent(r.id)}`)} onDelete={() => remove(r)} />
                 ))}
               </tbody>
             </table>

@@ -42,7 +42,7 @@ const statusOf = (row) => ({
  * One employee's quarter: a line per certification (targets on the left, deliveries on the right), with the
  * employee, quarter and actions spanning the lines. `editStatus` (Certification Status page): HR records
  * Completed Yes / date / code and Delivery ready in place. Otherwise the status is read-only.
- * `onEdit` / `onDelete` add the Edit and Delete buttons (Delete: Super Admin only).
+ * `onEdit` / `onDelete` add the Edit and Delete buttons (HR, Admin and Super Admin).
  */
 export default function ReportRows({ row, editStatus = false, onSaved, onEdit, onDelete, highlight = false, draft = false }) {
   const isHr = editStatus;

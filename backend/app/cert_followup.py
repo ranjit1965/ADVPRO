@@ -147,7 +147,12 @@ def fill(text: str, values: dict) -> str:
 def carry_over(today: date | None = None, by: str = "System") -> list[str]:
     """Moves unfinished targets of every ended row to the next quarter. Returns the ids of the rows carried."""
     done = []
-    for row in col.find({"endMonth": {"$lt": month_of(today or local_today())}, "carriedTo": {"$exists": False}}):
+    for old in list(col.find({"endMonth": {"$lt": month_of(today or local_today())}, "carriedTo": {"$exists": False}}, {"_id": 1}).sort("startMonth", 1)):
+        # v58: read the row again; an earlier row of this run may have just added carried targets to it
+        # (reading it once at the start wrote the old targets back and lost those carried targets).
+        row = col.find_one({"_id": old["_id"]})
+        if not row:
+            continue
         pend = pending_targets(row)
         if not pend:
             continue
@@ -186,6 +191,47 @@ def carry_over(today: date | None = None, by: str = "System") -> list[str]:
     if done:
         log.info("Certifications carried forward from %s", ", ".join(done))
     return done
+
+
+def _drop_copy(src_id: str, name: str, nxt_id: str) -> None:
+    """Removes the carried copy of `name` (from row `src_id`) in row `nxt_id`, and further along if that copy
+    was carried again. A copy with a status of its own (Yes, a date or a code) is kept."""
+    nxt = col.find_one({"id": nxt_id})
+    if not nxt:
+        return
+    keep, dropped = [], None
+    for c in nxt.get("targets", []):
+        copy = dropped is None and c.get("carriedFrom") == src_id and (c.get("name") or "").lower() == name
+        if copy and c.get("achieved") != "Yes" and not c.get("completionDate") and not c.get("certificationCode"):
+            dropped = c
+            continue
+        keep.append(c)
+    if dropped is None:
+        return
+    if not keep and not nxt.get("deliveries") and str(nxt.get("assignedBy") or "").startswith("Carried forward"):
+        col.delete_one({"_id": nxt["_id"]})  # the row only held carried copies
+    else:
+        col.update_one({"_id": nxt["_id"]}, {"$set": {"targets": keep, "updatedAt": now()}})
+    if dropped.get("carriedTo"):
+        _drop_copy(nxt["id"], name, dropped["carriedTo"])
+
+
+def undo_completed_carries() -> int:
+    """v58: a certification marked Completed Yes in its own quarter after it was carried forward is no longer
+    carried: its copy in the next quarter(s) is removed (only while that copy has no status of its own), the
+    "Moved to next quarter" mark goes, and a next-quarter row that only held carried copies is deleted."""
+    fixed = 0
+    for row in col.find({"targets": {"$elemMatch": {"achieved": "Yes", "carriedTo": {"$exists": True}}}}):
+        targets = list(row.get("targets", []))
+        for i, t in enumerate(targets):
+            if t.get("achieved") == "Yes" and t.get("carriedTo"):
+                _drop_copy(row["id"], (t.get("name") or "").lower(), t["carriedTo"])
+                targets[i] = {k: v for k, v in t.items() if k != "carriedTo"}
+                fixed += 1
+        col.update_one({"_id": row["_id"]}, {"$set": {"targets": targets}})
+    if fixed:
+        log.info("Carried certifications undone after completion: %s", fixed)
+    return fixed
 
 
 # ------------------------------------------------------------------ emails (sent only when HR clicks Send)
