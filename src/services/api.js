@@ -462,3 +462,8 @@ export async function addHoliday(date, name) {
 export async function removeHoliday(date) {
   return request(`/attendance/holidays/${date}`, { method: 'DELETE' });
 }
+
+/** GET /api/masters/externalFaculty/report?month=YYYY-MM&status=: external faculty batches running in the month. */
+export async function getExternalFacultyReport(month, status) {
+  return request('/masters/externalFaculty/report', { params: { month, status: status || undefined } });
+}

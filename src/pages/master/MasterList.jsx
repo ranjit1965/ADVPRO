@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Navigate, useParams } from 'react-router-dom';
-import { Download, Hash, Pencil, Plus, Trash2, X } from 'lucide-react';
+import { Link, Navigate, useParams } from 'react-router-dom';
+import { Download, FileBarChart, Hash, Pencil, Plus, Trash2, X } from 'lucide-react';
 import * as api from '../../services/api';
 import PageHeader from '../../components/ui/PageHeader';
 import Card from '../../components/ui/Card';
@@ -345,6 +345,11 @@ export default function MasterList() {
         breadcrumb={[{ label: 'Master', to: '/master' }, { label: def.label }]}
         actions={
           <>
+            {key === 'externalFaculty' && (
+              <Link to="/master/external-faculty-report">
+                <Button variant="secondary" icon={FileBarChart}>Generate report</Button>
+              </Link>
+            )}
             <Button variant="secondary" icon={Download} onClick={exportCsv} disabled={!rows.length}>Export</Button>
             <Button icon={Plus} onClick={openNew}>Add {def.label}</Button>
           </>

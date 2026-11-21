@@ -19,14 +19,22 @@ OPTION_LISTS = (
     "marketingTypes", "enquiryFormNos", "materialTypes", "softwareActivities",
     "travelModes", "othersHeadings", "productTypes", "locations",
     "slMaterialTheory", "slMaterialPractical", "issueTypes",
+    "batchModes", "batchStatuses",
 )
+# Lists added later, with their first values (seed_data.json does not have them).
+EXTRA_LISTS = {
+    "batchModes": ["Center", "At College", "At Home"],
+    "batchStatuses": ["Planned", "Running", "Break", "Completed"],
+}
+# Batch statuses the application's logic uses (auto Completed, open batches): they cannot be removed or renamed.
+CORE_BATCH_STATUSES = ("Planned", "Running", "Break", "Completed")
 
 
 def run() -> None:
     db.ensure_indexes()
     lists = DATA["lookups"]
     for kind in OPTION_LISTS:
-        db.lookups.update_one({"_id": kind}, {"$setOnInsert": {"values": lists.get(kind, [])}}, upsert=True)
+        db.lookups.update_one({"_id": kind}, {"$setOnInsert": {"values": lists.get(kind) or EXTRA_LISTS.get(kind, [])}}, upsert=True)
     db.db.settings.update_one(
         {"_id": "hrPolicy"},
         {"$setOnInsert": {"content": DEFAULT_POLICY, "updatedBy": "System", "updatedAt": datetime.now(timezone.utc).isoformat()}},

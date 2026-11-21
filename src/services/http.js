@@ -73,6 +73,16 @@ export async function request(path, { method = 'GET', body, params } = {}) {
   }
   const data = res.status === 204 ? null : await res.json().catch(() => null);
   if (!res.ok) {
+    // Signed in on another device (one login per user) or the session expired: drop the token and tell the app.
+    if (res.status === 401 && token && path !== '/auth/login') {
+      tokenStore.clear();
+      try {
+        sessionStorage.setItem('der.signedOut', errorMessage(data, res.status));
+      } catch {
+        /* storage unavailable */
+      }
+      window.dispatchEvent(new Event('der:signed-out'));
+    }
     throw new ApiError(errorMessage(data, res.status), res.status, data);
   }
   return data;

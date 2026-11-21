@@ -1,6 +1,7 @@
 import logging
 import secrets
 import smtplib
+import uuid
 from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -64,7 +65,10 @@ def login(body: LoginIn):
         if u.get("autoInactive"):
             raise HTTPException(403, "This account was made inactive because no daily entry was saved for 3 working days. Ask your Super Admin or admin to make it active again.")
         raise HTTPException(403, "This account is disabled. Contact your Super Admin.")
-    return {"accessToken": create_token(u["userId"]), "tokenType": "bearer", "user": me_view(effective(u))}
+    # One login per user: this login gets a new session id; the device that was signed in before is signed out.
+    sid = uuid.uuid4().hex
+    db.users.update_one({"_id": u["_id"]}, {"$set": {"sessionId": sid, "sessionAt": datetime.now(timezone.utc).isoformat()}})
+    return {"accessToken": create_token(u["userId"], sid), "tokenType": "bearer", "user": me_view(effective(u))}
 
 
 @router.post("/logout", status_code=204)

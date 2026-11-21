@@ -42,7 +42,7 @@ def _recipients() -> list[str]:
 
 def _mail_text(r: dict) -> str:
     off = settings.utc_offset_minutes
-    when = datetime.fromisoformat(r["createdAt"]).astimezone(timezone(timedelta(minutes=off))).strftime("%d %b %Y, %I:%M %p")
+    when = datetime.fromisoformat(r["createdAt"]).astimezone(timezone(timedelta(minutes=off))).strftime("%d/%m/%Y, %H:%M")
     lines = [
         "Dear Sir / Madam,",
         "",
@@ -107,7 +107,7 @@ def create_request(body: BatchRequestIn, me: dict = Depends(current_user)):
     wa = whatsapp.notify({
         "employee": me["name"], "code": me["code"], "employeeCode": f"{me['name']} ({me['code']})",
         "course": f"Batch No request: {cid} {r['courseName']}".strip(), "courseId": cid, "remarks": remarks or "-",
-        "date": datetime.now().strftime("%d-%b-%Y"), "email": me.get("email", ""),
+        "date": datetime.now().strftime("%d/%m/%Y"), "email": me.get("email", ""),
     })
     r["whatsapp"] = wa
     db.db.batch_requests.insert_one(dict(r))

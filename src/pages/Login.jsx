@@ -7,7 +7,7 @@ import { useToast } from '../context/ToastContext';
 import Button from '../components/ui/Button';
 import ForgotPasswordModal from '../components/ForgotPasswordModal';
 
-const LAST_UPDATE = '10/Oct/2026';
+const LAST_UPDATE = '21/11/2026';
 
 export default function Login() {
   const { user, login } = useAuth();
@@ -24,6 +24,16 @@ export default function Login() {
 
   useEffect(() => {
     api.getSetupStatus().then(setSetup).catch(() => {});
+    // Signed out because this account signed in on another device (or the session expired).
+    try {
+      const msg = sessionStorage.getItem('der.signedOut');
+      if (msg) {
+        sessionStorage.removeItem('der.signedOut');
+        setFormError(msg);
+      }
+    } catch {
+      /* storage unavailable */
+    }
   }, []);
 
   if (user) return <Navigate to="/" replace />;

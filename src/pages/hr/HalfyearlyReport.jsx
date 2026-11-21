@@ -5,7 +5,7 @@ import * as api from '../../services/api';
 import PageHeader from '../../components/ui/PageHeader';
 import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
-import Input from '../../components/ui/Input';
+import DatePicker from '../../components/ui/DatePicker';
 import Select from '../../components/ui/Select';
 import SearchableSelect from '../../components/ui/SearchableSelect';
 import ErrorState from '../../components/ui/ErrorState';
@@ -84,10 +84,9 @@ export default function HalfyearlyReport() {
     if (!form.endDate) errs.endDate = 'Choose the ending date';
     else if (form.startDate && form.endDate < form.startDate) errs.endDate = 'Must be on or after the starting date';
     form.targets.forEach((c, i) => !c.name && (errs[`targets${i}`] = 'Choose a course'));
-    form.deliveries.forEach((c, i) => !c.name && (errs[`deliveries${i}`] = 'Choose a course'));
     setErrors(errs);
     if (Object.keys(errs).length) return toast.error('Please fill the highlighted fields.');
-    const body = { employeeCode: form.employeeCode, quarter: form.quarter, startDate: form.startDate, endDate: form.endDate, targets: form.targets, deliveries: form.deliveries };
+    const body = { employeeCode: form.employeeCode, quarter: form.quarter, startDate: form.startDate, endDate: form.endDate, targets: form.targets, deliveries: form.deliveries.filter((c) => c.name) }; // delivery ready courses are optional
     setSaving(true);
     try {
       const saved = editingId ? await api.updateHalfyearly(editingId, body) : await api.assignHalfyearly(body);
@@ -161,6 +160,7 @@ export default function HalfyearlyReport() {
       { header: 'Completed', value: (x) => x.t.achieved || '' },
       { header: 'Date of Completion', value: (x) => (x.t.completionDate ? formatDate(x.t.completionDate) : '') },
       { header: 'Certification Code', value: (x) => x.t.certificationCode || '' },
+      { header: 'Required', value: (x) => x.t.cleared || '' },
       { header: 'Delivery Ready Course', value: (x) => x.d.name || '' },
       { header: 'Delivery Ready', value: (x) => x.d.ready || '' },
     ], lines);
@@ -168,12 +168,12 @@ export default function HalfyearlyReport() {
 
   const certFields = (list, label) => (
     <div className="grid grid-cols-1 gap-4 md:col-span-12 md:grid-cols-12">
-      <Select label={`No of ${label}s`} required sort={false} placeholder="" className="md:col-span-2" options={COUNTS} value={String(form[list].length)} onChange={(e) => setCount(list, e.target.value)} />
+      <Select label={`No of ${label}s`} required={list === 'targets'} sort={false} placeholder="" className="md:col-span-2" options={COUNTS} value={String(form[list].length)} onChange={(e) => setCount(list, e.target.value)} />
       {form[list].map((c, i) => (
         <div key={i} className={i ? 'md:col-span-10 md:col-start-3' : 'md:col-span-10'}>
           <SearchableSelect
             label={`${label} name ${i + 1}`}
-            required
+            required={list === 'targets'}
             options={courses}
             placeholder={c.name && !c.courseId ? c.name : 'Search course'}
             value={c.courseId}
@@ -206,14 +206,14 @@ export default function HalfyearlyReport() {
           <form onSubmit={submit} noValidate className="grid grid-cols-1 gap-4 md:grid-cols-12">
             <SearchableSelect label="Employee / Faculty" required className="md:col-span-6" options={people} placeholder="Search employee" value={form.employeeCode} onChange={(v) => setF('employeeCode', v)} error={errors.employeeCode} />
             <Select label="Quarter" required sort={false} className="md:col-span-2" options={QUARTERS} placeholder="Select" value={form.quarter} onChange={(e) => setF('quarter', e.target.value)} error={errors.quarter} />
-            <Input label="Starting Date" type="date" required className="md:col-span-2" value={form.startDate} onChange={(e) => setF('startDate', e.target.value)} error={errors.startDate} hint="Ending date fills 6 months later" />
-            <Input label="Ending Date" type="date" required className="md:col-span-2" value={form.endDate} min={form.startDate || undefined} onChange={(e) => setF('endDate', e.target.value)} error={errors.endDate} hint={form.endDate && formatDate(form.endDate)} />
+            <DatePicker label="Starting Date" required className="md:col-span-2" value={form.startDate} onChange={(e) => setF('startDate', e.target.value)} error={errors.startDate} hint="Ending date fills 6 months later" />
+            <DatePicker label="Ending Date" required className="md:col-span-2" value={form.endDate} min={form.startDate || undefined} onChange={(e) => setF('endDate', e.target.value)} error={errors.endDate} hint={form.endDate && formatDate(form.endDate)} />
             <fieldset className="rounded-xl border border-ink-200 p-4 md:col-span-12">
               <legend className="px-1 text-[13px] font-semibold text-ink-700">Target Certification</legend>
               {certFields('targets', 'Target Certification')}
             </fieldset>
             <fieldset className="rounded-xl border border-ink-200 p-4 md:col-span-12">
-              <legend className="px-1 text-[13px] font-semibold text-ink-700">Delivery Ready Courses</legend>
+              <legend className="px-1 text-[13px] font-semibold text-ink-700">Delivery Ready Courses <span className="font-normal text-ink-500">(optional)</span></legend>
               {certFields('deliveries', 'Delivery Ready Course')}
             </fieldset>
             <div className="flex items-end justify-end gap-2 md:col-span-12">

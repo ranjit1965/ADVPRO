@@ -14,7 +14,7 @@ import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { useConfirm } from '../context/ConfirmContext';
 import { canManage, canViewPeople, isSuperAdmin, roleLabel, ROLES } from '../utils/permissions';
-import { formatDuration, monthLabel, toISODate } from '../utils/format';
+import { formatDateTime, formatDuration, monthLabel, toISODate } from '../utils/format';
 
 const ROLE_OPTIONS = [ROLES.FACULTY, ROLES.HR, ROLES.ADMIN, 'STAFF'].map((r) => ({ value: r, label: r }));
 const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
@@ -284,7 +284,7 @@ export default function Users() {
             </p>
             {check.settings.lastRunAt && (
               <p className="text-ink-500">
-                Last run {new Date(check.settings.lastRunAt).toLocaleString()} by {check.settings.lastRunBy}: {check.settings.lastRunCount} made inactive{check.settings.lastRunNames?.length ? ` (${check.settings.lastRunNames.join(', ')})` : ''}.
+                Last run {formatDateTime(check.settings.lastRunAt)} by {check.settings.lastRunBy}: {check.settings.lastRunCount} made inactive{check.settings.lastRunNames?.length ? ` (${check.settings.lastRunNames.join(', ')})` : ''}.
               </p>
             )}
             {check.preview.count ? (

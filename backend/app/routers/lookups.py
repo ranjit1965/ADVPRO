@@ -4,7 +4,7 @@ from datetime import date, datetime, timedelta, timezone
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
-from .. import db
+from .. import batch_status, db
 from ..security import manage_access, super_admin_only, is_super_admin, roles_list, current_user, require_section
 from .master import CourseIn  # same CourseMaster columns as Master › Course
 
@@ -33,6 +33,8 @@ LIST_LABELS = {
     "softwareActivities": "Software Activity (old entries)",
     "productTypes": "Product Type (old entries)",
     "locations": "Location (old entries)",
+    "batchModes": "Batch Mode (Center, At College, At Home ...)",
+    "batchStatuses": "Batch Status (Planned, Running, Break, Completed are fixed)",
 }
 CENTER = "Center"  # contact for issues in Center classes; colleges have their own
 
@@ -93,6 +95,12 @@ def save_list(kind: str, body: ListIn, me: dict = Depends(list_admin)):
     if kind not in OPTION_LISTS:
         raise HTTPException(400, "Unknown list")
     values = _clean(body.values)
+    if kind == "batchStatuses":
+        from ..seed import CORE_BATCH_STATUSES  # noqa: PLC0415
+
+        missing = [s for s in CORE_BATCH_STATUSES if s.lower() not in {v.lower() for v in values}]
+        if missing:
+            raise HTTPException(400, f"{', '.join(missing)} cannot be removed or renamed: the batch logic uses them.")
     if not is_super_admin(me):
         old = (db.lookups.find_one({"_id": kind}) or {}).get("values", [])
         kept = {v.lower() for v in values}
@@ -143,9 +151,10 @@ def get_lookups(_: dict = Depends(current_user)):
     # Batch, asset, register-number and vendor dropdowns come from the Master collections.
     # External faculty master: the batch form's External faculty dropdown (Active only).
     out["externalFaculties"] = [
-        {"value": x["id"], "label": f"{x.get('name', '')} ({x.get('phone', '')})"}
+        {"value": x["id"], "label": x.get("name", "")}  # name only (v55), no phone number
         for x in db.db.master_externalFaculty.find({"status": {"$ne": "Inactive"}}, {"_id": 0, "id": 1, "name": 1, "phone": 1}).sort("name")
     ]
+    batch_status.auto_complete()
     out["batches"] = [b["batchNo"] for b in db.db.master_batches.find({}, {"batchNo": 1}).sort("batchNo")]
     # Batches with the employees they are assigned to; the Class tab offers each faculty their own.
     # Open batches, plus completed ones that started in the last 12 months.

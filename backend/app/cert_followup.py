@@ -197,7 +197,7 @@ def completed_targets(row: dict) -> list[dict]:
 def period_of(row: dict) -> str:
     """'01 Jan 2026 to 30 Jun 2026' when HR picked dates (v52), else 'Jan 2026 to Jun 2026'."""
     if row.get("startDate") and row.get("endDate"):
-        f = lambda d: datetime.strptime(d[:10], "%Y-%m-%d").strftime("%d %b %Y")  # noqa: E731
+        f = lambda d: datetime.strptime(d[:10], "%Y-%m-%d").strftime("%d/%m/%Y")  # noqa: E731
         return f"{f(row['startDate'])} to {f(row['endDate'])}"
     return f"{month_label(row.get('startMonth', ''))} to {month_label(row.get('endMonth', ''))}"
 

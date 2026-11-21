@@ -61,7 +61,7 @@ class AssignIn(Form):
     startMonth: str | None = Field(default=None, pattern=MONTH_RE)
     endMonth: str | None = Field(default=None, pattern=MONTH_RE)
     targets: list[CertIn] = Field(min_length=1, max_length=3)
-    deliveries: list[CertIn] = Field(min_length=1, max_length=3)
+    deliveries: list[CertIn] = Field(default_factory=list, max_length=3)  # optional since v55
 
     @model_validator(mode="after")
     def check(self):
@@ -80,6 +80,7 @@ class AssignIn(Form):
 
 class TargetStatus(Form):
     achieved: Literal["Yes", "No"] | None = None
+    cleared: Literal["Cleared", "Not cleared"] | None = None  # "Required" column (v55)
     completionDate: date | None = None
     certificationCode: str | None = Field(default=None, max_length=80)
 
@@ -127,7 +128,7 @@ def _merge(new: list[CertIn], old: list[dict], status_keys: tuple[str, ...]) -> 
     return out
 
 
-TARGET_KEYS = ("achieved", "completionDate", "certificationCode")
+TARGET_KEYS = ("achieved", "completionDate", "certificationCode", "cleared")
 CARRY_KEYS = ("carriedForward", "carriedFrom", "carriedFromQuarter", "carriedTo")  # kept when HR edits the row
 DELIVERY_KEYS = ("ready",)
 

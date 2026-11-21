@@ -3,12 +3,14 @@ import { CornerDownRight, Pencil, Save, Trash2 } from 'lucide-react';
 import * as api from '../../services/api';
 import Button from '../ui/Button';
 import Input from '../ui/Input';
+import DatePicker from '../ui/DatePicker';
 import Select from '../ui/Select';
 import { useToast } from '../../context/ToastContext';
 import { formatDate } from '../../utils/format';
 import { rowDates } from '../../utils/halfyearly';
 
 const YES_NO = ['Yes', 'No'];
+const CLEARED = ['Cleared', 'Not cleared'];
 export const monthLabel = (m) => (m ? new Date(`${m}-01T00:00:00`).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' }) : '');
 
 /** Table head shared by HR › Halfyearly Program Report and HR › Certification Status. */
@@ -20,6 +22,7 @@ export function ReportHead({ actions }) {
         <th className="px-3 py-2.5">Quarter</th>
         <th className="px-3 py-2.5">Target Certification</th>
         <th className="px-3 py-2.5">Completed?</th>
+        <th className="px-3 py-2.5">Required</th>
         <th className="px-3 py-2.5">Date of Completion</th>
         <th className="px-3 py-2.5">Certification Code</th>
         <th className="px-3 py-2.5">Delivery Ready Course</th>
@@ -31,7 +34,7 @@ export function ReportHead({ actions }) {
 }
 
 const statusOf = (row) => ({
-  targets: row.targets.map((t) => ({ achieved: t.achieved || '', completionDate: t.completionDate || '', certificationCode: t.certificationCode || '' })),
+  targets: row.targets.map((t) => ({ achieved: t.achieved || '', completionDate: t.completionDate || '', certificationCode: t.certificationCode || '', cleared: t.cleared || '' })),
   deliveries: row.deliveries.map((d) => ({ ready: d.ready || '' })),
 });
 
@@ -64,7 +67,7 @@ export default function ReportRows({ row, editStatus = false, onSaved, onEdit, o
     setSaving(true);
     try {
       await api.updateHalfyearlyStatus(row.id, {
-        targets: v.targets.map((t) => (t.achieved === 'Yes' ? { ...t, certificationCode: t.certificationCode.trim() } : { achieved: t.achieved, completionDate: '', certificationCode: '' })),
+        targets: v.targets.map((t) => (t.achieved === 'Yes' ? { ...t, certificationCode: t.certificationCode.trim() } : { achieved: t.achieved, completionDate: '', certificationCode: '', cleared: t.cleared })),
         deliveries: v.deliveries,
       });
       toast.success('Saved.');
@@ -118,7 +121,14 @@ export default function ReportRows({ row, editStatus = false, onSaved, onEdit, o
               ) : (t.achieved || <span className="text-ink-400">Pending</span>)}
             </td>
             <td className="px-3 py-2">
-              {!t ? dash : isHr ? (yes ? <Input aria-label={`Certification ${i + 1} date of completion`} type="date" className="w-40" max={new Date().toISOString().slice(0, 10)} value={tv.completionDate} onChange={(e) => setT(i, 'completionDate', e.target.value)} error={err[`date${i}`]} /> : dash) : t.completionDate ? formatDate(t.completionDate) : dash}
+              {!t ? dash : isHr ? (
+                <Select aria-label={`Certification ${i + 1} required: cleared`} sort={false} className="w-32" options={CLEARED} placeholder="Select" value={tv.cleared} onChange={(e) => setT(i, 'cleared', e.target.value)} />
+              ) : t.cleared ? (
+                <span className={t.cleared === 'Cleared' ? 'font-medium text-success-700' : 'font-medium text-danger-700'}>{t.cleared}</span>
+              ) : dash}
+            </td>
+            <td className="px-3 py-2">
+              {!t ? dash : isHr ? (yes ? <DatePicker aria-label={`Certification ${i + 1} date of completion`} className="w-40" max={new Date().toISOString().slice(0, 10)} value={tv.completionDate} onChange={(e) => setT(i, 'completionDate', e.target.value)} error={err[`date${i}`]} /> : dash) : t.completionDate ? formatDate(t.completionDate) : dash}
             </td>
             <td className="px-3 py-2">
               {!t ? dash : isHr ? (yes ? <Input aria-label={`Certification ${i + 1} code`} className="w-40" maxLength={80} value={tv.certificationCode} onChange={(e) => setT(i, 'certificationCode', e.target.value)} error={err[`code${i}`]} /> : dash) : t.certificationCode || dash}

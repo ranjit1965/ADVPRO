@@ -22,13 +22,21 @@ def verify_password(password: str, hashed: str) -> bool:
         return False
 
 
-def create_token(user_id: str) -> str:
+SESSION_REPLACED = "You were signed out because this account signed in on another device."
+
+
+def create_token(user_id: str, sid: str | None = None) -> str:
+    """sid: the login's session id. One login per user (v55): a new login replaces the session id on the user,
+    so the token of the earlier device stops working."""
     exp = datetime.now(timezone.utc) + timedelta(minutes=settings.jwt_expire_minutes)
-    return jwt.encode({"sub": user_id, "exp": exp}, settings.jwt_secret, algorithm="HS256")
+    claims = {"sub": user_id, "exp": exp}
+    if sid:
+        claims["sid"] = sid
+    return jwt.encode(claims, settings.jwt_secret, algorithm="HS256")
 
 
 def public_user(u: dict) -> dict:
-    hidden = {"_id", "passwordHash", "userIdLower"}
+    hidden = {"_id", "passwordHash", "userIdLower", "sessionId", "sessionAt"}
     return {k: v for k, v in u.items() if k not in hidden}
 
 
@@ -42,6 +50,8 @@ def current_user(creds: HTTPAuthorizationCredentials | None = Depends(bearer)) -
     user = db.users.find_one({"userIdLower": payload["sub"].lower()})
     if not user or not user.get("active", True):
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Account not available")
+    if user.get("sessionId") and payload.get("sid") != user["sessionId"]:  # signed in again on another device
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, SESSION_REPLACED)
     return effective(user)
 
 

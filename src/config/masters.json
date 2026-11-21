@@ -96,13 +96,10 @@
         {
           "key": "mode",
           "label": "Mode",
-          "type": "select",
-          "options": [
-            "Center",
-            "At College"
-          ],
+          "type": "lookup",
           "default": "Center",
-          "required": true
+          "required": true,
+          "source": "batchModes"
         },
         {
           "key": "classMode",
@@ -118,15 +115,10 @@
         {
           "key": "status",
           "label": "Status",
-          "type": "select",
-          "options": [
-            "Planned",
-            "Running",
-            "Break",
-            "Completed"
-          ],
+          "type": "lookup",
           "required": true,
-          "default": "Planned"
+          "default": "Planned",
+          "source": "batchStatuses"
         }
       ]
     },

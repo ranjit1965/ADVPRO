@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Send } from 'lucide-react';
 import Modal from '../ui/Modal';
 import Input from '../ui/Input';
+import DatePicker from '../ui/DatePicker';
 import Select from '../ui/Select';
 import Textarea from '../ui/Textarea';
 import Button from '../ui/Button';
@@ -72,7 +73,7 @@ export default function RequestBatchModal({ open, onClose, lookups, courseId }) 
       <form onSubmit={send} className="space-y-4">
         <Select searchable label="Course ID" required options={courseOptions(lookups)} value={form.courseId} error={errors.courseId} onChange={change('courseId')} />
         <div className="grid grid-cols-2 gap-3">
-          <Input label="Batch start date" type="date" value={form.startDate} onChange={change('startDate')} />
+          <DatePicker label="Batch start date" value={form.startDate} onChange={change('startDate')} />
           <Input label="Batch time" placeholder="e.g. 10:00 – 12:00" maxLength={40} value={form.batchTime} onChange={change('batchTime')} />
         </div>
         <Input label="No of students" inputMode="numeric" maxLength={3} placeholder="optional" value={form.students} error={errors.students} onChange={change('students')} />

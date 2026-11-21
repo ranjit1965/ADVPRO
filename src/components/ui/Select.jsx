@@ -8,7 +8,11 @@ import { sortOptions, toOption } from '../../utils/options';
 /**
  * options: array of strings or { value, label }. Shown A to Z unless sort={false}.
  * searchable: renders a type-to-search dropdown (first-letter match) with the same onChange(event) contract.
+ * v55: a prompt placeholder ("Select", "Choose …", "Search …") is only the starting text: it is not a choice in
+ * the list. A placeholder that means something ("All employees", "Everyone") stays a choice.
  */
+export const isPrompt = (p) => p === '' || /^(select|choose|search|pick)\b/i.test(String(p || ''));
+
 const Select = forwardRef(function Select({ label, required, error, hint, options = [], placeholder = 'Select', className, id, aside, sort = true, searchable = false, ...props }, ref) {
   const autoId = useId();
   const fieldId = id || autoId;
@@ -25,7 +29,7 @@ const Select = forwardRef(function Select({ label, required, error, hint, option
         hint={hint}
         className={className}
         aside={aside}
-        options={placeholder && !required ? [{ value: '', label: placeholder }, ...items] : items}
+        options={placeholder && !required && !isPrompt(placeholder) ? [{ value: '', label: placeholder }, ...items] : items}
         sort={false}
         value={value ?? ''}
         disabled={disabled}
@@ -49,7 +53,14 @@ const Select = forwardRef(function Select({ label, required, error, hint, option
           className={cn('field-control appearance-none pr-9', !props.value && 'text-ink-400')}
           {...props}
         >
-          {placeholder !== null && <option value="">{placeholder}</option>}
+          {placeholder !== null &&
+            (isPrompt(placeholder) ? (
+              <option value="" disabled hidden>
+                {placeholder}
+              </option>
+            ) : (
+              <option value="">{placeholder}</option>
+            ))}
           {items.map((opt) => (
             <option key={opt.value} value={opt.value} className="text-ink-900">
               {opt.label}

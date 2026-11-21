@@ -36,7 +36,7 @@ class StatusIn(Form):
 
 def _mail_text(r: dict) -> str:
     off = settings.utc_offset_minutes
-    when = datetime.fromisoformat(r["createdAt"]).astimezone(timezone(timedelta(minutes=off))).strftime("%d %b %Y, %I:%M %p")
+    when = datetime.fromisoformat(r["createdAt"]).astimezone(timezone(timedelta(minutes=off))).strftime("%d/%m/%Y, %H:%M")
     zone = "IST" if off == 330 else f"UTC{'+' if off >= 0 else '-'}{abs(off) // 60:02d}:{abs(off) % 60:02d}"
     lines = [
         "Dear Sir / Madam,",
@@ -100,7 +100,7 @@ def create_request(body: RequestIn, me: dict = Depends(current_user)):
     wa = whatsapp.notify({
         "employee": me["name"], "code": me["code"], "employeeCode": f"{me['name']} ({me['code']})",
         "course": name, "courseId": r["courseId"], "remarks": r["notes"],
-        "date": datetime.now().strftime("%d-%b-%Y"), "email": me.get("email", ""),
+        "date": datetime.now().strftime("%d/%m/%Y"), "email": me.get("email", ""),
     })
     r["whatsapp"] = wa
     db.db.course_requests.insert_one(dict(r))

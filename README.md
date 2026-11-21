@@ -344,6 +344,33 @@ missed), the Dashboard and this page remind Admin / Manager until each file is u
   creating the batch (Master › Batch or Batch Import) or **Dismiss** them. Saved in `batch_requests`;
   `POST/GET /api/batch-requests`, `PATCH /api/batch-requests/{id}`.
 
+### Dates, times, dropdowns, batch status, one login per user (v55)
+
+* **Dates are DD/MM/YYYY everywhere** (screens, prints, Excel exports, emails, WhatsApp). The date box
+  (`DatePicker`) shows DD/MM/YYYY on every computer: type the digits (20112026 or 20/11/2026) or pick a
+  date with the calendar button. The value sent to the API and saved in MongoDB stays `YYYY-MM-DD`.
+  Note: the issue WhatsApp `{{4}}` (date) is now sent as e.g. `20/11/2026`.
+* **Times are 24-hour (HH:MM)** when typed (`TimeField` / `TimePicker`), shown and saved.
+* **Dropdowns:** "Select …" is shown only as the empty first text and can no longer be picked as a value.
+  Placeholders that mean something ("All employees", "All statuses") still can be picked.
+* **Batch Mode and Status are editable lists** in Dropdown Values: `batchModes` (Center, At College,
+  At Home) and `batchStatuses` (Planned, Running, Break, Completed). Both are added automatically on
+  startup. Admin and Super Admin can add values. The four core statuses cannot be removed.
+* **Batches complete themselves:** when a batch's end date is today or earlier, its status becomes
+  Completed (`autoCompletedAt` is set, `updatedBy` = "System (end date reached)"). This happens only once, so
+  Admin can still change the status afterwards. If the end date is changed, the batch can complete again.
+* **External faculty** are shown by name only (no phone) in the batch form.
+* **Time Sheet:** each day cell shows 4 times one below another: Bio In, Entry Start, Entry End, Bio Out.
+* **External Faculty › Generate report:** `GET /api/masters/externalFaculty/report?month=YYYY-MM&status=`.
+  It lists the batches of each external faculty that run in that month, filtered by batch status, with
+  Excel export and Print.
+* **Halfyearly:** new "Required" column (Cleared / Not cleared, saved as `cleared` on each target).
+  Delivery Ready courses are now optional.
+* **One login per user:** each sign-in saves a new `users.sessionId`, and the token carries it as `sid`.
+  A request with an older token gets 401 "signed in on another device", so the first device is signed
+  out (it checks every minute and on its next request). Tokens issued before v55 have no `sid`, so
+  everyone must sign in again once after this is deployed.
+
 ### Issue alert: its own WhatsApp template and a cleaner email (v54)
 
 The issue alert (entry saved with "Issue faced? Yes") was sent on WhatsApp with the course request template,

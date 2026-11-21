@@ -9,10 +9,10 @@ from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from fastapi import APIRouter, Body, Depends, HTTPException
+from fastapi import APIRouter, Body, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 
-from .. import db
+from .. import batch_status, db
 from ..security import manage_access, super_admin_only, is_super_admin, require_section, require_roles
 
 router = APIRouter(prefix="/masters", tags=["masters"])
@@ -97,8 +97,37 @@ def list_masters(_: dict = Depends(master_roles)):
     return list(MASTERS.values())
 
 
+@router.get("/externalFaculty/report")
+def external_faculty_report(month: str = Query(..., pattern=r"^\d{4}-(0[1-9]|1[0-2])$"), status: str | None = None, _: dict = Depends(master_roles)):
+    """External Faculty › Generate Report (v55): the batches of external faculty that run in the month
+    (start on or before its last day, end on or after its first day), optionally only one batch status."""
+    import calendar  # noqa: PLC0415
+
+    batch_status.auto_complete()
+    y, m = map(int, month.split("-"))
+    first, last = f"{month}-01", f"{month}-{calendar.monthrange(y, m)[1]:02d}"
+    q: dict = {"externalFacultyId": {"$nin": [None, ""]}, "startDate": {"$lte": last}, "$or": [{"endDate": {"$gte": first}}, {"endDate": {"$in": [None, ""]}}]}
+    if status:
+        q["status"] = status
+    fac = {x["id"]: x for x in db.db.master_externalFaculty.find({}, {"_id": 0})}
+    courses = {c["id"]: c.get("name", "") for c in db.courses.find({}, {"_id": 0, "id": 1, "name": 1})}
+    rows = []
+    for b in db.db.master_batches.find(q, {"_id": 0}).sort([("startDate", 1), ("batchNo", 1)]):
+        f = fac.get(b["externalFacultyId"], {})
+        rows.append({
+            "facultyId": b["externalFacultyId"], "facultyName": f.get("name", b["externalFacultyId"]), "phone": f.get("phone", ""), "email": f.get("email", ""),
+            "batchNo": b.get("batchNo", ""), "courseId": b.get("courseId", ""), "courseName": courses.get(b.get("courseId", ""), ""),
+            "startDate": b.get("startDate", ""), "endDate": b.get("endDate", ""), "timing": b.get("timing", ""),
+            "mode": b.get("mode", ""), "classMode": b.get("classMode", ""), "status": b.get("status", ""),
+        })
+    rows.sort(key=lambda r: (r["facultyName"].lower(), r["startDate"], r["batchNo"]))
+    return {"month": month, "status": status or "", "rows": rows, "faculty": len({r["facultyId"] for r in rows})}
+
+
 @router.get("/{key}")
 def list_records(key: str, _: dict = Depends(master_roles)):
+    if key == "batches":
+        batch_status.auto_complete()  # end date reached: Completed (once; Admin can change it back)
     return [clean(d) for d in collection(key).find().sort("id", 1)]
 
 
@@ -125,7 +154,12 @@ def update_record(key: str, rec_id: str, body: dict = Body(...), me: dict = Depe
     rec = validate(defn, body)
     check_unique(defn, col, rec, rec_id)
     rec.update(updatedBy=me["name"], updatedAt=datetime.now(timezone.utc).isoformat())
-    if not col.update_one({"id": rec_id}, {"$set": rec}).matched_count:
+    upd: dict = {"$set": rec}
+    if key == "batches":
+        old = col.find_one({"id": rec_id}, {"endDate": 1}) or {}
+        if rec.get("endDate") and rec.get("endDate") != old.get("endDate"):
+            upd["$unset"] = {"autoCompletedAt": ""}  # a new end date completes the batch again when reached
+    if not col.update_one({"id": rec_id}, upd).matched_count:
         raise HTTPException(404, "Record not found")
     return clean(col.find_one({"id": rec_id}))
 

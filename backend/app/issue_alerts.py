@@ -41,7 +41,7 @@ def _recipients() -> list[str]:
 
 def _date(d: str) -> str:
     try:
-        return datetime.strptime(d, "%Y-%m-%d").strftime("%d %b %Y")
+        return datetime.strptime(d, "%Y-%m-%d").strftime("%d/%m/%Y")
     except (TypeError, ValueError):
         return d or "-"
 
@@ -66,7 +66,7 @@ def subject(e: dict, place: str) -> str:
 
 def _text(e: dict, place: str, contact: dict) -> str:
     v = values(e, place)
-    when = datetime.fromisoformat(e["createdAt"]).astimezone(timezone(timedelta(minutes=settings.utc_offset_minutes))).strftime("%d %b %Y, %I:%M %p")
+    when = datetime.fromisoformat(e["createdAt"]).astimezone(timezone(timedelta(minutes=settings.utc_offset_minutes))).strftime("%d/%m/%Y, %H:%M")
     lines = [
         "Dear Sir / Madam,",
         "",

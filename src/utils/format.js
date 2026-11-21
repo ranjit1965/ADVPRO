@@ -12,11 +12,11 @@ export function parseISODate(iso) {
   return new Date(y, m - 1, d);
 }
 
-/** "08-Oct-2026", the format the legacy status bar uses. */
+/** "08/10/2026" (DD/MM/YYYY), used everywhere in the application (v55). */
 export function formatDate(iso) {
   if (!iso) return '—';
   const d = typeof iso === 'string' ? parseISODate(iso.slice(0, 10)) : iso;
-  return `${pad(d.getDate())}-${MONTHS[d.getMonth()]}-${d.getFullYear()}`;
+  return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}`;
 }
 
 export function formatDateTime(isoDateTime) {
@@ -25,20 +25,16 @@ export function formatDateTime(isoDateTime) {
   return `${formatDate(d)} ${formatClock(d)}`;
 }
 
-/** "10:54 AM" */
+/** "22:54" (24-hour, v55) */
 export function formatClock(d = new Date()) {
-  let h = d.getHours();
-  const ampm = h >= 12 ? 'PM' : 'AM';
-  h = h % 12 || 12;
-  return `${pad(h)}:${pad(d.getMinutes())} ${ampm}`;
+  return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
-/** "14:30" -> "02:30 PM" */
+/** "9:30" / "14:30" -> "09:30" / "14:30" (24-hour, v55) */
 export function formatTime(hhmm) {
   if (!hhmm) return '—';
   const [h, m] = hhmm.split(':').map(Number);
-  const ampm = h >= 12 ? 'PM' : 'AM';
-  return `${pad(h % 12 || 12)}:${pad(m)} ${ampm}`;
+  return `${pad(h)}:${pad(m)}`;
 }
 
 export function minutesBetween(from, to) {

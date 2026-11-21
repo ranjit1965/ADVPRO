@@ -3,6 +3,7 @@ import { CalendarPlus, X } from 'lucide-react';
 import * as api from '../../services/api';
 import Button from '../ui/Button';
 import Input from '../ui/Input';
+import DatePicker from '../ui/DatePicker';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import { useConfirm } from '../../context/ConfirmContext';
@@ -53,7 +54,7 @@ export default function HolidayBar({ month, holidays, onChanged }) {
   return (
     <div className="no-print mb-4 rounded-xl border border-ink-200 bg-white p-3">
       <div className="flex flex-wrap items-start gap-3">
-        <Input label="Holiday date" type="date" className="w-44" value={date} min={`${month}-01`} onChange={(e) => setDate(e.target.value)} error={error} />
+        <DatePicker label="Holiday date" className="w-44" value={date} min={`${month}-01`} onChange={(e) => setDate(e.target.value)} error={error} />
         <Input label="Name (optional)" className="w-56" maxLength={100} placeholder="e.g. Diwali" value={name} onChange={(e) => setName(e.target.value)} />
         <Button className="mt-6" icon={CalendarPlus} loading={busy} onClick={add}>Add H for all</Button>
       </div>

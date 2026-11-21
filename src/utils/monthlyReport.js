@@ -1,7 +1,7 @@
 // Builds the monthly activity report (dashboard, day by day, weeks, topics, calendar, log)
 // from the month's entries. Every figure is "Time To minus Time From" of each entry.
 import { entrySummary } from './entry';
-import { parseISODate, toISODate } from './format';
+import { formatDate, parseISODate, toISODate } from './format';
 
 /** Report series. Each activity type maps to one. Others has its own column, as in the reports. */
 export const REPORT_GROUPS = [
@@ -177,4 +177,4 @@ export const signedHm = (min) => {
   const a = Math.abs(min);
   return `${min > 0 ? '+' : '-'}${a >= 60 ? `${Math.floor(a / 60)}h ${String(a % 60).padStart(2, '0')}m` : `${a}m`}`;
 };
-export const dateLabel = (iso) => parseISODate(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+export const dateLabel = (iso) => formatDate(iso); // DD/MM/YYYY

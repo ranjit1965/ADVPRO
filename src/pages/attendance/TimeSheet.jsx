@@ -69,8 +69,10 @@ function TimeSheetPage() {
         <div className="report rounded-xl border border-ink-200 bg-white p-4 print-full">
           <h2 className="mb-1 text-[15px] font-bold tracking-wide text-ink-900">STAFF TIME SHEET - {monthTitle(month)}</h2>
           <p className="mb-2 text-[11px] text-ink-600">
-            Each day, side by side: <span className="font-semibold text-ink-900">Entry</span> = first entry start (top) and last entry end (bottom) from the daily entries;{' '}
-            <span className="font-semibold text-brand-700">Punch</span> = Time In (top) and Time Out (bottom) from the biometric file.
+            Each day, top to bottom: <span className="font-semibold text-brand-700">1. Bio In</span> (biometric time in),{' '}
+            <span className="font-semibold text-ink-900">2. Entry Start</span> (first entry start by the faculty),{' '}
+            <span className="font-semibold text-ink-900">3. Entry End</span> (last entry end by the faculty),{' '}
+            <span className="font-semibold text-brand-700">4. Bio Out</span> (biometric time out). 24-hour times.
           </p>
           <SheetTable
             month={month}
@@ -79,16 +81,13 @@ function TimeSheetPage() {
             cell={(code, d) => {
               const t = byCode[code]?.[String(d)];
               if (!t) return null;
+              const bio = (v) => (t.mark ? <b>{t.mark}</b> : v || '–');
               return (
-                <span className="flex justify-center gap-1 px-0.5 py-0.5 leading-tight tabular-nums whitespace-nowrap">
-                  <span title={`Entries: ${t.entries}`}>
-                    {t.start || '–'}
-                    <br />
-                    {t.end || '–'}
-                  </span>
-                  <span className="border-l border-ink-200 pl-1 text-brand-700" title="Biometric punch">
-                    {t.mark ? <b>{t.mark}</b> : <>{t.punchIn || '–'}<br />{t.punchOut || '–'}</>}
-                  </span>
+                <span className="flex min-h-[76px] min-w-[42px] flex-col justify-center gap-0.5 px-1 py-1 leading-tight tabular-nums whitespace-nowrap">
+                  <span className="text-brand-700" title="Bio In">{bio(t.punchIn)}</span>
+                  <span className="text-ink-900" title={`Entry Start (${t.entries} entr${t.entries === 1 ? 'y' : 'ies'})`}>{t.start || '–'}</span>
+                  <span className="text-ink-900" title="Entry End">{t.end || '–'}</span>
+                  <span className="text-brand-700" title="Bio Out">{bio(t.punchOut)}</span>
                 </span>
               );
             }}

@@ -21,6 +21,7 @@ import MasterHome from './pages/master/MasterHome';
 import MasterList from './pages/master/MasterList';
 import Biometric from './pages/master/Biometric';
 import BatchImport from './pages/master/BatchImport';
+import ExternalFacultyReport from './pages/master/ExternalFacultyReport';
 import DataUpload from './pages/admin/DataUpload';
 import HrPolicy from './pages/hr/HrPolicy';
 import HalfyearlyReport from './pages/hr/HalfyearlyReport';
@@ -80,6 +81,7 @@ export default function App() {
               <Route path="master/dropdown-values" element={<DropdownValues />} />
               <Route path="master/deleted-employees" element={<DeletedEmployees />} />
               <Route path="master/deleted-employees/:userId" element={<DeletedEmployees />} />
+              <Route path="master/external-faculty-report" element={<ExternalFacultyReport />} />
               <Route path="master/:key" element={<MasterList />} />
               <Route path="admin/data-upload" element={<DataUpload />} />
               <Route path="hr-report" element={<Navigate to="/hr-report/policy" replace />} />

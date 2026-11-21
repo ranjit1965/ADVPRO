@@ -3,6 +3,7 @@ import { ACTIVITY_LABEL, facultyInLabel } from '../../utils/constants';
 import { entrySummary } from '../../utils/entry';
 import { REPORT_GROUPS, dateLabel, hm, hmm, hours1, pct, signedHm, topicOf } from '../../utils/monthlyReport';
 import { cn } from '../../utils/cn';
+import { formatDateTime } from '../../utils/format';
 
 const NAVY = '#0f2a4d';
 const HEAD = '#dfe9f8';
@@ -357,7 +358,7 @@ export default function MonthlyReportView({ report, faculty, courses, biometric 
         </div>
       </Section>
 
-      <p className="text-[10px] text-ink-400 italic">Source: Daily Activity entries, Advantage Pro. Generated {new Date().toLocaleString('en-GB')}.</p>
+      <p className="text-[10px] text-ink-400 italic">Source: Daily Activity entries, Advantage Pro. Generated {formatDateTime(new Date().toISOString())}.</p>
     </div>
   );
 }

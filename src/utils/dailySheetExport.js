@@ -1,9 +1,8 @@
 // PDF and Excel copies of the Daily Activity Report (A4 landscape, same columns as the printed sheet).
 import { C_TYPE_LEGEND, reportRow } from './entry';
 
-const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-/** JobDate column, as in the old software: 01/Sep/26 */
-export const shortDate = (iso) => `${iso.slice(8, 10)}/${MON[Number(iso.slice(5, 7)) - 1]}/${iso.slice(2, 4)}`;
+/** JobDate column: 01/09/2026 (DD/MM/YYYY everywhere, v55) */
+export const shortDate = (iso) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}/${iso.slice(0, 4)}`;
 /** Report date: 01/09/2026 */
 export const slashDate = (iso) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}/${iso.slice(0, 4)}`;
 

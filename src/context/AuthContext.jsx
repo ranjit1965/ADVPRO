@@ -15,6 +15,22 @@ export function AuthProvider({ children }) {
       .finally(() => setChecking(false));
   }, []);
 
+  // One login per user: when this account signs in on another device, this one is signed out. The server
+  // refuses the old token (401); http.js then fires "der:signed-out". A check every minute notices it even
+  // when nothing is clicked.
+  useEffect(() => {
+    const out = () => setUser(null);
+    window.addEventListener('der:signed-out', out);
+    return () => window.removeEventListener('der:signed-out', out);
+  }, []);
+  useEffect(() => {
+    if (!user) return undefined;
+    const t = setInterval(() => {
+      if (document.visibilityState === 'visible') api.getCurrentUser().catch(() => {});
+    }, 60000);
+    return () => clearInterval(t);
+  }, [user]);
+
   const login = useCallback(async (userId, password) => {
     const u = await api.login(userId, password);
     setUser(u);
