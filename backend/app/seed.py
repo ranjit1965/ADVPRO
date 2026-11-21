@@ -103,6 +103,13 @@ def migrate() -> None:
     # v49: Course Preparation material "PDF for Advantage site"; Issue Type list of the Class entry.
     once("2026-11-material-pdf-advantage-site", lambda: db.lookups.update_one({"_id": "materialTypes"}, {"$addToSet": {"values": "PDF for Advantage site"}}, upsert=True))
     once("2026-11-issue-types", lambda: db.lookups.update_one({"_id": "issueTypes"}, {"$addToSet": {"values": {"$each": DATA["lookups"]["issueTypes"]}}}, upsert=True))
+    # v56: the Staff role is removed. Staff employees (and deleted ones kept for restore) become Faculty.
+    def remove_staff_role():
+        db.users.update_many({"role": "STAFF"}, {"$set": {"role": "FACULTY"}})
+        db.deleted_users.update_many({"role": "STAFF"}, {"$set": {"role": "FACULTY"}})
+        db.db.roles.delete_one({"key": "STAFF"})
+
+    once("2026-11-remove-staff-role", remove_staff_role)
     once("2026-11-halfyearly-remove-period", lambda: db.db.halfyearly_reports.update_many({"period": {"$exists": True}}, {"$unset": {"period": ""}}))
 
 

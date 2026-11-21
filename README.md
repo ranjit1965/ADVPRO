@@ -344,6 +344,25 @@ missed), the Dashboard and this page remind Admin / Manager until each file is u
   creating the batch (Master › Batch or Batch Import) or **Dismiss** them. Saved in `batch_requests`;
   `POST/GET /api/batch-requests`, `PATCH /api/batch-requests/{id}`.
 
+### Batch auto Completed at the end date and end time (v57)
+
+* A batch now becomes Completed only once its **end date and its class end time** have passed (local time).
+  For example, a batch with end date 21/11/2026 and Timing 10:00 to 12:00 turns Completed at 12:00 on 21/11/2026.
+* A batch with no readable Timing turns Completed when its end date is over, from the next day.
+* As before, this happens once per batch (`autoCompletedAt`), Admin can still change the status, and changing
+  the end date lets it complete again. `updatedBy` reads "System (end date and time reached)".
+* This release also includes the v56 change (Staff role removed).
+
+### Staff role removed (v56)
+
+* The Staff role is gone from Roles & Access, the Employees Role list and the backend. The built-in roles are now
+  Admin, HR and Faculty.
+* On the next backend start, a one-time migration (`2026-11-remove-staff-role`) changes every employee with role
+  Staff to Faculty (deleted employees too) and deletes the Staff document from `roles`.
+* Former Staff employees now follow the Faculty rules, including being made Inactive automatically when they
+  miss daily entries.
+* A new role starts with Faculty's menus. An Admin whose access was removed works with the Faculty column.
+
 ### Dates, times, dropdowns, batch status, one login per user (v55)
 
 * **Dates are DD/MM/YYYY everywhere** (screens, prints, Excel exports, emails, WhatsApp). The date box

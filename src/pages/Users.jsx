@@ -16,7 +16,7 @@ import { useConfirm } from '../context/ConfirmContext';
 import { canManage, canViewPeople, isSuperAdmin, roleLabel, ROLES } from '../utils/permissions';
 import { formatDateTime, formatDuration, monthLabel, toISODate } from '../utils/format';
 
-const ROLE_OPTIONS = [ROLES.FACULTY, ROLES.HR, ROLES.ADMIN, 'STAFF'].map((r) => ({ value: r, label: r }));
+const ROLE_OPTIONS = [ROLES.FACULTY, ROLES.HR, ROLES.ADMIN].map((r) => ({ value: r, label: r }));
 const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const EMPTY = { userId: '', code: '', name: '', email: '', role: 'FACULTY', designation: 'FACULTY', grade: 'E1', department: '', branch: 'Chennai Center', password: '' };
 

@@ -109,7 +109,7 @@ export default function RoleAccess() {
         breadcrumb={[{ label: 'Master', to: '/master' }, { label: 'Roles & Access' }]}
       />
 
-      <Card className="mb-5" title="Roles" description="Every role here is offered in the Role list of Master › Employees. Admin, HR, Faculty and Staff are built in.">
+      <Card className="mb-5" title="Roles" description="Every role here is offered in the Role list of Master › Employees. Admin, HR and Faculty are built in.">
         <form onSubmit={addRole} className="mb-4 flex flex-wrap items-end gap-3">
           <Input label="New role name" required className="w-56" maxLength={30} value={newRole.name} onChange={(e) => setNewRole({ ...newRole, name: e.target.value })} placeholder="e.g. Accounts" />
           <Input label="Description" className="min-w-[220px] flex-1" maxLength={200} value={newRole.description} onChange={(e) => setNewRole({ ...newRole, description: e.target.value })} placeholder="What this role does (optional)" />
@@ -188,8 +188,8 @@ export default function RoleAccess() {
         <li><b>Master</b> gives the whole Master menu: batch, batch import, employees, course, biometric and deleted employees.</li>
         <li><b>Admin</b> gives Data Upload (batch and biometric files).</li>
         <li><b>HR</b> shows the HR menu. HR and Admin can also edit HR Policy, employee info and Halfyearly reports while it is ticked.</li>
-        <li><b>Dashboard</b> and <b>Settings</b> are always shown. A new role starts with Staff&apos;s menus and works like Staff elsewhere (own entries and reports).</li>
-        <li>An Admin whose Admin access you removed on the Employees page works with the <b>Staff</b> column.</li>
+        <li><b>Dashboard</b> and <b>Settings</b> are always shown. A new role starts with Faculty&apos;s menus and works like Faculty elsewhere (own entries and reports).</li>
+        <li>An Admin whose Admin access you removed on the Employees page works with the <b>Faculty</b> column.</li>
         {data.updatedAt && <li>Last changed {formatDateTime(data.updatedAt)}{data.updatedBy ? ` by ${data.updatedBy}` : ''}.</li>}
       </ul>
     </>

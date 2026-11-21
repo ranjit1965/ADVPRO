@@ -228,7 +228,7 @@ def restore_user(user_id: str, me: dict = Depends(super_admin_only)):
         raise HTTPException(409, f"Employee code {rec['code']} is already used by another employee. Change that employee's code first.")
     doc = {k: v for k, v in rec.items() if k not in ("_id", "deletedAt", "deletedBy", "recordCounts", "autoInactive", "inactiveReason", "inactiveAt", "inactiveBy")}
     if doc.get("role") not in ("MANAGER", *all_roles()):
-        doc["role"] = "STAFF"  # their role was removed meanwhile
+        doc["role"] = "FACULTY"  # their role was removed meanwhile
     # Restored as Active; the missing-entry check counts only the working days after today.
     now = datetime.now(timezone.utc).isoformat()
     doc.update(active=True, restoredAt=now, restoredBy=me["name"], reactivatedAt=now, reactivatedBy=me["name"])

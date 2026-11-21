@@ -56,9 +56,9 @@ def current_user(creds: HTTPAuthorizationCredentials | None = Depends(bearer)) -
 
 
 def effective(user: dict) -> dict:
-    """An Admin whose access the Super Admin removed works as a normal employee (STAFF) until it is given back."""
+    """An Admin whose access the Super Admin removed works as a normal employee (FACULTY) until it is given back."""
     if user.get("role") == "ADMIN" and user.get("adminAccess") is False:
-        return {**user, "role": "STAFF", "adminAccessRemoved": True}
+        return {**user, "role": "FACULTY", "adminAccessRemoved": True}
     return user
 
 
@@ -74,7 +74,7 @@ def require_roles(*roles: str):
 # ------------------------------------------------------------------ menu (tab) access per role
 # The Super Admin ticks which menus each role may open (Master › Role Access). Not ticked = hidden in the
 # menu and refused by the server. The Super Admin always has every menu. Defaults = the old fixed rules.
-BUILT_IN_ROLES = ("ADMIN", "HR", "FACULTY", "STAFF")
+BUILT_IN_ROLES = ("ADMIN", "HR", "FACULTY")  # v56: the Staff role was removed
 ALL_ROLES = BUILT_IN_ROLES  # kept for older imports; use all_roles() for the full list with added roles
 # Every tab of the left side pane, in menu order (Dashboard is always shown: it is the home page).
 SECTIONS = {
@@ -87,7 +87,7 @@ SECTIONS = {
     "marketing": {"label": "Marketing", "default": BUILT_IN_ROLES},
     "hr": {"label": "HR", "default": BUILT_IN_ROLES},
 }
-BUILT_IN_LABELS = {"ADMIN": "Admin", "HR": "HR", "FACULTY": "Faculty", "STAFF": "Staff"}
+BUILT_IN_LABELS = {"ADMIN": "Admin", "HR": "HR", "FACULTY": "Faculty"}
 
 # Roles live in their own collection `roles`, one document per role:
 #   {key: "ACCOUNTS", label: "Accounts", description, builtIn: false, access: {master: true, ...},
@@ -97,8 +97,8 @@ BUILT_IN_LABELS = {"ADMIN": "Admin", "HR": "HR", "FACULTY": "Faculty", "STAFF": 
 
 
 def default_access(role: str, section: str) -> bool:
-    # A role the Super Admin creates starts with the same menus as Staff until the Super Admin ticks otherwise.
-    base = role if role in BUILT_IN_ROLES else "STAFF"
+    # A role the Super Admin creates starts with the same menus as Faculty until the Super Admin ticks otherwise.
+    base = role if role in BUILT_IN_ROLES else "FACULTY"
     return base in SECTIONS[section]["default"]
 
 
@@ -108,7 +108,7 @@ def role_doc_access(doc: dict | None, role: str) -> dict:
 
 
 def ensure_roles() -> None:
-    """First start: the four built-in roles; also moves roles / ticks saved by v45 in settings.roleAccess."""
+    """First start: the built-in roles (Admin, HR, Faculty); also moves roles / ticks saved by v45 in settings.roleAccess."""
     db.db.roles.create_index("key", unique=True)
     old = db.db.settings.find_one({"_id": "roleAccess"}) or {}
     old_ticks = old.get("roles", {})
