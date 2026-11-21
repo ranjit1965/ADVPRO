@@ -265,8 +265,10 @@ def compare_month(code: str, month: str, entries: list[dict]) -> dict:
         mark = "H" if day in hols else (b or {}).get("mark") or None  # H / C from the biometric file
         if mark == "H":
             status = "Holiday (H)"
-        elif mark == "C":
-            status = "C"
+        elif mark in ("C", "E", "A"):  # v59: E and A too (shown as X in Daily Entry Submission)
+            status = mark
+        elif mark == "W":
+            status = "Week off (W)"
         elif not b:
             status = "No biometric"
         elif not es:

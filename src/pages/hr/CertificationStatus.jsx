@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { BadgeCheck, ListChecks, Mail, Pencil, Save, Send } from 'lucide-react';
+import { BadgeCheck, FolderOpen, ListChecks, Mail, Pencil, Save, Send } from 'lucide-react';
 import * as api from '../../services/api';
 import PageHeader from '../../components/ui/PageHeader';
 import Card from '../../components/ui/Card';
@@ -10,6 +10,7 @@ import Select from '../../components/ui/Select';
 import Textarea from '../../components/ui/Textarea';
 import ErrorState from '../../components/ui/ErrorState';
 import EmptyState from '../../components/ui/EmptyState';
+import Modal from '../../components/ui/Modal';
 import ReportRows, { ReportHead } from '../../components/hr/CertificationRows';
 import { useAuth } from '../../context/AuthContext';
 import { useLookups } from '../../context/LookupsContext';
@@ -54,6 +55,22 @@ export default function CertificationStatus() {
     return [...seen.values()].map((p) => ({ value: p.code, label: `${p.name} (${p.code})` }));
   }, [lookups]);
   const rows = (data || []).filter(FILTERS[show]);
+  // v59: one line per employee (name + Open); Open shows only that person's certifications in a pop-up.
+  const [openPerson, setOpenPerson] = useState(null); // {code, name}: stays open while HR saves
+  const openCode = openPerson?.code || '';
+  const peopleRows = useMemo(() => {
+    const by = new Map();
+    for (const r of rows) {
+      const p = by.get(r.employeeCode) || { code: r.employeeCode, name: r.employeeName || r.employeeCode, rows: 0, certs: 0, done: 0 };
+      p.rows += 1;
+      p.certs += r.targets.length;
+      p.done += r.targets.filter((t) => t.achieved === 'Yes').length;
+      by.set(r.employeeCode, p);
+    }
+    return [...by.values()].sort((a, b) => a.name.localeCompare(b.name));
+  }, [rows]);
+  const opened = openPerson;
+  const openRows = (data || []).filter((r) => r.employeeCode === openCode);
   const navigate = useNavigate();
   const confirmBox = useConfirm();
   const toast = useToast();
@@ -104,18 +121,52 @@ export default function CertificationStatus() {
           <EmptyState icon={BadgeCheck} title="Nothing to show" message={data?.length ? 'No row matches this filter.' : 'Assign certifications in Halfyearly Program Report first.'} />
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[1250px] text-left text-[13px]">
-              <caption className="sr-only">Certification status</caption>
-              <ReportHead actions />
+            <table className="w-full text-left text-[13px]">
+              <caption className="sr-only">Employees with certifications</caption>
+              <thead className="bg-ink-50 text-xs font-semibold uppercase tracking-wide text-ink-500">
+                <tr>
+                  <th className="px-4 py-2.5">Employee</th>
+                  <th className="px-4 py-2.5">Rows</th>
+                  <th className="px-4 py-2.5">Certifications completed</th>
+                  <th className="px-4 py-2.5"><span className="sr-only">Open</span></th>
+                </tr>
+              </thead>
               <tbody>
-                {rows.map((r) => (
-                  <ReportRows key={r.id} row={r} editStatus onSaved={reload} onEdit={() => navigate(`/hr-report/halfyearly?edit=${encodeURIComponent(r.id)}`)} onDelete={() => remove(r)} />
+                {peopleRows.map((p) => (
+                  <tr key={p.code} className="border-t border-ink-100 hover:bg-brand-50/40">
+                    <td className="px-4 py-2.5">
+                      <div className="font-medium text-ink-900">{p.name}</div>
+                      <div className="text-xs text-ink-500">{p.code}</div>
+                    </td>
+                    <td className="px-4 py-2.5 tabular-nums">{p.rows}</td>
+                    <td className="px-4 py-2.5 tabular-nums">{p.done} of {p.certs}</td>
+                    <td className="px-4 py-2.5 text-right">
+                      <Button size="sm" variant="secondary" icon={FolderOpen} onClick={() => setOpenPerson({ code: p.code, name: p.name })}>Open</Button>
+                    </td>
+                  </tr>
                 ))}
               </tbody>
             </table>
           </div>
         )}
       </Card>
+      <Modal open={!!opened} onClose={() => setOpenPerson(null)} size="xl" title={opened ? `${opened.name} (${opened.code})` : ''} description="Only this person's certifications. Record Completed Yes with the date and code, then Save on that row. Edit opens the row in Halfyearly Program Report.">
+        {openRows.length ? (
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[1250px] text-left text-[13px]">
+              <caption className="sr-only">Certification status of {opened?.name}</caption>
+              <ReportHead actions />
+              <tbody>
+                {openRows.map((r) => (
+                  <ReportRows key={r.id} row={r} editStatus onSaved={reload} onEdit={() => navigate(`/hr-report/halfyearly?edit=${encodeURIComponent(r.id)}`)} onDelete={() => remove(r)} />
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <p className="text-sm text-ink-500">Nothing left to show for this person with this filter.</p>
+        )}
+      </Modal>
     </>
   );
 }

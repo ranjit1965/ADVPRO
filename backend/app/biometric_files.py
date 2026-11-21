@@ -44,7 +44,7 @@ class Punch:
     mark: str = ""  # v54: "H" or "C" written in the day cell instead of times
 
 
-DAY_MARKS = {"H", "C"}  # letters in a day cell of the biometric file, kept per employee per day
+DAY_MARKS = {"H", "C", "E", "A", "W"}  # letters in a day cell of the biometric file, kept per employee per day (v59: E, A, W)
 
 
 @dataclass

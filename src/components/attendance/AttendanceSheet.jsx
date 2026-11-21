@@ -22,6 +22,9 @@ export const CODE_TONE = {
   C: 'text-brand-700',
 };
 
+/** Day numbers of the month's holidays: from [{date}] (Daily Entry Submission) or {day: name} (Time Sheet). */
+export const holidaySet = (h) => new Set(Array.isArray(h) ? h.map((x) => Number(String(x.date).slice(8, 10))) : Object.keys(h || {}).map(Number));
+
 /** The mark shown: the one saved by hand, else the automatic one. */
 export const effectiveMark = (marks, auto, code, day) => marks?.[code]?.[String(day)] || auto?.[code]?.[String(day)] || '';
 
@@ -56,8 +59,9 @@ export function Legend({ codes }) {
  * day, Backspace / Delete / Space clears it, the arrow keys move between cells.
  * `cell(code, day)` renders a read-only cell (Print and Time Sheet).
  * `auto`: the automatic marks, shown (lighter, italic) where nothing was saved by hand.
+ * `holidayDays`: day numbers that are holidays for everyone; their column is green (v59).
  */
-export function SheetTable({ month, days, employees, codes, value, auto, onChange, editable = false, cell, totals }) {
+export function SheetTable({ month, days, employees, codes, value, auto, onChange, editable = false, cell, totals, holidayDays }) {
   const refs = useRef({});
   const byKey = Object.fromEntries((codes || []).map((c) => [c.key.toUpperCase(), c.code]));
   const focus = (r, d) => refs.current[`${r}-${d}`]?.focus();
@@ -84,6 +88,7 @@ export function SheetTable({ month, days, employees, codes, value, auto, onChang
   };
 
   const dayList = Array.from({ length: days }, (_, i) => i + 1);
+  const isHol = (d) => !!holidayDays?.has?.(d);
   return (
     <div className="overflow-x-auto">
       <table className="w-full border-collapse text-[11px]">
@@ -91,7 +96,7 @@ export function SheetTable({ month, days, employees, codes, value, auto, onChang
           <tr className="bg-ink-50">
             <th className="sticky left-0 z-10 border border-ink-300 bg-ink-50 px-2 py-1 text-left font-semibold whitespace-nowrap">EMPLOYEE NAME</th>
             {dayList.map((d) => (
-              <th key={d} className={cn('min-w-[30px] border border-ink-300 px-0.5 py-1 text-center font-semibold', weekday(month, d) === 0 && 'bg-ink-200')}>
+              <th key={d} className={cn('min-w-[30px] border border-ink-300 px-0.5 py-1 text-center font-semibold', weekday(month, d) === 0 && 'bg-ink-200', isHol(d) && 'bg-success-100 text-success-700')} title={isHol(d) ? 'Holiday' : undefined}>
                 <div>{d}</div>
                 <div className="text-[9px] font-normal text-ink-500">{WD[weekday(month, d)]}</div>
               </th>
@@ -110,7 +115,7 @@ export function SheetTable({ month, days, employees, codes, value, auto, onChang
                 const v = manual || auto?.[p.code]?.[String(d)] || '';
                 const isAuto = !manual && !!v;
                 return (
-                  <td key={d} className={cn('border border-ink-300 p-0 text-center', weekday(month, d) === 0 && 'bg-ink-100')}>
+                  <td key={d} className={cn('border border-ink-300 p-0 text-center', weekday(month, d) === 0 && 'bg-ink-100', isHol(d) && 'bg-success-50')}>
                     {editable ? (
                       <select
                         ref={(el) => (refs.current[`${r}-${d}`] = el)}

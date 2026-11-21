@@ -17,6 +17,7 @@ import UploadReminder from '../components/UploadReminder';
 import CertificationTargets from '../components/dashboard/CertificationTargets';
 import { useAsync } from '../hooks/useAsync';
 import { getDashboardSummary, HR_ROLES } from '../services/api';
+import CelebrationReminder from '../components/dashboard/CelebrationReminder';
 import { ACTIVITY_LABEL } from '../utils/constants';
 import { formatDate, formatDuration, formatTime } from '../utils/format';
 import { entrySummary } from '../utils/entry';
@@ -76,6 +77,7 @@ export default function Dashboard() {
   if (viewAll && !other) {
     return (
       <>
+        {HR_ROLES.includes(user.role) && <CelebrationReminder />}
         {canAccess(user, MASTER_ROLES) && <UploadReminder />}
         <PageHeader title={`${greeting()}, ${user.name}`} description={formatDate(new Date())} />
         {picker}
@@ -95,6 +97,7 @@ export default function Dashboard() {
 
   return (
     <>
+      {!other && HR_ROLES.includes(user.role) && <CelebrationReminder />}
       {!other && canAccess(user, MASTER_ROLES) && <UploadReminder />}
       {user.adminAccessRemoved && (
         <div className="mb-5 rounded-xl border border-warning-600/25 bg-warning-50 px-4 py-3 text-[13px] text-warning-700" role="status">

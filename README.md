@@ -344,6 +344,34 @@ missed), the Dashboard and this page remind Admin / Manager until each file is u
   creating the batch (Master › Batch or Batch Import) or **Dismiss** them. Saved in `batch_requests`;
   `POST/GET /api/batch-requests`, `PATCH /api/batch-requests/{id}`.
 
+### Birthdays, Yearly Holidays, Daily Entry Submission, Certification Status (v59)
+
+* **External faculty birthdays and anniversaries.**
+  * Master › External Faculty has two optional dates: Date of Birth (`dob`) and Anniversary Date (`anniversary`).
+  * HR, Admin and Super Admin see a pop-up on the dashboard from 10 days before (`CELEBRATION_REMINDER_DAYS`).
+  * Snooze brings it back in the next session (09:00 or 16:00, local time), every day up to the date. Dismiss
+    hides it for that faculty and year. This is per user, stored in `celebration_seen`.
+  * On the day itself the External Faculty list shows "Send birthday wishes" / "Send anniversary wishes". It
+    sends the WhatsApp template `WA_BIRTHDAY_TEMPLATE_*` / `WA_ANNIVERSARY_TEMPLATE_*` to the faculty's phone,
+    once per year (`celebration_sent`). Params: name, date, years, phone.
+  * API: `GET /api/celebrations/reminders`, `POST /api/celebrations/reminders/{snooze|dismiss}`,
+    `GET /api/celebrations/today`, `POST /api/celebrations/send`.
+* **Admin › Yearly Holidays.**
+  * Import an Excel / CSV file with Date (DD/MM/YYYY) and Festival name (headings found anywhere in the first
+    20 rows, else the first two columns): `POST /api/attendance/holidays/import?name=`.
+  * The dates go into `holidays`, so they show as H for everyone in Daily Entry Submission, its Print, the Time
+    Sheet and the monthly report. A file on Vercel can be up to about 4 MB.
+* **Daily Entry Submission.**
+  * Biometric letters C, E and A show as X, H as H and W as W. The monthly comparison shows E / A / "Week off (W)".
+  * A past working day (not Sunday, from the day the employee was added) with no daily entry shows #.
+  * Excel download of the sheet. The Undo button is gone.
+  * Holiday columns are green. HR / Admin can revoke a holiday with its close button (was Super Admin only).
+  * Adding H on a date when someone has daily entries is refused with 409 and their names, then the page
+    asks and sends `force: true`.
+  * A Roles filter shows only the users of the chosen role (`roles` in `GET /api/attendance/staff`).
+* **HR › Certification Status** lists each employee once with an Open button. Open shows only that person's
+  certifications in a pop-up, to save the status, edit or delete.
+
 ### Halfyearly: HR delete and edit, Carried forward fixed (v58)
 
 * HR and Admin can now delete halfyearly rows (before, only the Super Admin could), on Halfyearly Program Report

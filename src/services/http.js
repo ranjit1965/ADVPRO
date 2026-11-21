@@ -40,6 +40,7 @@ export class ApiError extends Error {
 function errorMessage(data, status) {
   const d = data?.detail;
   if (typeof d === 'string') return d;
+  if (d && typeof d === 'object' && !Array.isArray(d) && d.message) return d.message;
   if (Array.isArray(d) && d.length) {
     const e = d[0];
     const field = (e.loc || []).filter((x) => x !== 'body').join(' › ');

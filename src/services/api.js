@@ -453,12 +453,13 @@ export async function getTimeSheet(month) {
   return request('/attendance/timesheet', { params: { month } });
 }
 
-/** POST /api/attendance/holidays: the date becomes H for every employee. */
-export async function addHoliday(date, name) {
-  return request('/attendance/holidays', { method: 'POST', body: { date, name } });
+/** POST /api/attendance/holidays: the date becomes H for every employee. 409 (with names) when some
+ * employees have daily entries that day, unless `force`. */
+export async function addHoliday(date, name, force = false) {
+  return request('/attendance/holidays', { method: 'POST', body: { date, name, force } });
 }
 
-/** DELETE /api/attendance/holidays/{date} (Super Admin). */
+/** DELETE /api/attendance/holidays/{date} (HR, Admin, Super Admin): revoke the holiday. */
 export async function removeHoliday(date) {
   return request(`/attendance/holidays/${date}`, { method: 'DELETE' });
 }
@@ -466,4 +467,36 @@ export async function removeHoliday(date) {
 /** GET /api/masters/externalFaculty/report?month=YYYY-MM&status=: external faculty batches running in the month. */
 export async function getExternalFacultyReport(month, status) {
   return request('/masters/externalFaculty/report', { params: { month, status: status || undefined } });
+}
+
+/* ---------- v59: external faculty birthdays / anniversaries ---------- */
+
+/** GET /api/celebrations/reminders (HR, Admin, Super Admin): pop-up list, not dismissed or snoozed. */
+export async function getCelebrationReminders() {
+  return request('/celebrations/reminders');
+}
+
+/** POST /api/celebrations/reminders/{snooze|dismiss} */
+export async function actOnCelebration(action, key) {
+  return request(`/celebrations/reminders/${action}`, { method: 'POST', body: { key } });
+}
+
+/** GET /api/celebrations/today: birthdays and anniversaries that are today. */
+export async function getCelebrationsToday() {
+  return request('/celebrations/today');
+}
+
+/** POST /api/celebrations/send: the birthday / anniversary WhatsApp wishes (only on the day). */
+export async function sendCelebrationWishes(kind, facultyId) {
+  return request('/celebrations/send', { method: 'POST', body: { kind, facultyId } });
+}
+
+/** GET /api/attendance/holidays/year?year=: Admin › Yearly Holidays list. */
+export async function getYearHolidays(year) {
+  return request('/attendance/holidays/year', { params: { year } });
+}
+
+/** POST /api/attendance/holidays/import: Excel / CSV with Date (DD/MM/YYYY) and Festival name. */
+export async function importHolidays(file) {
+  return request('/attendance/holidays/import', { method: 'POST', body: file, params: { name: file.name } });
 }

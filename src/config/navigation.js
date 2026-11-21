@@ -31,6 +31,7 @@ const ADMIN_PAGES = [
   { key: 'admin-course', label: 'Course', to: '/master/courses' },
   { key: 'admin-biometric', label: 'Biometric', to: '/master/biometric' },
   { key: 'admin-dropdown-values', label: 'Dropdown Values', to: '/master/dropdown-values' },
+  { key: 'admin-yearly-holidays', label: 'Yearly Holidays', to: '/admin/yearly-holidays', roles: ['HR', 'ADMIN', 'MANAGER'] },
 ];
 const HR_PAGE_ROLES = ['HR', 'ADMIN', 'MANAGER'];
 

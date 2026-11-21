@@ -7,7 +7,7 @@ import Input from '../../components/ui/Input';
 import ErrorState from '../../components/ui/ErrorState';
 import EmptyState from '../../components/ui/EmptyState';
 import { useAsync } from '../../hooks/useAsync';
-import { MonthBar, SheetTable, monthTitle, thisMonth } from '../../components/attendance/AttendanceSheet';
+import { MonthBar, SheetTable, holidaySet, monthTitle, thisMonth } from '../../components/attendance/AttendanceSheet';
 import StaffOnly from './StaffOnly';
 
 const hm = (t) => {
@@ -34,6 +34,7 @@ function TimeSheetPage() {
   const [search, setSearch] = useState('');
   const { data, loading, error, reload } = useAsync(() => api.getTimeSheet(month), [month]);
   const employees = useMemo(() => (data?.employees || []).filter((p) => !search || p.name.toLowerCase().includes(search.toLowerCase())), [data, search]);
+  const holidayDays = useMemo(() => holidaySet(data?.holidays), [data]);
   const byCode = useMemo(() => Object.fromEntries((data?.employees || []).map((p) => [p.code, p.days])), [data]);
   const totals = (code) => {
     const days = Object.values(byCode[code] || {});
@@ -72,14 +73,16 @@ function TimeSheetPage() {
             Each day, top to bottom: <span className="font-semibold text-brand-700">1. Bio In</span> (biometric time in),{' '}
             <span className="font-semibold text-ink-900">2. Entry Start</span> (first entry start by the faculty),{' '}
             <span className="font-semibold text-ink-900">3. Entry End</span> (last entry end by the faculty),{' '}
-            <span className="font-semibold text-brand-700">4. Bio Out</span> (biometric time out). 24-hour times.
+            <span className="font-semibold text-brand-700">4. Bio Out</span> (biometric time out). 24-hour times. Green H = holiday.
           </p>
           <SheetTable
             month={month}
             days={data.days}
             employees={employees}
+            holidayDays={holidayDays}
             cell={(code, d) => {
               const t = byCode[code]?.[String(d)];
+              if (!t && holidayDays.has(d)) return <span className="flex min-h-[76px] items-center justify-center font-bold text-success-700" title={data.holidays[String(d)]}>H</span>;
               if (!t) return null;
               const bio = (v) => (t.mark ? <b>{t.mark}</b> : v || '–');
               return (

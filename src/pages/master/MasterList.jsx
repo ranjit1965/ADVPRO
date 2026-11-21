@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, Navigate, useParams } from 'react-router-dom';
-import { Download, FileBarChart, Hash, Pencil, Plus, Trash2, X } from 'lucide-react';
+import { Download, FileBarChart, Gift, Hash, Pencil, Plus, Trash2, X } from 'lucide-react';
 import * as api from '../../services/api';
 import PageHeader from '../../components/ui/PageHeader';
 import Card from '../../components/ui/Card';
@@ -110,6 +110,25 @@ export default function MasterList() {
   const canDelete = isSuperAdmin(user); // only the Super Admin deletes records; Admin / HR view, add and edit
   const { lookups, reload: reloadLookups } = useLookups();
   const toast = useToast();
+  // v59: External Faculty: "Send wishes" on the birthday / anniversary itself (WhatsApp template).
+  const [wishes, setWishes] = useState([]);
+  const [sending, setSending] = useState('');
+  useEffect(() => {
+    if (key !== 'externalFaculty' || !api.HR_ROLES.includes(user.role)) return setWishes([]);
+    api.getCelebrationsToday().then(setWishes).catch(() => setWishes([]));
+  }, [key, user.role]);
+  const sendWishes = async (w) => {
+    setSending(w.key);
+    try {
+      await api.sendCelebrationWishes(w.kind, w.facultyId);
+      toast.success(`${w.label} wishes sent to ${w.name} on WhatsApp.`);
+      setWishes((l) => l.map((x) => (x.key === w.key ? { ...x, sent: true } : x)));
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setSending('');
+    }
+  };
   const confirm = useConfirm();
   const { data, loading, error, reload } = useAsync(() => (def ? api.getMasterRecords(key) : Promise.resolve([])), [key]);
   const [q, setQ] = useState('');
@@ -322,6 +341,11 @@ export default function MasterList() {
         <div className="flex gap-1 whitespace-nowrap">
           <Button size="sm" variant="ghost" icon={Pencil} aria-label={`Edit ${r[def.titleField] || r.id}`} title="Edit" onClick={() => editRow(r)}>Edit</Button>
           {canDelete && <Button size="sm" variant="ghost" className="hover:!bg-danger-50 hover:!text-danger-600" icon={Trash2} aria-label={`Delete ${r[def.titleField] || r.id}`} title="Delete" onClick={() => remove(r)}>Delete</Button>}
+          {wishes.filter((w) => w.facultyId === r.id).map((w) => (
+            <Button key={w.key} size="sm" icon={Gift} loading={sending === w.key} disabled={w.sent} title={w.sent ? 'Already sent today' : `Send ${w.label.toLowerCase()} wishes on WhatsApp`} onClick={() => sendWishes(w)}>
+              {w.sent ? `${w.label} wishes sent` : `Send ${w.label.toLowerCase()} wishes`}
+            </Button>
+          ))}
         </div>
       ),
     },

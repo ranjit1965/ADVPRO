@@ -4,18 +4,17 @@ import * as api from '../../services/api';
 import Button from '../ui/Button';
 import Input from '../ui/Input';
 import DatePicker from '../ui/DatePicker';
-import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import { useConfirm } from '../../context/ConfirmContext';
 import { formatDate } from '../../utils/format';
-import { isSuperAdmin } from '../../utils/permissions';
 
 /**
  * "Add H": choose a date and it becomes H (Official Holiday) for every employee, in Daily Entry Submission,
- * its Print and the monthly report. The month's holidays are listed; the Super Admin can remove one.
+ * its Print, the Time Sheet and the monthly report. v59: when someone already has daily entries (S) that day,
+ * HR / Admin are warned with their names before it is added. The month's holidays are listed in green with a
+ * close button to revoke one (HR, Admin, Super Admin).
  */
 export default function HolidayBar({ month, holidays, onChanged }) {
-  const { user } = useAuth();
   const toast = useToast();
   const confirm = useConfirm();
   const [date, setDate] = useState('');
@@ -28,7 +27,20 @@ export default function HolidayBar({ month, holidays, onChanged }) {
     setError('');
     setBusy(true);
     try {
-      await api.addHoliday(date, name);
+      try {
+        await api.addHoliday(date, name);
+      } catch (e) {
+        if (e.status !== 409) throw e;
+        const names = e.data?.detail?.names || [];
+        const ok = await confirm({
+          title: 'Daily entries on this date',
+          message: `${names.length} employee(s) have daily entries (S) on ${formatDate(date)}: ${names.slice(0, 12).join(', ')}${names.length > 12 ? ' …' : ''}. Check them first. Make it H for everyone anyway?`,
+          confirmLabel: 'Yes, make it H',
+          tone: 'danger',
+        });
+        if (!ok) return;
+        await api.addHoliday(date, name, true);
+      }
       toast.success(`${formatDate(date)} is now H for all employees.`);
       setDate('');
       setName('');
@@ -41,10 +53,10 @@ export default function HolidayBar({ month, holidays, onChanged }) {
   };
 
   const remove = async (h) => {
-    if (!(await confirm({ title: 'Remove holiday', message: `Remove H on ${formatDate(h.date)} for all employees?`, confirmLabel: 'OK, remove', tone: 'danger' }))) return;
+    if (!(await confirm({ title: 'Revoke holiday', message: `Revoke H on ${formatDate(h.date)}${h.name ? ` (${h.name})` : ''} for all employees?`, confirmLabel: 'OK, revoke', tone: 'danger' }))) return;
     try {
       await api.removeHoliday(h.date);
-      toast.success('Holiday removed.');
+      toast.success('Holiday revoked.');
       onChanged();
     } catch (e) {
       toast.error(e.message);
@@ -64,11 +76,9 @@ export default function HolidayBar({ month, holidays, onChanged }) {
           {holidays.map((h) => (
             <span key={h.date} className="inline-flex items-center gap-1 rounded-full bg-success-50 px-2.5 py-1 font-medium text-success-700">
               H · {formatDate(h.date)} {h.name && `· ${h.name}`}
-              {isSuperAdmin(user) && (
-                <button type="button" aria-label={`Remove holiday ${h.date}`} className="rounded-full p-0.5 hover:bg-success-100" onClick={() => remove(h)}>
-                  <X className="size-3" />
-                </button>
-              )}
+              <button type="button" aria-label={`Revoke holiday ${h.date}`} title="Revoke this holiday" className="rounded-full p-0.5 hover:bg-success-100" onClick={() => remove(h)}>
+                <X className="size-3" />
+              </button>
             </span>
           ))}
         </div>

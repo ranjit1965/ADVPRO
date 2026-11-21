@@ -23,6 +23,7 @@ import Biometric from './pages/master/Biometric';
 import BatchImport from './pages/master/BatchImport';
 import ExternalFacultyReport from './pages/master/ExternalFacultyReport';
 import DataUpload from './pages/admin/DataUpload';
+import YearlyHolidays from './pages/admin/YearlyHolidays';
 import HrPolicy from './pages/hr/HrPolicy';
 import HalfyearlyReport from './pages/hr/HalfyearlyReport';
 import CertificationStatus from './pages/hr/CertificationStatus';
@@ -84,6 +85,7 @@ export default function App() {
               <Route path="master/external-faculty-report" element={<ExternalFacultyReport />} />
               <Route path="master/:key" element={<MasterList />} />
               <Route path="admin/data-upload" element={<DataUpload />} />
+              <Route path="admin/yearly-holidays" element={<YearlyHolidays />} />
               <Route path="hr-report" element={<Navigate to="/hr-report/policy" replace />} />
               <Route path="hr-report/policy" element={<HrPolicy />} />
               <Route path="hr-report/halfyearly" element={<HalfyearlyReport />} />

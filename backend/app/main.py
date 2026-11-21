@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from . import auto_inactive, cert_followup, seed
 from .config import settings
-from .routers import access, attendance, auth, batch_import, batch_requests, biometric, course_import, course_requests, entries, halfyearly, hr, lookups, master, masters, misc, reports, users
+from .routers import access, attendance, celebrations, auth, batch_import, batch_requests, biometric, course_import, course_requests, entries, halfyearly, hr, lookups, master, masters, misc, reports, users
 
 logging.basicConfig(level=logging.INFO)
 
@@ -28,7 +28,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-for r in (access, attendance, auth, users, lookups, master, masters, entries, reports, halfyearly, hr, misc, biometric, course_requests, batch_requests, batch_import, course_import):
+for r in (access, attendance, celebrations, auth, users, lookups, master, masters, entries, reports, halfyearly, hr, misc, biometric, course_requests, batch_requests, batch_import, course_import):
     app.include_router(r.router, prefix="/api")
 
 

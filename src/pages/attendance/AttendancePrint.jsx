@@ -6,7 +6,7 @@ import Button from '../../components/ui/Button';
 import ErrorState from '../../components/ui/ErrorState';
 import { useAsync } from '../../hooks/useAsync';
 import { cn } from '../../utils/cn';
-import { CODE_TONE, Legend, MonthBar, SheetTable, effectiveMark, monthTitle, thisMonth } from '../../components/attendance/AttendanceSheet';
+import { CODE_TONE, Legend, MonthBar, SheetTable, effectiveMark, holidaySet, monthTitle, thisMonth } from '../../components/attendance/AttendanceSheet';
 import StaffOnly from './StaffOnly';
 
 /** Attendance › Staff › Print: the saved sheet, the same look as the entry sheet, with a count of each code. */
@@ -46,6 +46,7 @@ function PrintPage() {
             days={data.days}
             employees={data.employees}
             codes={data.codes}
+            holidayDays={holidaySet(data.holidays)}
             cell={(code, d) => {
               const v = effectiveMark(data.marks, data.auto, code, d);
               return <span className={cn('block py-1 font-bold', CODE_TONE[v])}>{v}</span>;

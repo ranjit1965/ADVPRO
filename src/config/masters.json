@@ -150,6 +150,20 @@
           "required": true
         },
         {
+          "key": "dob",
+          "label": "Date of Birth",
+          "type": "date",
+          "required": false,
+          "hint": "Optional. For birthday wishes on WhatsApp."
+        },
+        {
+          "key": "anniversary",
+          "label": "Anniversary Date",
+          "type": "date",
+          "required": false,
+          "hint": "Optional. Wedding anniversary, for wishes on WhatsApp."
+        },
+        {
           "key": "status",
           "label": "Status",
           "type": "select",

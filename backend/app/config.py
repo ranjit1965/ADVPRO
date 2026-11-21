@@ -38,6 +38,15 @@ class Settings(BaseSettings):
     wa_issue_template_name: str = ""
     wa_issue_template_lang: str = ""  # empty = WA_TEMPLATE_LANG
     wa_issue_template_params: str = "faculty,code,place,date,issueType,minutes,details"
+    # v59: birthday / anniversary wishes to an external faculty (button on Master › External Faculty on the day).
+    # Each needs its own approved template. Names for the params: name, date, years, phone.
+    wa_birthday_template_name: str = ""
+    wa_birthday_template_lang: str = ""  # empty = WA_TEMPLATE_LANG
+    wa_birthday_template_params: str = "name"
+    wa_anniversary_template_name: str = ""
+    wa_anniversary_template_lang: str = ""
+    wa_anniversary_template_params: str = "name"
+    celebration_reminder_days: int = 10  # HR sees the pop-up this many days before
 
     # Missing daily entries: make an employee inactive after N working days with no entry (app/auto_inactive.py).
     # HR › Certification Status: carry unfinished certifications to the next quarter and email the Deferred Report.

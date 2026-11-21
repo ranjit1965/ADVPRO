@@ -38,7 +38,7 @@ export default function Modal({ open, onClose, title, description, children, foo
         aria-modal="true"
         aria-label={title}
         tabIndex={-1}
-        className={cn('relative flex max-h-[90vh] w-full flex-col rounded-t-2xl bg-white shadow-pop sm:rounded-2xl', size === 'sm' ? 'sm:max-w-md' : size === 'lg' ? 'sm:max-w-3xl' : 'sm:max-w-lg')}
+        className={cn('relative flex max-h-[90vh] w-full flex-col rounded-t-2xl bg-white shadow-pop sm:rounded-2xl', size === 'sm' ? 'sm:max-w-md' : size === 'lg' ? 'sm:max-w-3xl' : size === 'xl' ? 'sm:max-w-[95vw]' : 'sm:max-w-lg')}
       >
         <header className="flex items-start justify-between gap-4 border-b border-ink-100 px-5 py-4">
           <div>
