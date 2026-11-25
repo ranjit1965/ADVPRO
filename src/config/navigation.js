@@ -87,7 +87,21 @@ export const NAVIGATION = [
     ],
   },
   { key: 'lab-support', label: 'Lab Support', icon: LifeBuoy, restricted: true, section: 'labSupport' },
-  { key: 'mis', label: 'MIS', icon: BarChart3, restricted: true, section: 'mis' },
+  // v60: the MIS role (and the Super Admin) open the MIS menu: every HR page except the Halfyearly Program
+  // Report and its mails. For the other roles it stays a locked item.
+  {
+    key: 'mis',
+    label: 'MIS',
+    icon: BarChart3,
+    section: 'mis',
+    roles: ['MIS', 'MANAGER'],
+    children: [
+      { key: 'mis-hr-policy', label: 'HR Policy', to: '/hr-report/policy' },
+      ...ADMIN_PAGES.map((p) => ({ ...p, key: `mis-${p.key}`, roles: p.roles || HR_PAGE_ROLES })),
+      ATTENDANCE_GROUP('mis'),
+    ],
+  },
+  { key: 'mis-locked', label: 'MIS', icon: BarChart3, restricted: true, section: 'mis', hideRoles: ['MIS', 'MANAGER'] },
   { key: 'digital-marketing', label: 'Digital Marketing', icon: MonitorSmartphone, restricted: true, section: 'digitalMarketing' },
   {
     key: 'admin',
@@ -102,6 +116,7 @@ export const NAVIGATION = [
     label: 'HR',
     icon: FileBarChart,
     section: 'hr',
+    hideRoles: ['MIS'], // v60: MIS has these pages in the MIS menu
     children: [
       { key: 'hr-policy', label: 'HR Policy', to: '/hr-report/policy' },
       { key: 'halfyearly', label: 'Halfyearly Program Report', to: '/hr-report/halfyearly', hideRoles: ['MIS'] },

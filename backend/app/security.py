@@ -188,7 +188,8 @@ def can_manage(user: dict) -> bool:
     if is_super_admin(user):
         return True
     access = sections_for(user)
-    return bool(access.get("master") or access.get("admin") or (access.get("hr") and user.get("role") in MANAGE_ROLES_WITH_HR))
+    return bool(access.get("master") or access.get("admin") or (access.get("hr") and user.get("role") in MANAGE_ROLES_WITH_HR)
+                or (access.get("mis") and user.get("role") == "MIS"))  # v60: MIS has these pages in the MIS menu
 
 
 def manage_access(user: dict = Depends(current_user)) -> dict:

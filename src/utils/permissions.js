@@ -52,10 +52,10 @@ const SHARED_PAGES = ['/master/batches', '/master/externalFaculty', '/master/ext
 /** Which menu(s) a page address belongs to (for blocking typed-in addresses of a hidden menu). */
 export const sectionForPath = (path) => {
   if (path.startsWith('/master/employees') || path.startsWith('/master/deleted-employees') || path.startsWith('/master/inactive-employees')) return null; // HR too; the page checks
-  if (SHARED_PAGES.some((p) => path.startsWith(p))) return ['master', 'admin', 'hr']; // HR: the page checks the role
+  if (SHARED_PAGES.some((p) => path.startsWith(p))) return ['master', 'admin', 'hr', 'mis']; // HR / MIS: the page checks the role
   if (path.startsWith('/master')) return 'master';
   if (path.startsWith('/admin')) return 'admin';
-  if (path.startsWith('/hr-report')) return 'hr';
+  if (path.startsWith('/hr-report')) return ['hr', 'mis']; // v60: HR Policy is in the MIS menu too
   if (path.startsWith('/faculty') || path.startsWith('/entries')) return 'faculty';
   return null;
 };
