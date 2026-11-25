@@ -82,7 +82,7 @@ function ProfileMenu({ onLogout }) {
         <span className="grid size-8 place-items-center rounded-full bg-brand-100 text-xs font-semibold text-brand-800">{initials(user?.name)}</span>
         <span className="hidden text-left leading-tight md:block">
           <span className="block text-[13px] font-semibold text-ink-900">{user?.name}</span>
-          <span className="block text-[11px] text-ink-500">{user?.role === 'MANAGER' ? 'Super Admin' : user?.designation}</span>
+          <span className="block text-[11px] text-ink-500">{user?.role === 'MANAGER' ? 'Super Admin' : user?.roleLabel || user?.role}</span>
         </span>
         <ChevronDown className="hidden size-4 text-ink-400 md:block" aria-hidden />
       </button>
@@ -91,7 +91,7 @@ function ProfileMenu({ onLogout }) {
           <div className="border-b border-ink-100 px-4 py-3">
             <p className="font-semibold text-ink-900">{user?.name}</p>
             <p className="text-xs text-ink-500">
-              {user?.role === 'MANAGER' ? 'Super Admin' : user?.designation} · Grade {user?.grade}
+              {user?.role === 'MANAGER' ? 'Super Admin' : user?.roleLabel || user?.role} · {user?.code}{user?.employeeId ? ` · ${user.employeeId}` : ''}
             </p>
           </div>
           <Link role="menuitem" to="/settings" onClick={() => setOpen(false)} className="flex items-center gap-2 px-4 py-2 text-ink-700 hover:bg-ink-50">
@@ -153,10 +153,7 @@ export default function Header({ onOpenMobile, onLogout }) {
             </span>
             <span className="h-5 w-px bg-ink-200" />
             <span>
-              Designation: <b className="font-semibold text-ink-900">{user?.role === 'MANAGER' ? 'Super Admin' : user?.designation}</b>
-            </span>
-            <span>
-              Grade: <b className="font-semibold text-ink-900">{user?.grade}</b>
+              Role: <b className="font-semibold text-ink-900">{user?.role === 'MANAGER' ? 'Super Admin' : user?.roleLabel || user?.role}</b>
             </span>
           </div>
           <Notifications />

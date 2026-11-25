@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ArchiveRestore, CalendarX, LayoutDashboard, Pencil, Plus, ShieldCheck, ShieldOff, Trash2, UserCheck, UserX } from 'lucide-react';
+import { CalendarX, KeyRound, LayoutDashboard, Pencil, Plus, ShieldCheck, ShieldOff, UserCheck, UserX, Users as UsersIcon } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import * as api from '../services/api';
 import PageHeader from '../components/ui/PageHeader';
@@ -16,13 +16,16 @@ import { useConfirm } from '../context/ConfirmContext';
 import { canManage, canViewPeople, isSuperAdmin, roleLabel, ROLES } from '../utils/permissions';
 import { formatDateTime, formatDuration, monthLabel, toISODate } from '../utils/format';
 
-const ROLE_OPTIONS = [ROLES.FACULTY, ROLES.HR, ROLES.ADMIN].map((r) => ({ value: r, label: r }));
+const ROLE_OPTIONS = [ROLES.FACULTY, ROLES.HR, ROLES.MIS, ROLES.ADMIN].map((r) => ({ value: r, label: r }));
 const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-const EMPTY = { userId: '', code: '', name: '', email: '', role: 'FACULTY', designation: 'FACULTY', grade: 'E1', department: '', branch: 'Chennai Center', password: '' };
+const EMPTY = { code: '', employeeId: '', name: '', phone: '', personalEmail: '', email: '', role: 'FACULTY', branch: 'Chennai Center' };
+const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 /**
- * HR, Admin and Super Admin view, add, edit and deactivate employees (faculty, HR, admin, staff), with each
- * person's hours this month and a link to their dashboard. Only the Super Admin deletes an employee.
+ * HR, Admin and Super Admin view, add, edit and deactivate employees, with each person's hours this month and
+ * a link to their dashboard. v60: Short Name (letters) + Employee ID (numbers), WhatsApp phone, personal email
+ * (required) and official email; no Grade / Department / Designation. Only the Super Admin gives the login
+ * (User ID and password). Nobody is deleted: they are made inactive (Inactive Employees).
  */
 export default function Users() {
   const { user } = useAuth();
@@ -44,6 +47,10 @@ export default function Users() {
   const [checkOpen, setCheckOpen] = useState(false);
   const [running, setRunning] = useState(false);
   const [roleOptions, setRoleOptions] = useState(ROLE_OPTIONS);
+  const [loginFor, setLoginFor] = useState(null); // Super Admin: the employee whose login is being set
+  const [login, setLogin] = useState({ userId: '', password: '' });
+  const [loginErr, setLoginErr] = useState({});
+  const branches = useMemo(() => [...new Set(['Chennai Center', ...rows.map((r) => r.branch).filter(Boolean)])].sort(), [rows]);
 
   const load = useCallback(() => {
     setLoading(true);
@@ -65,7 +72,7 @@ export default function Users() {
 
   const filtered = useMemo(() => {
     const s = q.trim().toLowerCase();
-    return s ? rows.filter((r) => [r.userId, r.code, r.name, r.email, r.role, r.department].some((v) => String(v || '').toLowerCase().includes(s))) : rows;
+    return s ? rows.filter((r) => [r.userId, r.code, r.employeeId, r.name, r.email, r.personalEmail, r.phone, r.role, r.branch].some((v) => String(v || '').toLowerCase().includes(s))) : rows;
   }, [rows, q]);
 
   if (!canViewPeople(user)) {
@@ -78,28 +85,28 @@ export default function Users() {
   }
 
   const openNew = () => { setForm(EMPTY); setErrors({}); setEditing('new'); };
-  const openEdit = (r) => { setForm({ ...EMPTY, ...r, password: '' }); setErrors({}); setEditing(r.userId); };
+  const openEdit = (r) => { setForm({ ...EMPTY, ...r, email: r.email || '', personalEmail: r.personalEmail || '', phone: r.phone || '', employeeId: r.employeeId || '' }); setErrors({}); setEditing(r.userId); };
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
 
   const save = async () => {
     const isNew = editing === 'new';
     const errs = {};
-    if (!/^[A-Za-z0-9._-]{3,}$/.test(form.userId)) errs.userId = 'At least 3 letters or digits';
     if (!/^[A-Za-z]{2,5}$/.test(form.code)) errs.code = '2 to 5 letters';
+    if (!/^\d{1,10}$/.test(form.employeeId)) errs.employeeId = isNew || form.employeeId ? 'Numbers only' : 'Required';
     if (!form.name.trim()) errs.name = 'Required';
-    if (form.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) errs.email = 'Invalid email';
-    if (isNew ? form.password.length < 8 : form.password && form.password.length < 8) errs.password = 'Use at least 8 characters';
+    if (!/^\+?\d{10,15}$/.test(form.phone.replace(/[\s-]/g, ''))) errs.phone = '10-digit mobile (WhatsApp)';
+    if (!EMAIL.test(form.personalEmail)) errs.personalEmail = form.personalEmail ? 'Invalid email' : 'Required';
+    if (form.email && !EMAIL.test(form.email)) errs.email = 'Invalid email';
     setErrors(errs);
     if (Object.keys(errs).length) return;
     setSaving(true);
     try {
-      const body = { ...form, code: form.code.toUpperCase(), name: form.name.trim().toUpperCase() };
+      const body = {
+        code: form.code.toUpperCase(), employeeId: form.employeeId, name: form.name.trim().toUpperCase(), phone: form.phone.replace(/[\s-]/g, ''),
+        personalEmail: form.personalEmail.trim(), email: form.email.trim() || null, role: form.role, branch: form.branch.trim(),
+      };
       if (isNew) await api.createUser(body);
-      else {
-        const { userId, ...patch } = body;
-        if (!patch.password) delete patch.password;
-        await api.updateUser(userId, patch);
-      }
+      else await api.updateUser(editing, body);
       toast.success(isNew ? 'Employee added.' : 'Employee updated.');
       setEditing(null);
       load();
@@ -136,6 +143,21 @@ export default function Users() {
     }
   };
 
+  // Super Admin: tick the roles the check works on (never Super Admin, Admin, HR).
+  const toggleCheckRole = async (role, on) => {
+    const now = new Set(check.settings.roles);
+    if (on) now.add(role);
+    else now.delete(role);
+    try {
+      const res = await api.setAutoInactiveRoles([...now]);
+      setCheck({ ...check, settings: res.settings });
+      setCheck(await api.getAutoInactive());
+      toast.success('Saved. The check works on the ticked roles.');
+    } catch (e) {
+      toast.error(e.message);
+    }
+  };
+
   const runCheck = async () => {
     setRunning(true);
     try {
@@ -163,21 +185,32 @@ export default function Users() {
     }
   };
 
-  const remove = async (r) => {
-    if (!(await confirm({ title: 'Delete employee', message: `Delete ${r.name} (${r.userId})? They can no longer sign in, and their daily entries, leave, work and halfyearly records move with them to Deleted Employees (no longer counted in reports). Restore there brings everything back.`, confirmLabel: 'Delete', tone: 'danger' }))) return;
+  // Super Admin only: the employee's login (User ID and password).
+  const openLogin = (r) => { setLogin({ userId: r.hasLogin ? r.userId : '', password: '' }); setLoginErr({}); setLoginFor(r); };
+  const saveLogin = async () => {
+    const errs = {};
+    if (!/^[A-Za-z0-9._-]{3,40}$/.test(login.userId)) errs.userId = 'At least 3 letters or digits';
+    if ((!loginFor.hasLogin || login.password) && login.password.length < 8) errs.password = 'Use at least 8 characters';
+    setLoginErr(errs);
+    if (Object.keys(errs).length) return;
+    setSaving(true);
     try {
-      await api.deleteUser(r.userId);
-      toast.success(`${r.name} moved to Deleted employees.`);
+      await api.setUserLogin(loginFor.userId, { userId: login.userId, password: login.password || null });
+      toast.success(`Login saved for ${loginFor.name}.`);
+      setLoginFor(null);
       load();
     } catch (e) {
       toast.error(e.message);
+    } finally {
+      setSaving(false);
     }
   };
 
   const columns = [
-    { key: 'userId', header: 'User ID' },
-    { key: 'code', header: 'Code' },
+    { key: 'code', header: 'Short Name' },
+    { key: 'employeeId', header: 'Employee ID', render: (r) => r.employeeId || <span className="text-ink-400">-</span> },
     { key: 'name', header: 'Name', render: (r) => <span className="font-medium text-ink-900">{r.name}</span> },
+    isSuperAdmin(user) && { key: 'userId', header: 'Login', render: (r) => (r.hasLogin ? r.userId : <span className="text-ink-400">No login</span>) },
     {
       key: 'role',
       header: 'Role',
@@ -188,8 +221,8 @@ export default function Users() {
         </span>
       ),
     },
-    { key: 'department', header: 'Department', hideOnMobile: true },
-    { key: 'email', header: 'Email', hideOnMobile: true },
+    { key: 'phone', header: 'Phone', hideOnMobile: true },
+    { key: 'email', header: 'Email', hideOnMobile: true, render: (r) => r.email || r.personalEmail || '' },
     { key: 'hours', header: `Hours, ${monthLabel(month)}`, align: 'right', render: (r) => (hours[r.code] ? <span className="tabular-nums">{formatDuration(hours[r.code].totalMinutes)}</span> : <span className="text-ink-400">-</span>) },
     { key: 'days', header: 'Days', align: 'right', hideOnMobile: true, render: (r) => hours[r.code]?.days ?? '-' },
     {
@@ -226,24 +259,24 @@ export default function Users() {
             <>
             <Button size="sm" variant="ghost" icon={Pencil} onClick={() => openEdit(r)} aria-label={`Edit ${r.name}`} />
             <Button size="sm" variant="ghost" icon={r.active ? UserX : UserCheck} onClick={() => toggleActive(r)} aria-label={r.active ? `Make ${r.name} inactive` : `Make ${r.name} active`} title={r.active ? 'Make inactive' : 'Make active'} />
-            {isSuperAdmin(user) && <Button size="sm" variant="ghost" icon={Trash2} onClick={() => remove(r)} aria-label={`Delete ${r.name}`} title="Delete" />}
+            {isSuperAdmin(user) && <Button size="sm" variant="ghost" icon={KeyRound} onClick={() => openLogin(r)} aria-label={`Login of ${r.name}`} title={r.hasLogin ? 'Change login' : 'Give login'} />}
             </>
           )}
         </div>
       ),
     },
-  ];
+  ].filter(Boolean);
 
   return (
     <>
       <PageHeader
         title="Employees"
-        description={canEdit ? 'Add faculty, HR, admin and other staff logins.' : 'Every employee with their work hours this month. Open a dashboard to see that person\'s details.'}
+ description={canEdit ? 'Add employees. The Super Admin gives each one a login (User ID and password).' : 'Every employee with their work hours this month. Open a dashboard to see that person\'s details.'}
         breadcrumb={[{ label: 'Employees' }]}
         actions={
           canEdit && (
             <div className="flex flex-wrap gap-2">
-              {isSuperAdmin(user) && <Button variant="secondary" icon={ArchiveRestore} onClick={() => navigate('/master/deleted-employees')}>Deleted employees</Button>}
+              <Button variant="secondary" icon={UsersIcon} onClick={() => navigate('/master/inactive-employees')}>Inactive employees</Button>
               <Button variant="secondary" icon={CalendarX} onClick={openCheck}>Missing entries check</Button>
               <Button icon={Plus} onClick={openNew}>Add employee</Button>
             </div>
@@ -282,6 +315,21 @@ export default function Users() {
               {check.settings.roles.join(' and ')} with no daily entry on their last <b>{check.settings.days} working days</b> (today not counted) are made inactive{' '}
               {check.settings.enabled ? <>automatically every day at <b>{check.settings.time}</b></> : 'by the scheduled task on the server'}. Weekly off: {check.settings.weeklyOff.map((d) => WEEKDAYS[d]).join(', ') || 'none'}; holidays and approved leave are skipped. Days before {check.settings.startDate}, and days up to the day someone was made active again, are not counted.
             </p>
+            <div className="rounded-lg border border-ink-200 p-3">
+              <p className="mb-2 font-medium text-ink-900">Roles checked</p>
+              <div className="flex flex-wrap gap-x-5 gap-y-2">
+                {roleOptions.filter((r) => !check.settings.never.includes(r.value)).map((r) => (
+                  <label key={r.value} className="inline-flex items-center gap-2">
+                    <input type="checkbox" className="size-4 accent-brand-600" disabled={!isSuperAdmin(user)} checked={check.settings.roles.includes(r.value)} onChange={(e) => toggleCheckRole(r.value, e.target.checked)} />
+                    {r.label}
+                  </label>
+                ))}
+              </div>
+              <p className="mt-2 text-[12px] text-ink-500">
+                {isSuperAdmin(user) ? 'Only the Super Admin changes this.' : 'Set by the Super Admin.'} Super Admin, Admin and HR are never made inactive. On the 4th morning each person first gets a WhatsApp message
+                {check.settings.whatsappTemplate ? ` (template ${check.settings.whatsappTemplate})` : ' (set WA_INACTIVE_TEMPLATE_NAME to send it)'} and an email to their personal and official email, then is made inactive.
+              </p>
+            </div>
             {check.settings.lastRunAt && (
               <p className="text-ink-500">
                 Last run {formatDateTime(check.settings.lastRunAt)} by {check.settings.lastRunBy}: {check.settings.lastRunCount} made inactive{check.settings.lastRunNames?.length ? ` (${check.settings.lastRunNames.join(', ')})` : ''}.
@@ -319,16 +367,35 @@ export default function Users() {
         }
       >
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <Input label="User ID" required value={form.userId} error={errors.userId} onChange={set('userId')} readOnly={editing !== 'new'} />
-          <Input label="Employee code" required value={form.code} error={errors.code} onChange={set('code')} hint="Shown as NAME (CODE) in dropdowns" />
+          <Input label="Short Name" required maxLength={5} value={form.code} error={errors.code} onChange={set('code')} hint="2 to 5 letters, e.g. ARI. Shown as NAME (SHORT · ID)" />
+          <Input label="Employee ID" required inputMode="numeric" maxLength={10} value={form.employeeId} error={errors.employeeId} onChange={(e) => setForm({ ...form, employeeId: e.target.value.replace(/\D/g, '') })} hint="Numbers only" />
           <Input label="Name" required value={form.name} error={errors.name} onChange={set('name')} />
-          <Input label="Email" type="email" value={form.email} error={errors.email} onChange={set('email')} />
-          <Select label="Role" required options={roleOptions} value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value, designation: e.target.value })} hint={user.role === ROLES.MANAGER ? 'Roles are created in Master › Roles & Access' : undefined} />
-          <Input label="Designation" value={form.designation} onChange={set('designation')} />
-          <Input label="Department" value={form.department} onChange={set('department')} />
-          <Input label="Grade" value={form.grade} onChange={set('grade')} />
-          <Input label="Branch" value={form.branch} onChange={set('branch')} />
-          <Input label={editing === 'new' ? 'Password' : 'New password'} required={editing === 'new'} type="password" autoComplete="new-password" value={form.password} error={errors.password} onChange={set('password')} hint={editing === 'new' ? undefined : 'Leave blank to keep the current one'} />
+          <Input label="Phone (WhatsApp)" required inputMode="tel" maxLength={15} value={form.phone} error={errors.phone} onChange={set('phone')} />
+          <Input label="Personal email" required type="email" value={form.personalEmail} error={errors.personalEmail} onChange={set('personalEmail')} />
+          <Input label="Official email" type="email" value={form.email} error={errors.email} onChange={set('email')} hint="Optional, can be added later" />
+          <Select label="Role" required options={roleOptions} value={form.role} onChange={set('role')} hint={user.role === ROLES.MANAGER ? 'Roles are created in Master › Roles & Access' : undefined} />
+          <div>
+            <Input label="Branch" list="branch-list" value={form.branch} onChange={set('branch')} hint="Pick one or type any place name" />
+            <datalist id="branch-list">{branches.map((b) => <option key={b} value={b} />)}</datalist>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal
+        open={!!loginFor}
+        onClose={() => setLoginFor(null)}
+        title={loginFor ? `Login for ${loginFor.name}` : ''}
+        description="Only the Super Admin gives or changes the User ID and password. A new password signs the employee out of other devices."
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setLoginFor(null)}>Cancel</Button>
+            <Button loading={saving} onClick={saveLogin}>Save login</Button>
+          </>
+        }
+      >
+        <div className="grid grid-cols-1 gap-4">
+          <Input label="User ID" required autoComplete="off" value={login.userId} error={loginErr.userId} onChange={(e) => setLogin({ ...login, userId: e.target.value })} />
+          <Input label={loginFor?.hasLogin ? 'New password' : 'Password'} required={!loginFor?.hasLogin} type="password" autoComplete="new-password" value={login.password} error={loginErr.password} onChange={(e) => setLogin({ ...login, password: e.target.value })} hint={loginFor?.hasLogin ? 'Leave blank to keep the current one' : 'At least 8 characters'} />
         </div>
       </Modal>
     </>

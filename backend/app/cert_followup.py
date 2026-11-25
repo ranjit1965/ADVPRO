@@ -291,8 +291,8 @@ def pending_mails(kind: str, today: date | None = None) -> list[dict]:
     for row in rows:
         targets = pick(row)
         if targets:
-            u = db.users.find_one({"code": row["employeeCode"]}, {"email": 1, "name": 1}) or {}
-            out.append({"row": row, "targets": targets, "name": u.get("name") or row.get("employeeName", ""), "email": u.get("email") or ""})
+            u = db.users.find_one({"code": row["employeeCode"]}, {"email": 1, "personalEmail": 1, "name": 1}) or {}
+            out.append({"row": row, "targets": targets, "name": u.get("name") or row.get("employeeName", ""), "email": u.get("email") or u.get("personalEmail") or ""})
     return out
 
 
@@ -303,8 +303,8 @@ def running_not_completed(today: date | None = None) -> list[dict]:
     for row in col.find({"endMonth": {"$gte": month_of(today or local_today())}}).sort("endMonth"):
         targets = pending_targets(row)
         if targets:
-            u = db.users.find_one({"code": row["employeeCode"]}, {"email": 1, "name": 1}) or {}
-            out.append({"id": row["id"], "employeeCode": row["employeeCode"], "name": u.get("name") or row.get("employeeName", ""), "email": u.get("email") or "",
+            u = db.users.find_one({"code": row["employeeCode"]}, {"email": 1, "personalEmail": 1, "name": 1}) or {}
+            out.append({"id": row["id"], "employeeCode": row["employeeCode"], "name": u.get("name") or row.get("employeeName", ""), "email": u.get("email") or u.get("personalEmail") or "",
                         "quarter": row.get("quarter"), "endMonth": row.get("endMonth"), "endLabel": month_label(row.get("endMonth", "")), "courses": [t["name"] for t in targets]})
     return out
 

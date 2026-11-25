@@ -1,3 +1,4 @@
+import { personLabel } from '../../utils/format';
 /** Options for a master field of type "lookup", from the shared lookups. */
 export function lookupOptions(source, lookups) {
   if (!lookups) return [];
@@ -5,9 +6,9 @@ export function lookupOptions(source, lookups) {
     case 'courses':
       return lookups.courses.map((c) => ({ value: c.id, label: `${c.id} – ${c.name}` }));
     case 'faculties':
-      return lookups.faculties.map((f) => ({ value: f.code, label: `${f.name} (${f.code})` }));
+      return lookups.faculties.map((f) => ({ value: f.code, label: `${personLabel(f)}` }));
     case 'employees':
-      return (lookups.employees || []).map((e) => ({ value: e.code, label: `${e.name} (${e.code})` }));
+      return (lookups.employees || []).map((e) => ({ value: e.code, label: `${personLabel(e)}` }));
     default:
       return lookups[source] || [];
   }

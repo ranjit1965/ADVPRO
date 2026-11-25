@@ -37,7 +37,7 @@ def create_token(user_id: str, sid: str | None = None) -> str:
 
 def public_user(u: dict) -> dict:
     hidden = {"_id", "passwordHash", "userIdLower", "sessionId", "sessionAt"}
-    return {k: v for k, v in u.items() if k not in hidden}
+    return {**{k: v for k, v in u.items() if k not in hidden}, "hasLogin": bool(u.get("passwordHash"))}
 
 
 def current_user(creds: HTTPAuthorizationCredentials | None = Depends(bearer)) -> dict:
@@ -74,7 +74,7 @@ def require_roles(*roles: str):
 # ------------------------------------------------------------------ menu (tab) access per role
 # The Super Admin ticks which menus each role may open (Master › Role Access). Not ticked = hidden in the
 # menu and refused by the server. The Super Admin always has every menu. Defaults = the old fixed rules.
-BUILT_IN_ROLES = ("ADMIN", "HR", "FACULTY")  # v56: the Staff role was removed
+BUILT_IN_ROLES = ("ADMIN", "HR", "MIS", "FACULTY")  # v56: the Staff role was removed; v60: MIS (like HR)
 ALL_ROLES = BUILT_IN_ROLES  # kept for older imports; use all_roles() for the full list with added roles
 # Every tab of the left side pane, in menu order (Dashboard is always shown: it is the home page).
 SECTIONS = {
@@ -87,7 +87,7 @@ SECTIONS = {
     "marketing": {"label": "Marketing", "default": BUILT_IN_ROLES},
     "hr": {"label": "HR", "default": BUILT_IN_ROLES},
 }
-BUILT_IN_LABELS = {"ADMIN": "Admin", "HR": "HR", "FACULTY": "Faculty"}
+BUILT_IN_LABELS = {"ADMIN": "Admin", "HR": "HR", "MIS": "MIS", "FACULTY": "Faculty"}
 
 # Roles live in their own collection `roles`, one document per role:
 #   {key: "ACCOUNTS", label: "Accounts", description, builtIn: false, access: {master: true, ...},
@@ -153,7 +153,8 @@ def sections_for(user: dict) -> dict:
 
 def me_view(user: dict) -> dict:
     """The signed-in user as the frontend sees it, with the menus they may open."""
-    return {**public_user(user), "sections": sections_for(user)}
+    label = "Super Admin" if user.get("role") == "MANAGER" else (db.db.roles.find_one({"key": user.get("role")}, {"label": 1}) or {}).get("label") or user.get("role")
+    return {**public_user(user), "sections": sections_for(user), "roleLabel": label}
 
 
 def require_section(*sections: str, roles: tuple[str, ...] | None = None):
@@ -174,7 +175,7 @@ def require_section(*sections: str, roles: tuple[str, ...] | None = None):
 # The MANAGER role is shown as "Super Admin" everywhere (the stored key stays MANAGER so existing logins work).
 SUPER_ADMIN = "MANAGER"
 SUPER_ADMIN_LABEL = "Super Admin"
-MANAGE_ROLES_WITH_HR = ("HR", "ADMIN")  # the HR menu opens the admin pages only for these roles
+MANAGE_ROLES_WITH_HR = ("HR", "MIS", "ADMIN")  # the HR menu opens the admin pages only for these roles
 
 
 def is_super_admin(user: dict) -> bool:

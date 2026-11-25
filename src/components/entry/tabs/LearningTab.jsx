@@ -3,8 +3,9 @@ import Select from '../../ui/Select';
 import Textarea from '../../ui/Textarea';
 import CourseFields from './CourseFields';
 import { makeField } from '../fieldProps';
+import { STORED_LOCATION_ROOT } from '../../../utils/entryForm';
 
-/** Course Preparation: Course ID (Request new course), Chapter / Session No, Material Type, Activity Quantity, Details. */
+/** Course Preparation: Course ID (Request new course), Chapter / Session No, Material Type, Activity Quantity, Stored location (v60), Details. */
 export default function LearningTab({ values, errors, set, setMany, lookups, onRequestCourse }) {
   const f = makeField('learning', values, errors, set);
   return (
@@ -12,7 +13,16 @@ export default function LearningTab({ values, errors, set, setMany, lookups, onR
       <CourseFields f={f} values={values} set={set} setMany={setMany} lookups={lookups} onRequestCourse={onRequestCourse} courseClass="sm:col-span-2 lg:col-span-5" chapterClass="lg:col-span-2" />
       <Select label="Material Type" className="lg:col-span-3" options={lookups.materialTypes} {...f('materialType')} />
       <Input label="Activity Quantity" className="lg:col-span-2" inputMode="numeric" maxLength={5} placeholder="Numbers only" {...f('pages')} onChange={(e) => set('pages', e.target.value.replace(/\D/g, ''))} />
-      <Textarea label="Chapter / Session Details" className="sm:col-span-2 lg:col-span-12" rows={2} maxLength={500} placeholder="Type the chapter / session details" {...f('chapterDetails')} />
+      <Input
+        label="Stored location"
+        className="sm:col-span-2 lg:col-span-6"
+        maxLength={300}
+        placeholder={`${STORED_LOCATION_ROOT}folder`}
+        hint="Add the folder after the server path, or type the full path"
+        {...f('storedLocation')}
+        value={values.storedLocation ?? STORED_LOCATION_ROOT}
+      />
+      <Textarea label="Chapter / Session Details" className="sm:col-span-2 lg:col-span-6" rows={2} maxLength={500} placeholder="Type the chapter / session details" {...f('chapterDetails')} />
     </div>
   );
 }

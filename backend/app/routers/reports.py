@@ -7,6 +7,8 @@ from .. import db
 from ..security import current_user, require_roles
 from .entries import build_query, with_minutes
 
+FACULTY_IN_LABEL = {"Center": "Center", "Outstation": "College", "Corporate": "Corporate", "WFH": "Work from home"}  # v60
+
 router = APIRouter(tags=["dashboard & reports"])
 NON_PERFORMANCE = {"others"}
 MONTH = Query(..., pattern=r"^\d{4}-\d{2}$")
@@ -25,7 +27,7 @@ def hours(minutes: int) -> float:
     return round(minutes / 60, 1)
 
 
-VIEW_ALL = ("HR", "ADMIN", "MANAGER")
+VIEW_ALL = ("HR", "MIS", "ADMIN", "MANAGER")
 
 
 ISSUE_FLAG_MINUTES = 60  # issues longer than 1 hour are flagged in the Monthly Report
@@ -46,7 +48,7 @@ def issue_rows(rows: list[dict]) -> list[dict]:
             "id": e["id"], "activityDate": e["activityDate"], "timeFrom": e["timeFrom"], "timeTo": e["timeTo"],
             "facultyCode": e["facultyCode"], "facultyName": e.get("facultyName", ""), "facultyIn": e["facultyIn"],
             "activityType": e["activityType"],
-            "place": (e.get("outstation") or {}).get("collegeName") or d.get("collegeName") or ("College / OD" if e["facultyIn"] == "Outstation" else "Center"),
+            "place": (e.get("outstation") or {}).get("collegeName") or d.get("collegeName") or FACULTY_IN_LABEL.get(e["facultyIn"], e["facultyIn"]),
             "courseId": d.get("courseId", ""), "batchNo": d.get("batchNo", ""),
             "issueType": d.get("issueType", ""), "issueDetails": d.get("issueDetails", ""), "issueMinutes": mins, "over1h": mins > ISSUE_FLAG_MINUTES,
         })
@@ -149,7 +151,7 @@ def monthly_report(month: str = MONTH, facultyCode: str | None = None, activityT
 
 
 @router.get("/reports/working-hours")
-def working_hours(month: str = MONTH, facultyCode: str | None = None, _: dict = Depends(require_roles("HR", "ADMIN", "MANAGER"))):
+def working_hours(month: str = MONTH, facultyCode: str | None = None, _: dict = Depends(require_roles("HR", "MIS", "ADMIN", "MANAGER"))):
     frm, to = month_range(month)
     # Every employee (faculty, HR, admin, staff, manager) who is active or has entries this month.
     q = {"code": facultyCode} if facultyCode else {}
@@ -164,12 +166,13 @@ def working_hours(month: str = MONTH, facultyCode: str | None = None, _: dict = 
                 "facultyCode": f["code"],
                 "facultyName": f["name"],
                 "role": f.get("role", "FACULTY"),
-                "department": f.get("department", ""),
                 "days": len({e["activityDate"] for e in lst}),
                 "entries": len(lst),
                 "classMinutes": s(lambda e: e["activityType"] == "class"),
                 "centerMinutes": s(lambda e: e["facultyIn"] == "Center"),
-                "outstationMinutes": s(lambda e: e["facultyIn"] == "Outstation"),
+                "outstationMinutes": s(lambda e: e["facultyIn"] == "Outstation"),  # shown as College (v60)
+                "corporateMinutes": s(lambda e: e["facultyIn"] == "Corporate"),
+                "wfhMinutes": s(lambda e: e["facultyIn"] == "WFH"),
                 "performanceMinutes": s(lambda e: e["activityType"] not in NON_PERFORMANCE),
                 "othersMinutes": s(lambda e: e["activityType"] in NON_PERFORMANCE),
                 "totalMinutes": s(lambda e: True),

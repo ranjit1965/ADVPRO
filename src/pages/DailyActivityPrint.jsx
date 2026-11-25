@@ -14,7 +14,7 @@ import { useLookups } from '../context/LookupsContext';
 import { useToast } from '../context/ToastContext';
 import * as api from '../services/api';
 import { ACTIVITY_TYPES } from '../utils/constants';
-import { formatDuration, toISODate } from '../utils/format';
+import { formatDuration, toISODate, personLabel } from '../utils/format';
 import { reportRow } from '../utils/entry';
 import { LEGEND_TEXT, SHEET_COLUMNS, downloadExcel, downloadPdf, roleText, sheetRows, shortDate, slashDate } from '../utils/dailySheetExport';
 import { canAccess, MASTER_ROLES } from '../utils/permissions';
@@ -27,7 +27,7 @@ export default function DailyActivityPrint() {
   const toast = useToast();
   const today = toISODate();
   // Faculty and staff see only their own sheet; Super Admin / Admin / HR can pick anyone.
-  const ownOnly = !canAccess(user, [...MASTER_ROLES, 'HR']);
+  const ownOnly = !canAccess(user, [...MASTER_ROLES, 'HR', 'MIS']);
   const [form, setForm] = useState({
     facultyCode: ownOnly ? user.code : params.get('faculty') || user.code,
     dateFrom: params.get('date') || today,
@@ -113,7 +113,7 @@ export default function DailyActivityPrint() {
               disabled={ownOnly}
               hint={ownOnly ? 'You can print your own report only' : undefined}
               className="sm:col-span-2 lg:col-span-1"
-              options={ownOnly ? [{ value: user.code, label: `${user.name} (${user.code})` }] : lookups.faculties.map((f) => ({ value: f.code, label: `${f.name} (${f.code})` }))}
+              options={ownOnly ? [{ value: user.code, label: `${personLabel(user)}` }] : lookups.faculties.map((f) => ({ value: f.code, label: `${personLabel(f)}` }))}
               value={form.facultyCode}
               onChange={(v) => setForm({ ...form, facultyCode: v })}
               error={errors.facultyCode}

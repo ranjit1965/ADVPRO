@@ -2,7 +2,7 @@ import PageHeader from '../../components/ui/PageHeader';
 import Card from '../../components/ui/Card';
 import { useAuth } from '../../context/AuthContext';
 
-export const ATTENDANCE_ROLES = ['HR', 'ADMIN', 'MANAGER'];
+export const ATTENDANCE_ROLES = ['HR', 'MIS', 'ADMIN', 'MANAGER'];
 
 /** Attendance pages: HR, Admin and the Super Admin only. */
 export default function StaffOnly({ title, children }) {

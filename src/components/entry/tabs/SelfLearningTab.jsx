@@ -6,6 +6,7 @@ import CourseFields from './CourseFields';
 import LookupSelect from '../LookupSelect';
 import { makeField, facultyOptions } from '../fieldProps';
 import { CLASS_MODES, SELF_LEARNING_TYPES, SESSION_KINDS, materialKind } from '../../../utils/entryForm';
+import { personLabel } from '../../../utils/format';
 
 /**
  * Self Learning / Knowledge Sharing / Class Attended: Course ID, Chapter / Session No,
@@ -21,7 +22,7 @@ export default function SelfLearningTab({ values, errors, set, setMany, lookups,
   const attended = values.learningType === 'Class Attended';
   const sharing = values.learningType === 'Knowledge Sharing';
   const kind = materialKind(values.chapterType);
-  const employees = (lookups.employees || []).map((e) => ({ value: e.code, label: `${e.name} (${e.code})` }));
+  const employees = (lookups.employees || []).map((e) => ({ value: e.code, label: `${personLabel(e)}` }));
   const onType = (v) => setMany({ learningType: v, chapterType: '', materialType: '', ...(v !== 'Class Attended' && { classFaculty: '', classMode: '' }), ...(v !== 'Knowledge Sharing' && { trainee: '' }) });
   const onChapterType = (v) => setMany({ chapterType: v, materialType: '' });
 

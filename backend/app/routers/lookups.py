@@ -35,6 +35,7 @@ LIST_LABELS = {
     "locations": "Location (old entries)",
     "batchModes": "Batch Mode (Center, At College, At Home ...)",
     "batchStatuses": "Batch Status (Planned, Running, Break, Completed are fixed)",
+    "certificationResults": "Certification Completed? (Halfyearly Program Report; Yes is fixed)",
 }
 CENTER = "Center"  # contact for issues in Center classes; colleges have their own
 
@@ -101,6 +102,8 @@ def save_list(kind: str, body: ListIn, me: dict = Depends(list_admin)):
         missing = [s for s in CORE_BATCH_STATUSES if s.lower() not in {v.lower() for v in values}]
         if missing:
             raise HTTPException(400, f"{', '.join(missing)} cannot be removed or renamed: the batch logic uses them.")
+    if kind == "certificationResults" and "yes" not in {v.lower() for v in values}:
+        raise HTTPException(400, "Yes cannot be removed or renamed: the certification logic uses it.")
     if not is_super_admin(me):
         old = (db.lookups.find_one({"_id": kind}) or {}).get("values", [])
         kept = {v.lower() for v in values}
@@ -132,8 +135,10 @@ def natural_key(text) -> list:
 
 
 def faculty_list() -> list[dict]:
-    cur = db.users.find({"role": "FACULTY", "active": True}, {"_id": 0, "code": 1, "name": 1, "department": 1, "designation": 1, "grade": 1})
-    return sorted(cur, key=lambda f: natural_key(f["name"]))
+    """v60: inactive faculty are listed too (marked active: false), so their names still show in the
+    report filters; they cannot sign in."""
+    cur = db.users.find({"role": "FACULTY"}, {"_id": 0, "code": 1, "name": 1, "employeeId": 1, "active": 1})
+    return sorted(({**f, "active": f.get("active", True)} for f in cur), key=lambda f: (not f["active"], natural_key(f["name"])))
 
 
 @router.get("")
@@ -145,8 +150,9 @@ def get_lookups(_: dict = Depends(current_user)):
     out["faculties"] = faculty_list()
     labels = {r["key"]: r["label"] for r in roles_list()}
     out["employees"] = sorted(
-        ({**u, "roleLabel": labels.get(u.get("role"), u.get("role"))} for u in db.users.find({"active": True}, {"_id": 0, "userId": 1, "code": 1, "name": 1, "role": 1, "designation": 1})),
-        key=lambda u: natural_key(u["name"]),
+        ({**u, "active": u.get("active", True), "roleLabel": labels.get(u.get("role"), u.get("role"))}
+         for u in db.users.find({}, {"_id": 0, "userId": 1, "code": 1, "employeeId": 1, "name": 1, "role": 1, "active": 1, "joiningDate": 1})),
+        key=lambda u: (not u["active"], natural_key(u["name"])),
     )
     # Batch, asset, register-number and vendor dropdowns come from the Master collections.
     # External faculty master: the batch form's External faculty dropdown (Active only).

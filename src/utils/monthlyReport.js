@@ -1,3 +1,4 @@
+import { facultyInLabel } from './constants';
 // Builds the monthly activity report (dashboard, day by day, weeks, topics, calendar, log)
 // from the month's entries. Every figure is "Time To minus Time From" of each entry.
 import { entrySummary } from './entry';
@@ -157,7 +158,7 @@ export function issuesOf(rows) {
       const minutes = Number(d.issueMinutes) || 0;
       return {
         id: e.id, activityDate: e.activityDate, timeFrom: e.timeFrom, timeTo: e.timeTo, facultyIn: e.facultyIn, activityType: e.activityType,
-        place: e.outstation?.collegeName || d.collegeName || (e.facultyIn === 'Outstation' ? 'College / OD' : 'Center'),
+        place: e.outstation?.collegeName || d.collegeName || facultyInLabel(e.facultyIn),
         course: [d.courseId, d.batchNo].filter(Boolean).join(' / '), type: d.issueType || '', details: d.issueDetails || '', minutes, over1h: minutes > ISSUE_LIMIT_MINUTES,
       };
     })

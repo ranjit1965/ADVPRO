@@ -68,4 +68,6 @@ export function initials(name = '') {
     .join('');
 }
 
-export const facultyLabel = (f) => (f ? `${f.name} (${f.code})` : '');
+/** v60: a person in a dropdown: NAME (SHORT · EMPLOYEE ID), "· Inactive" when they cannot sign in. Searching matches any part. */
+export const personLabel = (p) => (p ? `${p.name} (${[p.code, p.employeeId].filter(Boolean).join(' · ')})${p.active === false ? ' · Inactive' : ''}` : '');
+export const facultyLabel = personLabel;

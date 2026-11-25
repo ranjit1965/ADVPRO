@@ -62,7 +62,7 @@ def get_access(_: dict = Depends(manager)):
 def _people_pages(user: dict = Depends(current_user)) -> dict:
     """Same users as the Employees page: Master or Admin menu, or HR / Admin roles with the HR menu."""
     access = sections_for(user)
-    if user["role"] == "MANAGER" or access.get("master") or access.get("admin") or (access.get("hr") and user["role"] in ("HR", "ADMIN")):
+    if user["role"] == "MANAGER" or access.get("master") or access.get("admin") or (access.get("hr") and user["role"] in ("HR", "ADMIN", "MIS")):
         return user
     raise HTTPException(403, "You do not have access to this menu. Ask the Super Admin.")
 

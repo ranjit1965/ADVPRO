@@ -19,12 +19,13 @@ OPTION_LISTS = (
     "marketingTypes", "enquiryFormNos", "materialTypes", "softwareActivities",
     "travelModes", "othersHeadings", "productTypes", "locations",
     "slMaterialTheory", "slMaterialPractical", "issueTypes",
-    "batchModes", "batchStatuses",
+    "batchModes", "batchStatuses", "certificationResults",
 )
 # Lists added later, with their first values (seed_data.json does not have them).
 EXTRA_LISTS = {
     "batchModes": ["Center", "At College", "At Home"],
     "batchStatuses": ["Planned", "Running", "Break", "Completed"],
+    "certificationResults": ["Yes", "No", "Fail", "No-Deferred"],  # v60: "Completed?" of a target certification
 }
 # Batch statuses the application's logic uses (auto Completed, open batches): they cannot be removed or renamed.
 CORE_BATCH_STATUSES = ("Planned", "Running", "Break", "Completed")
@@ -110,6 +111,15 @@ def migrate() -> None:
         db.db.roles.delete_one({"key": "STAFF"})
 
     once("2026-11-remove-staff-role", remove_staff_role)
+    # v60: Grade, Department and Designation are no longer kept for employees (or copied onto daily entries).
+    once("2026-11-remove-grade-department-designation", lambda: [
+        db.users.update_many({}, {"$unset": {"grade": "", "department": "", "designation": ""}}),
+        db.deleted_users.update_many({}, {"$unset": {"grade": "", "department": "", "designation": ""}}),
+        db.entries.update_many({"department": {"$exists": True}}, {"$unset": {"department": ""}}),
+    ])
+    # v60: "Technical write off" in Course Preparation › Material Type; Halfyearly "Required" (cleared) removed.
+    once("2026-11-material-technical-write-off", lambda: db.lookups.update_one({"_id": "materialTypes"}, {"$addToSet": {"values": "Technical write off"}}, upsert=True))
+    once("2026-11-halfyearly-remove-cleared", lambda: db.db.halfyearly_reports.update_many({"targets.cleared": {"$exists": True}}, {"$unset": {"targets.$[].cleared": ""}}))
     once("2026-11-halfyearly-remove-period", lambda: db.db.halfyearly_reports.update_many({"period": {"$exists": True}}, {"$unset": {"period": ""}}))
 
 

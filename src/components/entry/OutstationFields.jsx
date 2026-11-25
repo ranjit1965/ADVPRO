@@ -15,7 +15,7 @@ export default function OutstationFields({ values, errors, set, lookups, onAddLo
   return (
     <fieldset className="rounded-xl border border-accent-600/25 bg-accent-50/40 p-4">
       <legend className="flex items-center gap-1.5 px-1.5 text-[13px] font-semibold text-accent-600">
-        <MapPin className="size-4" aria-hidden /> College / OD
+        <MapPin className="size-4" aria-hidden /> College
       </legend>
       <div className="grid grid-cols-2 gap-x-3 gap-y-4 sm:gap-4 lg:grid-cols-12">
         <LookupSelect kind="colleges" label="College Name" className="col-span-2 lg:col-span-5" options={lookups.colleges} onAddLookup={onAddLookup} {...f('collegeName', true)} />

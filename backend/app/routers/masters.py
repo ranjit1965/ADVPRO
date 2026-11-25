@@ -70,6 +70,8 @@ def validate(defn: dict, body: dict) -> dict:
                 raise ValueError
             elif t in ("select", "toggle") and v not in f["options"]:
                 raise ValueError
+            elif f.get("pattern") and not re.fullmatch(f["pattern"], str(v)):  # e.g. Pincode: 6 digits (v60)
+                raise ValueError
             elif t == "timerange":  # "HH:MM to HH:MM", To after From
                 m = re.fullmatch(r"((?:[01]\d|2[0-3]):[0-5]\d) to ((?:[01]\d|2[0-3]):[0-5]\d)", v)
                 if not m or m.group(2) <= m.group(1):
@@ -136,15 +138,34 @@ def create_record(key: str, body: dict = Body(...), me: dict = Depends(master_ro
     col, defn = collection(key), MASTERS[key]
     rec = validate(defn, body)
     check_unique(defn, col, rec)
-    rec.update(id=f"{defn['idPrefix']}-{db.next_seq('master_' + key):04d}", createdBy=me["name"], createdAt=datetime.now(timezone.utc).isoformat())
+    new_id = f"{defn['idPrefix']}-{db.next_seq('master_' + key):04d}"
+    while col.find_one({"id": new_id}, {"_id": 1}):  # records imported with ids: skip the ones already used
+        new_id = f"{defn['idPrefix']}-{db.next_seq('master_' + key):04d}"
+    rec.update(id=new_id, createdBy=me["name"], createdAt=datetime.now(timezone.utc).isoformat())
     col.insert_one(rec)
     return clean(rec)
 
 
+def _can_delete(key: str, me: dict) -> None:
+    """Super Admin deletes any master record; Admin also deletes External Faculty (v60)."""
+    if not (is_super_admin(me) or (key == "externalFaculty" and me.get("role") == "ADMIN")):
+        raise HTTPException(403, "Only the Super Admin can delete records." if key != "externalFaculty" else "Only the Super Admin and Admin can delete external faculty.")
+
+
+def _deleted(key: str, ids: list[str]) -> None:
+    if key == "externalFaculty":
+        from .external import remove_faculty_data  # noqa: PLC0415
+
+        remove_faculty_data(ids)
+
+
 @router.post("/{key}/delete-many")
-def delete_records(key: str, body: DeleteManyIn, _: dict = Depends(super_admin_only)):
+def delete_records(key: str, body: DeleteManyIn, me: dict = Depends(master_roles)):
     """Deletes the selected records (the ticked rows) in one call."""
-    res = collection(key).delete_many({"id": {"$in": list(dict.fromkeys(body.ids))}})
+    _can_delete(key, me)
+    ids = list(dict.fromkeys(body.ids))
+    res = collection(key).delete_many({"id": {"$in": ids}})
+    _deleted(key, ids)
     return {"deleted": res.deleted_count}
 
 
@@ -165,7 +186,9 @@ def update_record(key: str, rec_id: str, body: dict = Body(...), me: dict = Depe
 
 
 @router.delete("/{key}/{rec_id}")
-def delete_record(key: str, rec_id: str, _: dict = Depends(super_admin_only)):
+def delete_record(key: str, rec_id: str, me: dict = Depends(master_roles)):
+    _can_delete(key, me)
     if not collection(key).delete_one({"id": rec_id}).deleted_count:
         raise HTTPException(404, "Record not found")
+    _deleted(key, [rec_id])
     return True

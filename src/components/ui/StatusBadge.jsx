@@ -13,6 +13,8 @@ const TONE_BY_STATUS = {
   Open: 'bg-danger-50 text-danger-700 ring-danger-600/20',
   Center: 'bg-brand-50 text-brand-700 ring-brand-600/20',
   Outstation: 'bg-accent-50 text-accent-600 ring-accent-600/20',
+  Corporate: 'bg-info-50 text-info-700 ring-info-600/20',
+  WFH: 'bg-warning-50 text-warning-700 ring-warning-600/20',
 };
 
 export default function StatusBadge({ status, className }) {

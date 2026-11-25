@@ -47,6 +47,11 @@ class Settings(BaseSettings):
     wa_anniversary_template_lang: str = ""
     wa_anniversary_template_params: str = "name"
     celebration_reminder_days: int = 10  # HR sees the pop-up this many days before
+    # v60: the message sent on the 4th morning, before the missing-entry check makes someone inactive.
+    # Names for the params: name, code, employeeId, days, count, date.
+    wa_inactive_template_name: str = ""
+    wa_inactive_template_lang: str = ""
+    wa_inactive_template_params: str = "name,days"
 
     # Missing daily entries: make an employee inactive after N working days with no entry (app/auto_inactive.py).
     # HR › Certification Status: carry unfinished certifications to the next quarter and email the Deferred Report.

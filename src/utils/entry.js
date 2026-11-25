@@ -21,7 +21,7 @@ function summaryOf(e, d) {
     case 'marketing':
       return [d.marketingType, d.collegeName || d.databaseName, d.fileName, d.total && `${d.total} total`, d.records && `${d.records} records`, d.enquiryFormNo, d.courseId, d.registerNo, d.noOfStudents && `${d.noOfStudents} students`, d.utilizationCheck && `Utilization ${d.utilizationCheck}`, d.labCreation].filter(Boolean).join(' · ');
     case 'learning':
-      return [d.materialType, d.courseId, d.chapterNo && `Ch ${d.chapterNo}`].filter(Boolean).join(' · ');
+      return [d.materialType, d.courseId, d.chapterNo && `Ch ${d.chapterNo}`, d.storedLocation && `Stored: ${d.storedLocation}`].filter(Boolean).join(' · ');
     case 'selfLearning':
       return [d.learningType, d.courseId, d.chapterNo && `Ch ${d.chapterNo}`, d.chapterType, d.materialType, d.classMode].filter(Boolean).join(' · ');
     case 'database':

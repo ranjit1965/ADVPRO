@@ -3,6 +3,7 @@ import Select from '../ui/Select';
 import DatePicker from '../ui/DatePicker';
 import Button from '../ui/Button';
 import { ACTIVITY_TYPES, FACULTY_IN_OPTIONS } from '../../utils/constants';
+import { personLabel } from '../../utils/format';
 
 export default function EntryFilters({ filters, onChange, onReset, faculties, showFaculty = true }) {
   const set = (k) => (e) => onChange({ [k]: e.target.value });
@@ -19,7 +20,7 @@ export default function EntryFilters({ filters, onChange, onReset, faculties, sh
       <DatePicker label="From" value={filters.dateFrom} onChange={set('dateFrom')} max={filters.dateTo || undefined} />
       <DatePicker label="To" value={filters.dateTo} onChange={set('dateTo')} min={filters.dateFrom || undefined} />
       <Select label="Activity" placeholder="All activities" options={ACTIVITY_TYPES.map((a) => ({ value: a.key, label: a.label }))} value={filters.activityType} onChange={set('activityType')} />
-      {showFaculty && <Select searchable label="Faculty" placeholder="All faculty" options={faculties.map((f) => ({ value: f.code, label: `${f.name} (${f.code})` }))} value={filters.facultyCode} onChange={set('facultyCode')} />}
+      {showFaculty && <Select searchable label="Faculty" placeholder="All faculty" options={faculties.map((f) => ({ value: f.code, label: `${personLabel(f)}` }))} value={filters.facultyCode} onChange={set('facultyCode')} />}
       <div className="flex items-end gap-2">
         <Select className="flex-1" label="Faculty in" placeholder="All" sort={false} options={FACULTY_IN_OPTIONS} value={filters.facultyIn} onChange={set('facultyIn')} />
         {active && <Button variant="ghost" size="icon" icon={X} onClick={onReset} aria-label="Reset filters" title="Reset filters" />}

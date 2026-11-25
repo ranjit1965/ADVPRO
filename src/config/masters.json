@@ -125,7 +125,7 @@
     {
       "key": "externalFaculty",
       "label": "External Faculty",
-      "description": "Faculty from outside the company, with phone and email. Chosen as the faculty of a batch (Faculty Type External).",
+      "description": "Faculty from outside the company. The list shows the name; Open shows the details, bank details and certifications. Chosen as the faculty of a batch (Faculty Type External).",
       "idPrefix": "EXF",
       "unique": "email",
       "titleField": "name",
@@ -141,27 +141,72 @@
           "label": "Phone",
           "type": "phone",
           "required": true,
-          "hint": "10-digit mobile"
+          "hint": "10-digit mobile",
+          "hideInTable": true
         },
         {
           "key": "email",
           "label": "Email",
           "type": "email",
-          "required": true
+          "required": true,
+          "hideInTable": true
+        },
+        {
+          "key": "certificationId",
+          "label": "Certification ID",
+          "type": "text",
+          "required": false,
+          "hint": "Main certification of this faculty.",
+          "hideInTable": true
+        },
+        {
+          "key": "courseName",
+          "label": "Course Name",
+          "type": "text",
+          "required": false,
+          "hint": "Course this faculty handles.",
+          "hideInTable": true
+        },
+        {
+          "key": "address",
+          "label": "Address",
+          "type": "textarea",
+          "required": false,
+          "hint": "Optional.",
+          "hideInTable": true
+        },
+        {
+          "key": "pincode",
+          "label": "Pincode",
+          "type": "text",
+          "required": false,
+          "hint": "Optional. 6 digits.",
+          "hideInTable": true,
+          "pattern": "^\\d{6}$"
+        },
+        {
+          "key": "landmark",
+          "label": "Landmark",
+          "type": "text",
+          "required": false,
+          "hint": "Optional.",
+          "hideInTable": true
         },
         {
           "key": "dob",
           "label": "Date of Birth",
           "type": "date",
           "required": false,
-          "hint": "Optional. For birthday wishes on WhatsApp."
+          "hint": "Optional. For birthday wishes on WhatsApp.",
+          "hideInTable": true
         },
         {
           "key": "anniversary",
           "label": "Anniversary Date",
           "type": "date",
           "required": false,
-          "hint": "Optional. Wedding anniversary, for wishes on WhatsApp."
+          "hint": "Optional. Wedding anniversary, for wishes on WhatsApp.",
+          "hideInTable": true
         },
         {
           "key": "status",
@@ -172,7 +217,8 @@
             "Inactive"
           ],
           "default": "Active",
-          "required": true
+          "required": true,
+          "hideInTable": true
         }
       ]
     }

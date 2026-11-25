@@ -6,7 +6,7 @@ HR, Super Admin and Admin pick an employee or faculty and assign, for a quarter 
 Only HR, Super Admin and Admin update the status: achieved / completion date / certification code for each
 target, and ready Yes / No for each delivery ready course. The employee sees their rows read-only.
 """
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -15,7 +15,7 @@ from pydantic import BaseModel, Field, model_validator
 from .. import cert_followup, db
 from ..schemas import Form
 from ..security import manage_access, is_super_admin, require_section, current_user, require_roles
-from .hr import HR_ROLES
+HALFYEARLY_ROLES = ("HR", "MANAGER", "ADMIN")  # v60: not MIS
 
 router = APIRouter(prefix="/hr/halfyearly", tags=["halfyearly program report"])
 hr_only = require_section("hr", roles=("HR", "ADMIN"))
@@ -55,8 +55,16 @@ class CertIn(BaseModel):
     courseId: str = Field(default="", max_length=40)
 
 
+def _add_months(d: date, n: int) -> date:
+    import calendar  # noqa: PLC0415
+    m = d.month - 1 + n
+    y, m = d.year + m // 12, m % 12 + 1
+    return date(y, m, min(d.day, calendar.monthrange(y, m)[1]))
+
+
 class AssignIn(Form):
     employeeCode: str = Field(min_length=1, max_length=40)
+    joiningDate: date | None = None  # v60: also saved on the employee record
     quarter: Literal[QUARTERS] | None = None  # type: ignore[valid-type]
     # v52: HR picks full dates (starting date and ending date). The months are kept for the quarter logic
     # (carry over, running quarter); rows saved before v52 have only the months.
@@ -69,6 +77,8 @@ class AssignIn(Form):
 
     @model_validator(mode="after")
     def check(self):
+        if self.startDate and not self.endDate:  # v60: commitment period is 6 months from the start date
+            self.endDate = _add_months(self.startDate, 6) - timedelta(days=1)
         if self.startDate:
             self.startMonth = self.startDate.isoformat()[:7]
         if self.endDate:
@@ -82,18 +92,31 @@ class AssignIn(Form):
         return self
 
 
+def results() -> list[str]:
+    """Completed? values (v60): Admin › Dropdown Values › certificationResults; "Yes" is fixed."""
+    vals = (db.lookups.find_one({"_id": "certificationResults"}) or {}).get("values") or ["Yes", "No", "Fail", "No-Deferred"]
+    return vals if "Yes" in vals else ["Yes", *vals]
+
+
 class TargetStatus(Form):
-    achieved: Literal["Yes", "No"] | None = None
-    cleared: Literal["Cleared", "Not cleared"] | None = None  # "Required" column (v55)
+    achieved: str | None = Field(default=None, max_length=60)  # v60: Yes / No / Fail / No-Deferred (dropdown values)
     completionDate: date | None = None
-    certificationCode: str | None = Field(default=None, max_length=80)
+    certificationCode: str | None = Field(default=None, max_length=80)  # shown as "Certification ID" (v60)
+    expiryDate: date | None = None  # v60: certification expiry date
 
     @model_validator(mode="after")
     def check(self):
+        if self.achieved:
+            match = next((v for v in results() if v.lower() == self.achieved.lower()), None)
+            if not match:
+                raise ValueError(f"Completed must be one of: {', '.join(results())}")
+            self.achieved = match
         if self.achieved == "Yes" and not (self.completionDate and self.certificationCode):
-            raise ValueError("Certification achieved needs the completion date and the certification code")
+            raise ValueError("Certification completed needs the completion date and the certification ID")
         if self.achieved != "Yes":
-            self.completionDate, self.certificationCode = None, None
+            self.completionDate, self.certificationCode, self.expiryDate = None, None, None
+        if self.expiryDate and self.completionDate and self.expiryDate < self.completionDate:
+            raise ValueError("Expiry date must be after the completion date")
         return self
 
 
@@ -115,8 +138,13 @@ class StatusIn(BaseModel):
     deliveries: list[DeliveryStatus] = Field(default_factory=list, max_length=3)
 
 
+def _save_joining(code: str, joining: date | None) -> None:
+    if joining:
+        db.users.update_one({"code": code}, {"$set": {"joiningDate": joining.isoformat()}})
+
+
 def _employee(code: str) -> dict:
-    u = db.users.find_one({"code": code}, {"code": 1, "name": 1, "role": 1})
+    u = db.users.find_one({"code": code}, {"code": 1, "name": 1, "role": 1, "joiningDate": 1})
     if not u:
         raise HTTPException(404, "Employee not found")
     return u
@@ -132,7 +160,7 @@ def _merge(new: list[CertIn], old: list[dict], status_keys: tuple[str, ...]) -> 
     return out
 
 
-TARGET_KEYS = ("achieved", "completionDate", "certificationCode", "cleared")
+TARGET_KEYS = ("achieved", "completionDate", "certificationCode", "expiryDate")
 CARRY_KEYS = ("carriedForward", "carriedFrom", "carriedFromQuarter", "carriedTo")  # kept when HR edits the row
 DELIVERY_KEYS = ("ready",)
 
@@ -141,7 +169,7 @@ DELIVERY_KEYS = ("ready",)
 def list_reports(employeeCode: str | None = None, me: dict = Depends(current_user)):
     cert_followup.carry_over(by=me["name"])  # unfinished targets of an ended quarter show in the next one at once
     cert_followup.undo_completed_carries()  # completed later in their own quarter: not carried any more
-    if me["role"] not in HR_ROLES:
+    if me["role"] not in HALFYEARLY_ROLES:
         employeeCode = me["code"]  # employees and faculty see only their own rows
     q = {"employeeCode": employeeCode} if employeeCode else {}
     return [_clean(r) for r in col.find(q).sort([("startMonth", -1), ("employeeName", 1)])]
@@ -198,6 +226,7 @@ def assign(body: AssignIn, me: dict = Depends(hr_only)):
         "updatedAt": now(),
     }
     col.insert_one(doc)
+    _save_joining(u["code"], body.joiningDate)
     return _clean(doc)
 
 
@@ -217,6 +246,7 @@ def update_assignment(rid: str, body: AssignIn, me: dict = Depends(hr_only)):
         "updatedAt": now(),
     }
     res = col.find_one_and_update({"id": rid}, {"$set": patch}, return_document=True)
+    _save_joining(u["code"], body.joiningDate)
     return _clean(res)
 
 
@@ -240,3 +270,65 @@ def delete(rid: str, _: dict = Depends(hr_only)):  # v58: HR and Admin delete to
         raise HTTPException(404, "Report row not found")
     return True
 
+
+
+# ---------------------------------------------------------------- v60: HR's own performance mail
+
+PERF_DEFAULT = {
+    "subject": "Your performance review: {quarter} {period}",
+    "body": ("Dear {name},\n\nThis is about your performance in the half-yearly commitment {quarter} ({period}).\n\n"
+             "Target certifications:\n{targets}\n\n{note}\n\nRegards,\n{hrName}\nHR"),
+}
+perf = db.db.hr_mail_templates  # {_id: "<userId>|performance", subject, body, updatedAt}
+perf_roles = require_roles("HR", "MANAGER")  # HR only (and the Super Admin)
+
+
+class PerfSendIn(BaseModel):
+    rowId: str = Field(min_length=1, max_length=40)
+    subject: str = Field(min_length=1, max_length=300)
+    body: str = Field(min_length=1, max_length=10000)
+    note: str = Field(default="", max_length=4000)
+
+
+def _perf_template(me: dict) -> dict:
+    d = perf.find_one({"_id": f"{me['userId']}|performance"}) or {}
+    return {"subject": d.get("subject") or PERF_DEFAULT["subject"], "body": d.get("body") or PERF_DEFAULT["body"],
+            "placeholders": ["{name}", "{code}", "{quarter}", "{period}", "{targets}", "{note}", "{hrName}"], "updatedAt": d.get("updatedAt")}
+
+
+@router.get("/performance/template")
+def perf_template(me: dict = Depends(perf_roles)):
+    """Each HR keeps their own performance mail template."""
+    return _perf_template(me)
+
+
+@router.put("/performance/template")
+def perf_save(body: TemplateIn, me: dict = Depends(perf_roles)):
+    perf.update_one({"_id": f"{me['userId']}|performance"}, {"$set": {"subject": body.subject, "body": body.body, "userId": me["userId"], "updatedAt": now()}}, upsert=True)
+    return _perf_template(me)
+
+
+@router.post("/performance/send")
+def perf_send(body: PerfSendIn, me: dict = Depends(perf_roles)):
+    """Sends the performance mail to the faculty's official and personal email, from HR's own mail."""
+    from .. import mailer  # noqa: PLC0415
+
+    row = col.find_one({"id": body.rowId})
+    if not row:
+        raise HTTPException(404, "Report row not found")
+    row = upgrade(row)
+    u = db.users.find_one({"code": row["employeeCode"]}) or {}
+    to = [e for e in dict.fromkeys([u.get("email"), u.get("personalEmail")]) if e]
+    if not to:
+        raise HTTPException(400, "This faculty has no email in the employee record")
+    targets = "\n".join(f"- {t.get('name')}: {t.get('achieved') or 'Not updated'}" for t in row["targets"]) or "-"
+    values = {"name": u.get("name") or row.get("employeeName", ""), "code": row["employeeCode"], "quarter": row.get("quarter") or "",
+              "period": cert_followup.period_of(row), "targets": targets, "note": body.note, "hrName": me.get("name", "")}
+    subject, text = cert_followup.fill(body.subject, values), cert_followup.fill(body.body, values)
+    try:
+        mailer.send_mail(to, subject, text, reply_to=me.get("email") or None, from_name="HR", from_addr=me.get("email") or None)
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(502, f"Mail did not send: {exc}") from exc
+    mark = {"to": to, "subject": subject, "at": now(), "by": me["name"]}
+    col.update_one({"id": body.rowId}, {"$push": {"performanceMails": mark}})
+    return {"ok": True, **mark}

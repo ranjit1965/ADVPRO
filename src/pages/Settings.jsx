@@ -70,10 +70,11 @@ export default function Settings() {
             className="mt-6 !grid-cols-1"
             items={[
               { label: 'User ID', value: user.userId },
-              { label: 'Faculty code', value: user.code },
-              { label: 'Designation', value: user.designation },
-              { label: 'Grade', value: user.grade },
-              { label: 'Department', value: user.department },
+              { label: 'Short Name', value: user.code },
+              { label: 'Employee ID', value: user.employeeId },
+              { label: 'Phone (WhatsApp)', value: user.phone },
+              { label: 'Personal email', value: user.personalEmail },
+              { label: 'Official email', value: user.email },
               { label: 'Branch', value: user.branch },
             ]}
           />

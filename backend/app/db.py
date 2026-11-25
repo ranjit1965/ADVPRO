@@ -28,10 +28,13 @@ def ensure_indexes() -> None:
     marks.create_index([("batchNo", ASCENDING), ("courseId", ASCENDING), ("examType", ASCENDING)], unique=True)
     for key in ("batches",):
         db[f"master_{key}"].create_index("id", unique=True)
+    db.master_externalFaculty.create_index("id")
     db.halfyearly_reports.create_index("id", unique=True)
     db.halfyearly_reports.create_index("employeeCode")
-    for key in ("batches",):
-        db[f"master_{key}"].create_index("id", unique=True)
+    # v60 (also in db/create_database.mongodb.js)
+    db.external_certifications.create_index("id", unique=True)  # new in v60: no older data
+    db.external_certifications.create_index("facultyId")
+    db.day_declarations.create_index([("code", ASCENDING), ("date", ASCENDING)])
     courses.create_index("id", unique=True)
     chapters.create_index([("courseId", ASCENDING), ("no", ASCENDING)], unique=True)
     db.deleted_records.create_index("owner")

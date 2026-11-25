@@ -1,4 +1,5 @@
 import { isRequired } from '../../utils/entryForm';
+import { personLabel } from '../../utils/format';
 
 /** Builds value/onChange/error/required props for a details field of a tab. */
 export const makeField = (tab, values, errors, set) => (name) => ({
@@ -9,6 +10,6 @@ export const makeField = (tab, values, errors, set) => (name) => ({
   id: `${tab}-${name}`,
 });
 
-export const facultyOptions = (lookups) => lookups.faculties.map((f) => ({ value: f.code, label: `${f.name} (${f.code})` }));
+export const facultyOptions = (lookups) => lookups.faculties.map((f) => ({ value: f.code, label: `${personLabel(f)}` }));
 
 export const courseOptions = (lookups) => lookups.courses.map((c) => ({ value: c.id, label: `${c.id} – ${c.name}`, alt: [c.name] }));

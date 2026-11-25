@@ -3,7 +3,7 @@ import { ACTIVITY_LABEL, facultyInLabel } from '../../utils/constants';
 import { entrySummary } from '../../utils/entry';
 import { REPORT_GROUPS, dateLabel, hm, hmm, hours1, pct, signedHm, topicOf } from '../../utils/monthlyReport';
 import { cn } from '../../utils/cn';
-import { formatDateTime } from '../../utils/format';
+import { formatDateTime, personLabel } from '../../utils/format';
 
 const NAVY = '#0f2a4d';
 const HEAD = '#dfe9f8';
@@ -76,7 +76,7 @@ export default function MonthlyReportView({ report, faculty, courses, biometric 
       <header className="flex flex-wrap items-end justify-between gap-4 border-l-4 border-brand-500 px-5 py-4" style={{ background: HEAD, color: NAVY }}>
         <div>
           <h1 className="text-2xl font-bold">{report.monthName} · Activity Report</h1>
-          <p className="mt-1 text-sm">{faculty ? `${faculty.name} (${faculty.code})` : ''} · Advantage Pro</p>
+          <p className="mt-1 text-sm">{faculty ? `${personLabel(faculty)}` : ''} · Advantage Pro</p>
           <p className="mt-1 text-[11px] text-ink-600">Built from the {kpi.entries} entries of the daily activity report for {report.monthName}. Others is shown in its own column.</p>
         </div>
         <div className="text-right">

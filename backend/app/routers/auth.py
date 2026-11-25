@@ -59,7 +59,7 @@ def manager_exists() -> bool:
 @router.post("/login")
 def login(body: LoginIn):
     u = db.users.find_one({"userIdLower": body.userId.strip().lower()})
-    if not u or not verify_password(body.password, u["passwordHash"]):
+    if not u or not u.get("passwordHash") or not verify_password(body.password, u["passwordHash"]):
         raise HTTPException(401, "Invalid User ID or Password")
     if not u.get("active", True):
         if u.get("autoInactive"):
@@ -163,9 +163,6 @@ def verify_manager_otp(body: OtpVerifyIn):
             "code": code,
             "email": email,
             "role": "MANAGER",
-            "designation": "MANAGER",
-            "grade": "M1",
-            "department": "Management",
             "branch": "Chennai Center",
             "active": True,
             "emailVerified": True,

@@ -16,7 +16,7 @@ import { useAsync } from '../hooks/useAsync';
 import * as api from '../services/api';
 import { ACTIVITY_LABEL } from '../utils/constants';
 import { DETAIL_FIELDS, OUTSTATION_FIELDS } from '../utils/entryFields';
-import { formatDate, formatDateTime, formatDuration, formatTime } from '../utils/format';
+import { formatDate, formatDateTime, formatDuration, formatTime, personLabel } from '../utils/format';
 
 export default function EntryDetails() {
   const { id } = useParams();
@@ -32,7 +32,7 @@ export default function EntryDetails() {
 
   const facultyName = (code) => {
     const f = lookups?.faculties.find((x) => x.code === code) || lookups?.employees?.find((x) => x.code === code);
-    return f ? `${f.name} (${f.code})` : code;
+    return f ? `${personLabel(f)}` : code;
   };
   const display = (key, value) => (['assistance', 'assistanceFaculty', 'mainFaculty', 'classFaculty', 'trainee'].includes(key) && value ? facultyName(value) : value);
 
@@ -117,13 +117,6 @@ export default function EntryDetails() {
                 <p className="text-[13px] text-ink-500">Code {entry.facultyCode}</p>
               </div>
             </div>
-            <DescriptionList
-              className="mt-4 !grid-cols-1"
-              items={[
-                { label: 'Department', value: entry.department },
-                { label: 'Designation', value: lookups?.faculties.find((f) => f.code === entry.facultyCode)?.designation },
-              ]}
-            />
           </Card>
           <Card title="Record">
             <ul className="space-y-3 text-[13px]">

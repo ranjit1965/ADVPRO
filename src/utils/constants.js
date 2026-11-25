@@ -18,15 +18,14 @@ export const ACTIVITY_LABEL = { ...Object.fromEntries(ACTIVITY_TYPES.map((a) => 
 export const FACULTY_IN = {
   CENTER: 'Center',
   OUTSTATION: 'Outstation',
+  CORPORATE: 'Corporate',
+  WFH: 'WFH',
 };
 
-/** Stored value stays 'Outstation' (old entries keep working); people see "College / OD". */
-export const FACULTY_IN_LABEL = { Center: 'Center', Outstation: 'College / OD' };
+/** Stored value stays 'Outstation' (old entries keep working); people see "College" (v60, was College / OD). */
+export const FACULTY_IN_LABEL = { Center: 'Center', Outstation: 'College', Corporate: 'Corporate', WFH: 'Work from home' };
 export const facultyInLabel = (v) => FACULTY_IN_LABEL[v] || v;
-export const FACULTY_IN_OPTIONS = [
-  { value: 'Center', label: 'Center' },
-  { value: 'Outstation', label: 'College / OD' },
-];
+export const FACULTY_IN_OPTIONS = Object.entries(FACULTY_IN_LABEL).map(([value, label]) => ({ value, label }));
 
 
 export const FAULT_STATUS = ['Open', 'In Progress', 'Resolved'];

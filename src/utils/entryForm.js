@@ -1,6 +1,9 @@
 // Defaults, validation and payload mapping for the Faculty Daily Activity Entry form.
 import { minutesBetween, toISODate } from './format';
 
+/** v60: Course Preparation › Stored location starts with the file server; the faculty adds the folder or types any path. */
+export const STORED_LOCATION_ROOT = '\\\\192.168.0.129\\';
+
 export const emptyHeader = (facultyCode = '', date = toISODate()) => ({
   facultyCode,
   activityDate: date,
@@ -25,7 +28,7 @@ export const EMPTY_DETAILS = {
     // DataBase Creation/Download (moved here from its own tab) and Lab Creation - Check
     databaseName: '', fileName: '', records: '', storedPlace: '', labCreation: '', noOfStudents: '',
   },
-  learning: { courseId: '', materialType: '', chapterNo: '', pages: '', chapterDetails: '' },
+  learning: { courseId: '', materialType: '', chapterNo: '', pages: '', storedLocation: STORED_LOCATION_ROOT, chapterDetails: '' },
   selfLearning: { learningType: 'Self Learning', courseId: '', chapterNo: '', chapterType: '', materialType: '', classFaculty: '', classMode: '', trainee: '', chapterDetails: '' },
   facultyDevelopment: { fdType: '', remarks: '' },
   database: { databaseName: '', fileName: '', records: '', storedPlace: '' },
@@ -221,6 +224,7 @@ export function buildPayload({ header, tab, details, outstation }) {
   }
   if (tab === 'selfLearning' && d.learningType !== 'Knowledge Sharing') d.trainee = '';
   if (tab === 'selfLearning' && !d.chapterType) d.materialType = '';
+  if (tab === 'learning') d.storedLocation = String(d.storedLocation || '').trim() === STORED_LOCATION_ROOT ? '' : String(d.storedLocation || '').trim();
   // Internship has no Remarks.
   if (tab === 'seminar' && d.seminarType === 'Internship') d.remarks = '';
   if (tab === 'seminar') {

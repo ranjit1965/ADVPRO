@@ -23,7 +23,7 @@ from ..security import manage_access, super_admin_only, is_super_admin, require_
 
 router = APIRouter(prefix="/biometric", tags=["biometric"])
 master_roles = manage_access  # Master or Admin menu, or HR menu for HR / Admin; Super Admin always
-view_roles = require_section("master", "admin", "hr", roles=("ADMIN", "HR"))
+view_roles = require_section("master", "admin", "hr", roles=("ADMIN", "HR", "MIS"))
 SETTINGS_ID = "biometric"
 MONTH_RE = r"^\d{4}-(0[1-9]|1[0-2])$"
 

@@ -10,7 +10,6 @@ import {
   FileBarChart,
   Settings,
   LogOut,
-  CalendarCheck,
 } from 'lucide-react';
 import { MASTER_MENU } from './masterMenu';
 import { NO_ENTRY_ROLES, WORKING_HOURS_ROLES } from '../utils/permissions';
@@ -24,16 +23,36 @@ import { NO_ENTRY_ROLES, WORKING_HOURS_ROLES } from '../utils/permissions';
 const ADMIN_PAGES = [
   { key: 'data-upload', label: 'Data Upload', to: '/admin/data-upload' },
   { key: 'admin-employees', label: 'Employees', to: '/master/employees' },
-  { key: 'admin-deleted-employees', label: 'Deleted Employees', to: '/master/deleted-employees', roles: ['MANAGER'] },
+  { key: 'admin-inactive-employees', label: 'Inactive Employees', to: '/master/inactive-employees', roles: ['HR', 'MIS', 'ADMIN', 'MANAGER'] },
   { key: 'admin-batch', label: 'Batch', to: '/master/batches' },
   { key: 'admin-batch-import', label: 'Batch Import', to: '/master/batch-import' },
-  { key: 'admin-external-faculty', label: 'External Faculty', to: '/master/externalFaculty' },
+  {
+    key: 'admin-external-faculty',
+    label: 'External Faculty',
+    roles: ['HR', 'MIS', 'ADMIN', 'MANAGER'],
+    children: [
+      { key: 'ext-add', label: 'Add External Faculty', to: '/master/externalFaculty' },
+      { key: 'ext-report', label: 'External Faculty Monthly Report', to: '/master/external-faculty-report' },
+      { key: 'ext-certs', label: 'External Certifications', to: '/master/external-certifications' },
+    ],
+  },
   { key: 'admin-course', label: 'Course', to: '/master/courses' },
   { key: 'admin-biometric', label: 'Biometric', to: '/master/biometric' },
   { key: 'admin-dropdown-values', label: 'Dropdown Values', to: '/master/dropdown-values' },
-  { key: 'admin-yearly-holidays', label: 'Yearly Holidays', to: '/admin/yearly-holidays', roles: ['HR', 'ADMIN', 'MANAGER'] },
+  { key: 'admin-yearly-holidays', label: 'Yearly Holidays', to: '/admin/yearly-holidays', roles: ['HR', 'MIS', 'ADMIN', 'MANAGER'] },
 ];
-const HR_PAGE_ROLES = ['HR', 'ADMIN', 'MANAGER'];
+const HR_PAGE_ROLES = ['HR', 'MIS', 'ADMIN', 'MANAGER'];
+// v60: Attendance is inside the Admin and HR menus (no longer its own menu on the left).
+const ATTENDANCE_GROUP = (prefix) => ({
+  key: `${prefix}-attendance`,
+  label: 'Attendance',
+  roles: HR_PAGE_ROLES,
+  children: [
+    { key: `${prefix}-attendance-entry`, label: 'Daily Entry Submission', to: '/attendance/staff/entry' },
+    { key: `${prefix}-attendance-print`, label: 'Print', to: '/attendance/staff/print' },
+    { key: `${prefix}-attendance-timesheet`, label: 'Time Sheet', to: '/attendance/staff/time-sheet' },
+  ],
+});
 
 export const NAVIGATION = [
   { key: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, to: '/' },
@@ -75,27 +94,9 @@ export const NAVIGATION = [
     label: 'Admin',
     icon: ShieldCheck,
     section: 'admin',
-    children: ADMIN_PAGES,
+    children: [...ADMIN_PAGES, ATTENDANCE_GROUP('admin')],
   },
   { key: 'marketing', label: 'Marketing', icon: Megaphone, restricted: true, section: 'marketing' },
-  // Attendance › Staff (v53): HR, Admin and the Super Admin.
-  {
-    key: 'attendance',
-    label: 'Attendance',
-    icon: CalendarCheck,
-    roles: HR_PAGE_ROLES,
-    children: [
-      {
-        key: 'attendance-staff',
-        label: 'Staff',
-        children: [
-          { key: 'attendance-entry', label: 'Daily Entry Submission', to: '/attendance/staff/entry' },
-          { key: 'attendance-print', label: 'Print', to: '/attendance/staff/print' },
-          { key: 'attendance-timesheet', label: 'Time Sheet', to: '/attendance/staff/time-sheet' },
-        ],
-      },
-    ],
-  },
   {
     key: 'hr-report',
     label: 'HR',
@@ -103,11 +104,12 @@ export const NAVIGATION = [
     section: 'hr',
     children: [
       { key: 'hr-policy', label: 'HR Policy', to: '/hr-report/policy' },
-      { key: 'halfyearly', label: 'Halfyearly Program Report', to: '/hr-report/halfyearly' },
-      { key: 'cert-status', label: 'Certification Status', to: '/hr-report/certification-status', roles: HR_PAGE_ROLES },
+      { key: 'halfyearly', label: 'Halfyearly Program Report', to: '/hr-report/halfyearly', hideRoles: ['MIS'] },
+      { key: 'cert-status', label: 'Certification Mails', to: '/hr-report/certification-status', roles: HR_PAGE_ROLES, hideRoles: ['MIS'] },
       // The Admin menu pages, also here for the HR and Admin roles.
       // Deleted Employees is left out of the HR menu: Super Admin only, in the Admin menu.
-      ...ADMIN_PAGES.filter((p) => p.key !== 'admin-deleted-employees').map((p) => ({ ...p, key: `hr-${p.key}`, roles: p.roles || HR_PAGE_ROLES })),
+      ...ADMIN_PAGES.map((p) => ({ ...p, key: `hr-${p.key}`, roles: p.roles || HR_PAGE_ROLES })),
+      ATTENDANCE_GROUP('hr'),
     ],
   },
 ];

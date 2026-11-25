@@ -29,7 +29,7 @@ def place_of(e: dict) -> str:
     college = ((e.get("outstation") or {}).get("collegeName") or (e.get("details") or {}).get("collegeName") or "").strip()
     if college:
         return college
-    return "College / OD" if e.get("facultyIn") == "Outstation" else "Center"
+    return {"Outstation": "College", "Corporate": "Corporate", "WFH": "Work from home"}.get(e.get("facultyIn"), "Center")
 
 
 def _recipients() -> list[str]:

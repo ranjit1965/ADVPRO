@@ -23,7 +23,7 @@ from ..config import settings
 from ..security import require_roles
 
 router = APIRouter(prefix="/celebrations", tags=["celebrations"])
-hr_roles = require_roles("HR", "ADMIN", "MANAGER")
+hr_roles = require_roles("HR", "MIS", "ADMIN", "MANAGER")
 KINDS = {"birthday": ("dob", "Birthday"), "anniversary": ("anniversary", "Anniversary")}
 SESSIONS = (9, 16)  # morning and evening: a snoozed reminder shows again from the next of these hours
 seen = db.db.celebration_seen

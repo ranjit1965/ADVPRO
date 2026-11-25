@@ -16,7 +16,7 @@ import { useLookups } from '../../context/LookupsContext';
 import { useToast } from '../../context/ToastContext';
 import { useAsync } from '../../hooks/useAsync';
 import { canManage } from '../../utils/permissions';
-import { formatDateTime, monthLabel, toISODate } from '../../utils/format';
+import { formatDateTime, monthLabel, toISODate, personLabel } from '../../utils/format';
 
 /**
  * Master › Biometric. Admin / Super Admin choose the device export file (.xlsx, .xls or .csv): "Employee Name"
@@ -38,7 +38,7 @@ export default function Biometric() {
   const [month, setMonth] = useState(toISODate().slice(0, 7));
   const [person, setPerson] = useState('');
   const records = useAsync(() => api.getBiometricRecords(month, person || undefined), [month, person, summary]);
-  const people = useMemo(() => (lookups?.employees || []).map((p) => ({ value: p.code, label: `${p.name} (${p.code})` })), [lookups]);
+  const people = useMemo(() => (lookups?.employees || []).map((p) => ({ value: p.code, label: `${personLabel(p)}` })), [lookups]);
 
   useEffect(() => {
     if (settings.data) setSummary(settings.data.lastImport || null);

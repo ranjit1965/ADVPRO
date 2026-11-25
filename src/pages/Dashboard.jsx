@@ -19,7 +19,7 @@ import { useAsync } from '../hooks/useAsync';
 import { getDashboardSummary, HR_ROLES } from '../services/api';
 import CelebrationReminder from '../components/dashboard/CelebrationReminder';
 import { ACTIVITY_LABEL } from '../utils/constants';
-import { formatDate, formatDuration, formatTime } from '../utils/format';
+import { formatDate, formatDuration, formatTime, personLabel } from '../utils/format';
 import { entrySummary } from '../utils/entry';
 
 /** Total hours only, e.g. "18h 30m". */
@@ -66,7 +66,7 @@ export default function Dashboard() {
         className="w-full sm:w-80"
         searchable
         placeholder="Select a faculty or lab support person"
-        options={people.map((p) => ({ value: p.code, label: `${p.name} (${p.code})` }))}
+        options={people.map((p) => ({ value: p.code, label: `${personLabel(p)}` }))}
         value={other ? other.code : ''}
         onChange={(e) => pickPerson(e.target.value)}
       />
@@ -106,7 +106,7 @@ export default function Dashboard() {
       )}
       <PageHeader
         title={other ? `${other.name}'s dashboard` : `${greeting()}, ${user.name}`}
-        description={other ? `${formatDate(new Date())} · ${other.roleLabel || other.role || ''}${other.designation && other.designation !== other.role ? ` · ${other.designation}` : ''} · Code ${other.code}` : `${formatDate(new Date())} · ${user.designation} · Grade ${user.grade}`}
+        description={other ? `${formatDate(new Date())} · ${other.roleLabel || other.role || ''} · Code ${other.code}` : `${formatDate(new Date())} · ${user.roleLabel || user.role} · ${user.code}${user.employeeId ? ` · ${user.employeeId}` : ''}`}
         actions={
           other ? (
             <Button variant="secondary" icon={FileText} onClick={() => navigate(`/faculty/reports/monthly?code=${encodeURIComponent(other.code)}`)}>

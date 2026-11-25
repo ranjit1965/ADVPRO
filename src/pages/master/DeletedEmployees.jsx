@@ -14,7 +14,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import { useConfirm } from '../../context/ConfirmContext';
 import { isSuperAdmin, roleLabel } from '../../utils/permissions';
-import { formatDate, formatDateTime, formatDuration } from '../../utils/format';
+import { formatDate, formatDateTime, formatDuration, personLabel } from '../../utils/format';
 import { ACTIVITY_LABEL } from '../../utils/constants';
 import { cn } from '../../utils/cn';
 
@@ -134,7 +134,7 @@ export default function DeletedEmployees() {
             ) : (
               <>
                 <Card
-                  title={`${emp.name} (${emp.code})`}
+                  title={`${personLabel(emp)}`}
                   description={`Deleted ${formatDateTime(emp.deletedAt)}${emp.deletedBy ? ` by ${emp.deletedBy}` : ''}`}
                   actions={<Button icon={ArchiveRestore} loading={restoring} onClick={restore}>Restore</Button>}
                 >
@@ -142,11 +142,8 @@ export default function DeletedEmployees() {
                     {[
                       ['User ID', emp.userId],
                       ['Role', emp.role],
-                      ['Designation', emp.designation],
-                      ['Department', emp.department],
                       ['Email', emp.email],
                       ['Branch', emp.branch],
-                      ['Grade', emp.grade],
                       ['Created', emp.createdAt ? formatDateTime(emp.createdAt) : ''],
                     ].map(([k, v]) => (
                       <div key={k} className="flex gap-2">
@@ -170,31 +167,6 @@ export default function DeletedEmployees() {
                   <DataTable columns={entryColumns} rows={detail.entries} rowKey="id" caption="Deleted employee's daily entries" dense empty={<EmptyState title="No daily entries" message="This employee had no saved entries." />} />
                 </Card>
 
-                {detail.leave.length > 0 && (
-                  <Card title={`Leave / permission (${detail.leave.length})`}>
-                    <ul className="divide-y divide-ink-100 text-[13px]">
-                      {detail.leave.map((l) => (
-                        <li key={l.id} className="flex flex-wrap justify-between gap-2 py-2">
-                          <span>{l.kind} {l.leaveType || ''} · {formatDate(l.dateFrom)}{l.dateTo && l.dateTo !== l.dateFrom ? ` – ${formatDate(l.dateTo)}` : ''}</span>
-                          <span className="text-ink-500">{l.status}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </Card>
-                )}
-
-                {detail.work.length > 0 && (
-                  <Card title={`Work assignments (${detail.work.length})`}>
-                    <ul className="divide-y divide-ink-100 text-[13px]">
-                      {detail.work.map((w) => (
-                        <li key={w.id} className="flex flex-wrap justify-between gap-2 py-2">
-                          <span>{w.title || w.work || w.id}</span>
-                          <span className="text-ink-500">{w.status}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </Card>
-                )}
               </>
             )}
           </div>

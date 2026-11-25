@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
-import { Award, Download, Mail, X } from 'lucide-react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Award, Download, Mail, Send, X } from 'lucide-react';
 import * as api from '../../services/api';
 import PageHeader from '../../components/ui/PageHeader';
 import Card from '../../components/ui/Card';
@@ -16,15 +16,15 @@ import { useLookups } from '../../context/LookupsContext';
 import { useToast } from '../../context/ToastContext';
 import { useConfirm } from '../../context/ConfirmContext';
 import { useAsync } from '../../hooks/useAsync';
-import { formatDate } from '../../utils/format';
+import { formatDate, personLabel } from '../../utils/format';
 import { downloadCsv } from '../../utils/export';
 import { rowDates, sixMonthsEnd } from '../../utils/halfyearly';
-import ReportRows, { ReportHead } from '../../components/hr/CertificationRows';
+import ReportRows, { ReportHead, RESULTS } from '../../components/hr/CertificationRows';
 
 const COUNTS = ['1', '2', '3'];
 export const QUARTERS = ['H1', 'H2', 'H3', 'H4', 'H5', 'H6'];
 const blankCert = () => ({ courseId: '', name: '' });
-const EMPTY_FORM = { employeeCode: '', quarter: '', startDate: '', endDate: '', targets: [blankCert()], deliveries: [blankCert()] };
+const EMPTY_FORM = { employeeCode: '', joiningDate: '', quarter: '', startDate: '', endDate: '', targets: [blankCert()], deliveries: [blankCert()] };
 
 const resize = (list, n) => Array.from({ length: n }, (_, i) => list[i] || blankCert());
 
@@ -40,7 +40,9 @@ export default function HalfyearlyReport() {
   const { lookups } = useLookups();
   const toast = useToast();
   const confirm = useConfirm();
-  const isHr = api.HR_ROLES.includes(user.role);
+  const isHr = api.HALFYEARLY_ROLES.includes(user.role); // v60: not MIS
+  const navigate = useNavigate();
+  const results = lookups?.certificationResults?.length ? lookups.certificationResults : RESULTS;
   const [filter, setFilter] = useState('');
   const [lastSaved, setLastSaved] = useState('');
   const { data, loading, error, reload } = useAsync(() => api.getHalfyearly({ employeeCode: filter }), [filter]);
@@ -49,7 +51,7 @@ export default function HalfyearlyReport() {
   const people = useMemo(() => {
     const seen = new Map();
     for (const p of [...(lookups?.employees || []), ...(lookups?.faculties || [])]) if (!seen.has(p.code)) seen.set(p.code, p);
-    return [...seen.values()].map((p) => ({ value: p.code, label: `${p.name} (${p.code})` }));
+    return [...seen.values()].map((p) => ({ value: p.code, label: `${personLabel(p)}` }));
   }, [lookups]);
   const courses = useMemo(() => (lookups?.courses || []).map((c) => ({ value: c.id, label: `${c.id} – ${c.name}` })), [lookups]);
   const courseName = useMemo(() => Object.fromEntries((lookups?.courses || []).map((c) => [c.id, c.name])), [lookups]);
@@ -62,8 +64,13 @@ export default function HalfyearlyReport() {
   const setF = (k, v) => {
     // Starting date picked: the ending date becomes 6 months later (1 Jan -> 30 Jun); it can still be changed.
     if (k === 'startDate' && v) return setForm((f) => ({ ...f, startDate: v, endDate: sixMonthsEnd(v) }));
+    if (k === 'employeeCode') {
+      const p = (lookups?.employees || []).find((x) => x.code === v);
+      setForm((f) => ({ ...f, employeeCode: v, joiningDate: p?.joiningDate || (v === f.employeeCode ? f.joiningDate : '') }));
+      setFilter(v);
+      return;
+    }
     setForm((f) => ({ ...f, [k]: v }));
-    if (k === 'employeeCode') setFilter(v); // the list below shows that person's saved rows (all when cleared)
   };
   const setCount = (list, n) => setForm((f) => ({ ...f, [list]: resize(f[list], Number(n)) }));
   const setCert = (list, i, courseId) => setForm((f) => ({ ...f, [list]: f[list].map((c, j) => (j === i ? { courseId, name: courseName[courseId] || '' } : c)) }));
@@ -79,13 +86,14 @@ export default function HalfyearlyReport() {
     const errs = {};
     if (!form.employeeCode) errs.employeeCode = 'Choose the employee';
     if (!form.quarter) errs.quarter = 'Choose H1 to H6';
+    if (form.joiningDate && form.startDate && form.joiningDate > form.endDate) errs.joiningDate = 'Joining date is after the commitment period';
     if (!form.startDate) errs.startDate = 'Choose the starting date';
     if (!form.endDate) errs.endDate = 'Choose the ending date';
     else if (form.startDate && form.endDate < form.startDate) errs.endDate = 'Must be on or after the starting date';
     form.targets.forEach((c, i) => !c.name && (errs[`targets${i}`] = 'Choose a course'));
     setErrors(errs);
     if (Object.keys(errs).length) return toast.error('Please fill the highlighted fields.');
-    const body = { employeeCode: form.employeeCode, quarter: form.quarter, startDate: form.startDate, endDate: form.endDate, targets: form.targets, deliveries: form.deliveries.filter((c) => c.name) }; // delivery ready courses are optional
+    const body = { employeeCode: form.employeeCode, joiningDate: form.joiningDate || null, quarter: form.quarter, startDate: form.startDate, endDate: form.endDate, targets: form.targets, deliveries: form.deliveries.filter((c) => c.name) }; // delivery ready courses are optional
     setSaving(true);
     try {
       const saved = editingId ? await api.updateHalfyearly(editingId, body) : await api.assignHalfyearly(body);
@@ -106,7 +114,7 @@ export default function HalfyearlyReport() {
     setErrors({});
     const pick = (list) => (list?.length ? list.map((c) => ({ courseId: c.courseId || '', name: c.name })) : [blankCert()]);
     const [from, to] = rowDates(r);
-    setForm({ employeeCode: r.employeeCode, quarter: r.quarter || '', startDate: from, endDate: to, targets: pick(r.targets), deliveries: pick(r.deliveries) });
+    setForm({ employeeCode: r.employeeCode, joiningDate: r.joiningDate || (lookups?.employees || []).find((x) => x.code === r.employeeCode)?.joiningDate || '', quarter: r.quarter || '', startDate: from, endDate: to, targets: pick(r.targets), deliveries: pick(r.deliveries) });
     setFilter(r.employeeCode);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -163,14 +171,15 @@ export default function HalfyearlyReport() {
     );
     downloadCsv('halfyearly-program-report.csv', [
       { header: 'Employee', value: (x) => `${x.r.employeeName} (${x.r.employeeCode})` },
-      { header: 'Quarter', value: (x) => x.r.quarter || '' },
-      { header: 'Starting Date', value: (x) => formatDate(rowDates(x.r)[0]) },
-      { header: 'Ending Date', value: (x) => formatDate(rowDates(x.r)[1]) },
+      { header: 'Joining Date', value: (x) => (x.r.joiningDate ? formatDate(x.r.joiningDate) : '') },
+      { header: 'Half-yearly', value: (x) => x.r.quarter || '' },
+      { header: 'Commitment Start', value: (x) => formatDate(rowDates(x.r)[0]) },
+      { header: 'Commitment End', value: (x) => formatDate(rowDates(x.r)[1]) },
       { header: 'Target Certification', value: (x) => x.t.name || '' },
       { header: 'Completed', value: (x) => x.t.achieved || '' },
       { header: 'Date of Completion', value: (x) => (x.t.completionDate ? formatDate(x.t.completionDate) : '') },
-      { header: 'Certification Code', value: (x) => x.t.certificationCode || '' },
-      { header: 'Required', value: (x) => x.t.cleared || '' },
+      { header: 'Certification ID', value: (x) => x.t.certificationCode || '' },
+      { header: 'Certification Expiry Date', value: (x) => (x.t.expiryDate ? formatDate(x.t.expiryDate) : '') },
       { header: 'Delivery Ready Course', value: (x) => x.d.name || '' },
       { header: 'Delivery Ready', value: (x) => x.d.ready || '' },
     ], lines);
@@ -185,6 +194,7 @@ export default function HalfyearlyReport() {
             label={`${label} name ${i + 1}`}
             required={list === 'targets'}
             options={courses}
+            match="contains"
             placeholder={c.name && !c.courseId ? c.name : 'Search course'}
             value={c.courseId}
             onChange={(v) => setCert(list, i, v)}
@@ -207,17 +217,26 @@ export default function HalfyearlyReport() {
       <PageHeader
         title="Halfyearly Program Report"
         breadcrumb={[{ label: 'HR' }, { label: 'Halfyearly Program Report' }]}
-        description={isHr ? 'Assign each employee their target certifications and delivery ready courses for the quarter. Record the completion in Certification Status.' : 'Your target certifications and delivery ready courses. HR records the status.'}
-        actions={<Button variant="secondary" icon={Download} disabled={!data?.length} onClick={exportCsv}>Export</Button>}
+        description={isHr ? 'Assign each employee their target certifications and delivery ready courses for the half-year, and record the certification status in the saved rows.' : 'Your target certifications and delivery ready courses. HR records the status.'}
+        actions={
+          <div className="flex flex-wrap gap-2">
+            {isHr && <Button variant="secondary" icon={Send} onClick={() => navigate('/hr-report/certification-status')}>Mail to faculty</Button>}
+            <Button variant="secondary" icon={Download} disabled={!data?.length} onClick={exportCsv}>Export</Button>
+          </div>
+        }
       />
 
       {isHr && (
         <Card className="mb-5" title={editingId ? 'Edit certifications' : 'Assign certifications'}>
           <form onSubmit={submit} noValidate className="grid grid-cols-1 gap-4 md:grid-cols-12">
-            <SearchableSelect label="Employee / Faculty" required className="md:col-span-6" options={people} placeholder="Search employee" value={form.employeeCode} onChange={(v) => setF('employeeCode', v)} error={errors.employeeCode} />
-            <Select label="Quarter" required sort={false} className="md:col-span-2" options={QUARTERS} placeholder="Select" value={form.quarter} onChange={(e) => setF('quarter', e.target.value)} error={errors.quarter} />
-            <DatePicker label="Starting Date" required className="md:col-span-2" value={form.startDate} onChange={(e) => setF('startDate', e.target.value)} error={errors.startDate} hint="Ending date fills 6 months later" />
-            <DatePicker label="Ending Date" required className="md:col-span-2" value={form.endDate} min={form.startDate || undefined} onChange={(e) => setF('endDate', e.target.value)} error={errors.endDate} hint={form.endDate && formatDate(form.endDate)} />
+            <SearchableSelect label="Employee / Faculty" required className="md:col-span-6" match="contains" options={people} placeholder="Search employee" value={form.employeeCode} onChange={(v) => setF('employeeCode', v)} error={errors.employeeCode} />
+            <DatePicker label="Joining Date" className="md:col-span-3" value={form.joiningDate} onChange={(e) => setF('joiningDate', e.target.value)} error={errors.joiningDate} hint="Saved on the employee record too" />
+            <Select label="Half-yearly" required sort={false} className="md:col-span-3" options={QUARTERS} placeholder="Select" value={form.quarter} onChange={(e) => setF('quarter', e.target.value)} error={errors.quarter} />
+            <fieldset className="grid grid-cols-1 gap-4 rounded-xl border border-ink-200 p-4 md:col-span-12 md:grid-cols-12">
+              <legend className="px-1 text-[13px] font-semibold text-ink-700">Commitment period <span className="font-normal text-ink-500">(6 months)</span></legend>
+              <DatePicker label="Start Date" required className="md:col-span-4" value={form.startDate} onChange={(e) => setF('startDate', e.target.value)} error={errors.startDate} hint="End date fills 6 months later" />
+              <DatePicker label="End Date" required className="md:col-span-4" value={form.endDate} min={form.startDate || undefined} onChange={(e) => setF('endDate', e.target.value)} error={errors.endDate} hint={form.endDate && formatDate(form.endDate)} />
+            </fieldset>
             <fieldset className="rounded-xl border border-ink-200 p-4 md:col-span-12">
               <legend className="px-1 text-[13px] font-semibold text-ink-700">Target Certification</legend>
               {certFields('targets', 'Target Certification')}
@@ -244,7 +263,7 @@ export default function HalfyearlyReport() {
         bodyClassName="p-0"
         title={filter && isHr ? `Saved certifications of ${people.find((p) => p.value === filter)?.label || filter}` : 'HALFYEARLY PROGRAM REPORT'}
         description={isHr ? (
-          <>Saved rows. Record Completed Yes and the date in <Link to="/hr-report/certification-status" className="font-medium text-brand-700 hover:underline">Certification Status</Link>.</>
+          'Pick a faculty above to see only their rows. Record Completed, the date, the certification ID and the expiry date in the row, then Save. Edit changes the certifications; Delete removes the row.'
         ) : 'Read-only: HR records the status.'}
       >
         {error ? (
@@ -255,7 +274,7 @@ export default function HalfyearlyReport() {
           <EmptyState icon={Award} title="No certifications assigned" message={isHr ? 'Assign certifications above.' : 'HR has not assigned a certification to you yet.'} />
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[1150px] text-left text-[13px]">
+            <table className="w-full min-w-[1300px] text-left text-[13px]">
               <caption className="sr-only">Halfyearly program report</caption>
               <ReportHead actions={isHr} />
               <tbody>
@@ -263,7 +282,7 @@ export default function HalfyearlyReport() {
                   r.draft ? (
                     <ReportRows key={`draft-${r.id}`} row={r} draft />
                   ) : (
-                    <ReportRows key={r.id} row={r} highlight={r.id === lastSaved} onEdit={isHr ? () => startEdit(r) : undefined} onDelete={isHr ? () => remove(r) : undefined} />
+                    <ReportRows key={r.id} row={r} editStatus={isHr} results={results} onSaved={reload} highlight={r.id === lastSaved} onEdit={isHr ? () => startEdit(r) : undefined} onDelete={isHr ? () => remove(r) : undefined} />
                   ),
                 )}
               </tbody>

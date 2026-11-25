@@ -35,7 +35,7 @@ from ..biometric_files import parse_date, rows_from_upload
 from ..security import BUILT_IN_LABELS, require_roles, roles_list
 
 router = APIRouter(prefix="/attendance", tags=["attendance"])
-staff_roles = require_roles("HR", "ADMIN", "MANAGER")
+staff_roles = require_roles("HR", "MIS", "ADMIN", "MANAGER")
 MONTH_RE = r"^\d{4}-(0[1-9]|1[0-2])$"
 col = db.db.staff_attendance
 
@@ -49,10 +49,12 @@ CODES = [
     {"code": "W", "label": "Week off", "key": "W"},
     {"code": "H", "label": "Official Holiday", "key": "H"},
     {"code": "C", "label": "C (from the biometric file)", "key": "C"},
+    {"code": "A", "label": "Absent (declared in the daily entry)", "key": "A"},
 ]
 VALID = {c["code"] for c in CODES}
 # v59: what a letter in the biometric file's day cell shows in Daily Entry Submission
 BIO_MARKS = {"C": "X", "E": "X", "A": "X", "H": "H", "W": "W"}
+DECLARE_MARKS = {"Week off": "W", "Absent": "A"}  # v60: the Declare dropdown of the daily entry
 
 
 class Mark(BaseModel):
@@ -101,6 +103,10 @@ def auto_marks(month: str, today: date | None = None) -> dict[str, dict[str, str
     for (code, d8), b in bio.items():
         if b.get("mark") in BIO_MARKS:
             out.setdefault(code, {})[str(int(d8[8:]))] = BIO_MARKS[b["mark"]]
+    # 3b. v60: declared in the daily entry: Week off -> W, Absent -> A (an entry that day still shows S)
+    for dcl in db.db.day_declarations.find({"date": rng}, {"_id": 0, "code": 1, "date": 1, "kind": 1}):
+        if (dcl["code"], dcl["date"]) not in first_start:
+            out.setdefault(dcl["code"], {})[str(int(dcl["date"][8:]))] = DECLARE_MARKS.get(dcl.get("kind"), "A")
     # 4. holidays for everyone
     hols = holidays.in_month(month)
     for p in staff:

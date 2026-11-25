@@ -12,7 +12,7 @@ import ErrorState from '../../components/ui/ErrorState';
 import { useLookups } from '../../context/LookupsContext';
 import { useToast } from '../../context/ToastContext';
 import { useAsync } from '../../hooks/useAsync';
-import { formatDate, formatDateTime } from '../../utils/format';
+import { formatDate, formatDateTime, personLabel } from '../../utils/format';
 
 const STATUS_ORDER = ['Running', 'Planned', 'Break', 'Completed'];
 
@@ -29,7 +29,7 @@ export default function BatchImport() {
   const [busy, setBusy] = useState('');
   const [linked, setLinked] = useState([]); // linked in this visit: shown as "Linked to ..." until dismissed
   const [summary, setSummary] = useState(null);
-  const people = useMemo(() => (lookups?.employees || []).map((p) => ({ value: p.code, label: `${p.name} (${p.code})` })), [lookups]);
+  const people = useMemo(() => (lookups?.employees || []).map((p) => ({ value: p.code, label: `${personLabel(p)}` })), [lookups]);
 
   useEffect(() => {
     if (settings.data) setSummary(settings.data.lastImport || null);

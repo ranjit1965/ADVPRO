@@ -35,7 +35,7 @@ export default function TravellingTab({ values, errors, set, setMany, lookups, o
       {place('from', 'From Place')}
       {place('to', 'To Place')}
       <LookupSelect kind="travelModes" label="Mode of Travel" className="lg:col-span-4" options={lookups.travelModes || []} onAddLookup={onAddLookup} {...f('mode')} />
-      <Input label="Purpose" className="lg:col-span-8" placeholder="e.g. College / OD class" {...f('purpose')} />
+      <Input label="Purpose" className="lg:col-span-8" placeholder="e.g. College class" {...f('purpose')} />
       <Textarea label="Remarks" className="sm:col-span-2 lg:col-span-12" rows={2} maxLength={500} {...f('remarks')} />
     </div>
   );

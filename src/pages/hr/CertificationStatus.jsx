@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { BadgeCheck, FolderOpen, ListChecks, Mail, Pencil, Save, Send } from 'lucide-react';
+import { ArrowLeft, ListChecks, Mail, Pencil, Save, Send } from 'lucide-react';
 import * as api from '../../services/api';
 import PageHeader from '../../components/ui/PageHeader';
 import Card from '../../components/ui/Card';
@@ -9,87 +9,30 @@ import Input from '../../components/ui/Input';
 import Select from '../../components/ui/Select';
 import Textarea from '../../components/ui/Textarea';
 import ErrorState from '../../components/ui/ErrorState';
-import EmptyState from '../../components/ui/EmptyState';
-import Modal from '../../components/ui/Modal';
-import ReportRows, { ReportHead } from '../../components/hr/CertificationRows';
 import { useAuth } from '../../context/AuthContext';
-import { useLookups } from '../../context/LookupsContext';
 import { useToast } from '../../context/ToastContext';
 import { useConfirm } from '../../context/ConfirmContext';
 import { useAsync } from '../../hooks/useAsync';
 import { formatDateTime } from '../../utils/format';
-import { isCurrent } from '../../utils/halfyearly';
-
-const SHOW = [
-  { value: 'pending', label: 'Not completed' },
-  { value: 'current', label: 'Current quarter' },
-  { value: 'carried', label: 'Carried forward' },
-  { value: 'completed', label: 'All completed' },
-  { value: 'all', label: 'All rows' },
-];
-const done = (r) => r.targets.length > 0 && r.targets.every((t) => t.achieved === 'Yes');
-const FILTERS = {
-  pending: (r) => r.targets.some((t) => t.achieved !== 'Yes' && !t.carriedTo),
-  current: (r) => isCurrent(r),
-  carried: (r) => r.carriedForward || r.targets.some((t) => t.carriedForward),
-  completed: done,
-  all: () => true,
-};
 
 /**
- * HR › Certification Status (HR, Admin, Super Admin): record Completed Yes with the date of completion and the
- * certification code, and Delivery ready, for each assigned certification. When a quarter ends, unfinished
- * certifications move to the next quarter (Carried forward). HR sends the Deferred Report and the Certification
- * Completed emails with a button (never automatically) and can edit both texts here. The Super Admin sets the HR mail id.
+ * HR › Halfyearly Program Report › Mail to faculty (v60). The certification status itself is recorded in the
+ * Halfyearly Program Report rows. Here HR sends, with a button (never automatically):
+ *   * the Deferred Report and Certification Completed emails (Check completed / not completed first), and
+ *   * HR's own Performance mail (HR and the Super Admin only), to the faculty's official and personal email.
  */
 export default function CertificationStatus() {
   const { user } = useAuth();
-  const { lookups } = useLookups();
-  const isHr = api.HR_ROLES.includes(user.role);
-  const [employee, setEmployee] = useState('');
-  const [show, setShow] = useState('pending');
-  const { data, loading, error, reload } = useAsync(() => (isHr ? api.getHalfyearly({ employeeCode: employee }) : Promise.resolve([])), [employee]);
-  const people = useMemo(() => {
-    const seen = new Map();
-    for (const p of [...(lookups?.employees || []), ...(lookups?.faculties || [])]) if (!seen.has(p.code)) seen.set(p.code, p);
-    return [...seen.values()].map((p) => ({ value: p.code, label: `${p.name} (${p.code})` }));
-  }, [lookups]);
-  const rows = (data || []).filter(FILTERS[show]);
-  // v59: one line per employee (name + Open); Open shows only that person's certifications in a pop-up.
-  const [openPerson, setOpenPerson] = useState(null); // {code, name}: stays open while HR saves
-  const openCode = openPerson?.code || '';
-  const peopleRows = useMemo(() => {
-    const by = new Map();
-    for (const r of rows) {
-      const p = by.get(r.employeeCode) || { code: r.employeeCode, name: r.employeeName || r.employeeCode, rows: 0, certs: 0, done: 0 };
-      p.rows += 1;
-      p.certs += r.targets.length;
-      p.done += r.targets.filter((t) => t.achieved === 'Yes').length;
-      by.set(r.employeeCode, p);
-    }
-    return [...by.values()].sort((a, b) => a.name.localeCompare(b.name));
-  }, [rows]);
-  const opened = openPerson;
-  const openRows = (data || []).filter((r) => r.employeeCode === openCode);
   const navigate = useNavigate();
-  const confirmBox = useConfirm();
-  const toast = useToast();
-  const remove = async (r) => {
-    if (!(await confirmBox({ title: 'Delete row', message: `Delete the ${r.quarter || ''} certifications of ${r.employeeName}?`, confirmLabel: 'OK, delete', tone: 'danger' }))) return;
-    try {
-      await api.deleteHalfyearly(r.id);
-      toast.success('Row deleted.');
-      reload();
-    } catch (err) {
-      toast.error(err.message);
-    }
-  };
+  const isHr = api.HALFYEARLY_ROLES.includes(user.role);
+  const canPerf = ['HR', 'MANAGER'].includes(user.role);
+  const { data, reload } = useAsync(() => (isHr ? api.getHalfyearly({}) : Promise.resolve([])), []);
 
   if (!isHr) {
     return (
       <>
-        <PageHeader title="Certification Status" />
-        <Card><p className="text-sm text-ink-600">Only HR, Admin and the Super Admin can update the certification status.</p></Card>
+        <PageHeader title="Mail to faculty" />
+        <Card><p className="text-sm text-ink-600">Only HR, Admin and the Super Admin can send these emails.</p></Card>
       </>
     );
   }
@@ -97,77 +40,81 @@ export default function CertificationStatus() {
   return (
     <>
       <PageHeader
-        title="Certification Status"
-        breadcrumb={[{ label: 'HR' }, { label: 'Certification Status' }]}
-        description="Record Completed Yes with the date of completion for each assigned certification. Unfinished ones move to the next quarter when the quarter ends."
+        title="Mail to faculty"
+        breadcrumb={[{ label: 'HR' }, { label: 'Halfyearly Program Report', to: '/hr-report/halfyearly' }, { label: 'Mail to faculty' }]}
+        description="Deferred Report, Certification Completed and Performance emails. Record the certification status in Halfyearly Program Report."
+        actions={<Button variant="secondary" icon={ArrowLeft} onClick={() => navigate('/hr-report/halfyearly')}>Halfyearly Program Report</Button>}
       />
       <FollowupCard onRun={reload} refreshKey={data} />
-      <Card
-        bodyClassName="p-0"
-        title="Assigned certifications"
-        description="Choose Completed Yes, enter the date of completion and the certification code, then click Save on that row."
-        actions={
-          <div className="flex flex-wrap gap-2">
-            <Select aria-label="Filter by employee" searchable className="w-64" placeholder="All employees" options={people} value={employee} onChange={(e) => setEmployee(e.target.value)} />
-            <Select aria-label="Show" sort={false} className="w-44" placeholder="" options={SHOW} value={show} onChange={(e) => setShow(e.target.value)} />
-          </div>
-        }
-      >
-        {error ? (
-          <ErrorState message={error} onRetry={reload} />
-        ) : loading ? (
-          <p className="p-5 text-sm text-ink-500">Loading…</p>
-        ) : !rows.length ? (
-          <EmptyState icon={BadgeCheck} title="Nothing to show" message={data?.length ? 'No row matches this filter.' : 'Assign certifications in Halfyearly Program Report first.'} />
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-[13px]">
-              <caption className="sr-only">Employees with certifications</caption>
-              <thead className="bg-ink-50 text-xs font-semibold uppercase tracking-wide text-ink-500">
-                <tr>
-                  <th className="px-4 py-2.5">Employee</th>
-                  <th className="px-4 py-2.5">Rows</th>
-                  <th className="px-4 py-2.5">Certifications completed</th>
-                  <th className="px-4 py-2.5"><span className="sr-only">Open</span></th>
-                </tr>
-              </thead>
-              <tbody>
-                {peopleRows.map((p) => (
-                  <tr key={p.code} className="border-t border-ink-100 hover:bg-brand-50/40">
-                    <td className="px-4 py-2.5">
-                      <div className="font-medium text-ink-900">{p.name}</div>
-                      <div className="text-xs text-ink-500">{p.code}</div>
-                    </td>
-                    <td className="px-4 py-2.5 tabular-nums">{p.rows}</td>
-                    <td className="px-4 py-2.5 tabular-nums">{p.done} of {p.certs}</td>
-                    <td className="px-4 py-2.5 text-right">
-                      <Button size="sm" variant="secondary" icon={FolderOpen} onClick={() => setOpenPerson({ code: p.code, name: p.name })}>Open</Button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </Card>
-      <Modal open={!!opened} onClose={() => setOpenPerson(null)} size="xl" title={opened ? `${opened.name} (${opened.code})` : ''} description="Only this person's certifications. Record Completed Yes with the date and code, then Save on that row. Edit opens the row in Halfyearly Program Report.">
-        {openRows.length ? (
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[1250px] text-left text-[13px]">
-              <caption className="sr-only">Certification status of {opened?.name}</caption>
-              <ReportHead actions />
-              <tbody>
-                {openRows.map((r) => (
-                  <ReportRows key={r.id} row={r} editStatus onSaved={reload} onEdit={() => navigate(`/hr-report/halfyearly?edit=${encodeURIComponent(r.id)}`)} onDelete={() => remove(r)} />
-                ))}
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          <p className="text-sm text-ink-500">Nothing left to show for this person with this filter.</p>
-        )}
-      </Modal>
+      {canPerf && <PerformanceCard rows={data || []} />}
     </>
+  );
+}
+
+/** v60: HR's own Performance mail template (kept per HR user) and Send for one faculty's half-year row. */
+function PerformanceCard({ rows }) {
+  const toast = useToast();
+  const confirm = useConfirm();
+  const { data: loaded, error, reload } = useAsync(() => api.getPerformanceTemplate(), []);
+  const [tpl, setData] = useState(null);
+  useEffect(() => setData(loaded), [loaded]);
+  const [form, setForm] = useState({ subject: '', body: '' });
+  const [rowId, setRowId] = useState('');
+  const [note, setNote] = useState('');
+  const [busy, setBusy] = useState('');
+  useEffect(() => {
+    if (tpl) setForm({ subject: tpl.subject, body: tpl.body });
+  }, [tpl]);
+  const options = useMemo(() => rows.map((r) => ({ value: r.id, label: `${r.employeeName} (${r.employeeCode}) · ${r.quarter || ''} ${r.startDate || r.startMonth || ''}` })), [rows]);
+
+  const save = async () => {
+    setBusy('save');
+    try {
+      setData(await api.savePerformanceTemplate(form.subject, form.body));
+      toast.success('Your performance mail template is saved.');
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setBusy('');
+    }
+  };
+  const send = async () => {
+    const r = rows.find((x) => x.id === rowId);
+    if (!r) return toast.error('Choose the faculty and half-year first.');
+    if (!(await confirm({ title: 'Send performance mail', message: `Send this email to ${r.employeeName} (official and personal email)?`, confirmLabel: 'Send' }))) return;
+    setBusy('send');
+    try {
+      const res = await api.sendPerformanceMail({ rowId, subject: form.subject, body: form.body, note });
+      toast.success(`Sent to ${res.to.join(', ')}.`);
+      setNote('');
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setBusy('');
+    }
+  };
+
+  if (error) return <ErrorState message={error} onRetry={reload} />;
+  if (!tpl) return null;
+  return (
+    <Card title={<span className="flex items-center gap-2"><Mail className="size-5 text-brand-600" aria-hidden /> Performance mail</span>} description="Your own template (only you see it). Sent from your HR mail to the faculty's official and personal email in Employees.">
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+        <Select label="Faculty and half-year" searchable sort={false} placeholder="Choose" options={options} value={rowId} onChange={(e) => setRowId(e.target.value)} />
+        <Input label="Note ({note})" maxLength={4000} value={note} onChange={(e) => setNote(e.target.value)} placeholder="Optional line for this faculty" />
+        <Input label="Subject" className="md:col-span-2" maxLength={300} value={form.subject} onChange={(e) => setForm((f) => ({ ...f, subject: e.target.value }))} />
+        <Textarea label="Email text" className="md:col-span-2" rows={10} maxLength={10000} value={form.body} onChange={(e) => setForm((f) => ({ ...f, body: e.target.value }))} />
+      </div>
+      <div className="mt-2 flex flex-wrap gap-1.5 text-[11px]">
+        <span className="text-ink-500">Insert:</span>
+        {tpl.placeholders.map((k) => (
+          <button key={k} type="button" onClick={() => setForm((f) => ({ ...f, body: `${f.body}${k}` }))} className="rounded-full bg-brand-50 px-2 py-0.5 font-medium text-brand-700 hover:bg-brand-100">{k}</button>
+        ))}
+      </div>
+      <div className="mt-3 flex flex-wrap gap-2">
+        <Button size="sm" variant="secondary" icon={Save} loading={busy === 'save'} onClick={save}>Save my template</Button>
+        <Button size="sm" icon={Send} loading={busy === 'send'} disabled={!rowId} onClick={send}>Send</Button>
+      </div>
+    </Card>
   );
 }
 

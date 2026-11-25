@@ -31,7 +31,7 @@ def with_minutes(e: dict) -> dict:
 class EntryIn(BaseModel):
     facultyCode: str
     activityDate: date
-    facultyIn: Literal["Center", "Outstation"]
+    facultyIn: Literal["Center", "Outstation", "Corporate", "WFH"]  # v60: Outstation is shown as "College"; WFH = Work from home
     timeFrom: str = Field(pattern=TIME_RE)
     timeTo: str = Field(pattern=TIME_RE)
     activityType: Literal[ACTIVITY_TYPES]  # type: ignore[valid-type]
@@ -75,7 +75,7 @@ class EntryIn(BaseModel):
         return self
 
 
-VIEW_ALL = ("HR", "ADMIN", "MANAGER")  # see everyone's entries; everyone else sees only their own
+VIEW_ALL = ("HR", "MIS", "ADMIN", "MANAGER")  # see everyone's entries; everyone else sees only their own
 NO_ENTRY_ROLES = VIEW_ALL  # HR, Admin and Super Admin only view faculty entries; they do not record their own
 
 
@@ -154,6 +154,35 @@ def list_entries(
     return {"items": items, "total": total}
 
 
+class DeclareIn(BaseModel):
+    date: date
+    kind: Literal["Absent", "Week off", ""] = ""  # empty: remove the declaration
+    facultyCode: str | None = None  # Admin / Super Admin may declare for someone else
+
+
+@router.get("/declarations")
+def declarations(month: str = Query(..., pattern=r"^\d{4}-(0[1-9]|1[0-2])$"), facultyCode: str | None = None, me: dict = Depends(current_user)):
+    """v60: the days declared Absent / Week off in the daily entry (Declare dropdown)."""
+    code = facultyCode if facultyCode and me["role"] in ("ADMIN", "MANAGER", "HR", "MIS") else me["code"]
+    return [{k: d[k] for k in ("date", "kind")} for d in db.db.day_declarations.find({"code": code, "date": {"$regex": f"^{month}-"}}).sort("date", 1)]
+
+
+@router.put("/declarations")
+def declare(body: DeclareIn, me: dict = Depends(current_user)):
+    """Declare a day Absent or Week off (optional). Daily Entry Submission shows A or W; the missing-entry check skips it."""
+    from datetime import timedelta  # noqa: PLC0415
+
+    code = body.facultyCode if body.facultyCode and me["role"] in ("ADMIN", "MANAGER") else me["code"]
+    if body.date > date.today() + timedelta(days=31):
+        raise HTTPException(422, "Declare at most 31 days ahead")
+    key = f"{code}|{body.date.isoformat()}"
+    if not body.kind:
+        db.db.day_declarations.delete_one({"_id": key})
+        return {"date": body.date.isoformat(), "kind": ""}
+    db.db.day_declarations.update_one({"_id": key}, {"$set": {"code": code, "date": body.date.isoformat(), "kind": body.kind, "by": me["name"], "at": datetime.now(timezone.utc).isoformat()}}, upsert=True)
+    return {"date": body.date.isoformat(), "kind": body.kind}
+
+
 @router.get("/{entry_id}")
 def get_entry(entry_id: str, user: dict = Depends(current_user)):
     e = db.entries.find_one({"id": entry_id}, {"searchText": 0})
@@ -184,7 +213,6 @@ def create_entry(body: EntryIn, tasks: BackgroundTasks, user: dict = Depends(cur
         **p,
         "id": f"DAE-{db.next_seq('daily_entry'):04d}",
         "facultyName": fac["name"],
-        "department": fac.get("department", ""),
         "createdBy": user["name"],
         "createdAt": now,
         "updatedAt": now,
@@ -208,7 +236,7 @@ def update_entry(entry_id: str, body: EntryIn, tasks: BackgroundTasks, user: dic
     check_overlap(p, entry_id)
     check_others_limit(p, entry_id)
     fac = faculty_or_404(p["facultyCode"])
-    p.update(facultyName=fac["name"], department=fac.get("department", ""), updatedBy=user["name"], updatedAt=datetime.now(timezone.utc).isoformat(), searchText=search_text(p))
+    p.update(facultyName=fac["name"], updatedBy=user["name"], updatedAt=datetime.now(timezone.utc).isoformat(), searchText=search_text(p))
     db.entries.update_one({"id": entry_id}, {"$set": p})
     if issue_alerts.has_issue(p) and not old.get("issueAlert"):
         tasks.add_task(issue_alerts.send, entry_id)  # issue added to an entry that had none

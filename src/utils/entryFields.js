@@ -64,6 +64,7 @@ export const DETAIL_FIELDS = {
     ['materialType', 'Material Type'],
     ['chapterNo', 'Chapter / Session No'],
     ['pages', 'Activity Quantity'],
+    ['storedLocation', 'Stored location'],
     ['chapterDetails', 'Chapter / Session Details', true],
   ],
   selfLearning: [

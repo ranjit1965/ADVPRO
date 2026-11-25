@@ -22,6 +22,7 @@ import MasterList from './pages/master/MasterList';
 import Biometric from './pages/master/Biometric';
 import BatchImport from './pages/master/BatchImport';
 import ExternalFacultyReport from './pages/master/ExternalFacultyReport';
+import ExternalCertifications from './pages/master/ExternalCertifications';
 import DataUpload from './pages/admin/DataUpload';
 import YearlyHolidays from './pages/admin/YearlyHolidays';
 import HrPolicy from './pages/hr/HrPolicy';
@@ -30,6 +31,7 @@ import CertificationStatus from './pages/hr/CertificationStatus';
 import NotFound from './pages/NotFound';
 import RoleAccess from './pages/master/RoleAccess';
 import DeletedEmployees from './pages/master/DeletedEmployees';
+import InactiveEmployees from './pages/master/InactiveEmployees';
 import DropdownValues from './pages/master/DropdownValues';
 import AttendanceEntry from './pages/attendance/AttendanceEntry';
 import AttendancePrint from './pages/attendance/AttendancePrint';
@@ -80,9 +82,11 @@ export default function App() {
               <Route path="master/batch-import" element={<BatchImport />} />
               <Route path="master/role-access" element={<RoleAccess />} />
               <Route path="master/dropdown-values" element={<DropdownValues />} />
+              <Route path="master/inactive-employees" element={<InactiveEmployees />} />
               <Route path="master/deleted-employees" element={<DeletedEmployees />} />
               <Route path="master/deleted-employees/:userId" element={<DeletedEmployees />} />
               <Route path="master/external-faculty-report" element={<ExternalFacultyReport />} />
+              <Route path="master/external-certifications" element={<ExternalCertifications />} />
               <Route path="master/:key" element={<MasterList />} />
               <Route path="admin/data-upload" element={<DataUpload />} />
               <Route path="admin/yearly-holidays" element={<YearlyHolidays />} />

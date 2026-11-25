@@ -344,6 +344,68 @@ missed), the Dashboard and this page remind Admin / Manager until each file is u
   creating the batch (Master › Batch or Batch Import) or **Dismiss** them. Saved in `batch_requests`;
   `POST/GET /api/batch-requests`, `PATCH /api/batch-requests/{id}`.
 
+### v60: employees, inactive login, MIS role, Halfyearly, External Faculty, daily entry
+
+* **Add Employee.** No User ID or password on the form: the Super Admin gives the login with the key button
+  (Login) in Master › Employees; until then the employee cannot sign in. The old letter code is now
+  **Short Name** (2 to 5 letters); **Employee ID** is a new number field. Phone (WhatsApp), Personal email
+  (required) and Official email (optional). Branch takes any place name. Grade, Department and Designation are
+  removed from the form and the database (migration on start). Every name dropdown shows
+  `NAME (SHORT NAME · EMPLOYEE ID)` and searches by name, short name or employee ID.
+* **Inactive instead of delete.** Delete makes the employee Inactive (cannot sign in; names still show in every
+  report). Admin › Inactive Employees lists them with Make active. Employees deleted before v60 stay under
+  "Deleted before v60" for the Super Admin.
+* **Automatic Inactive (Python, no cron needed).** Roles are ticked by the Super Admin (Master › Employees ›
+  Missing entries; never Super Admin, Admin, HR or MIS). No entry on the last 3 working days: on the 4th morning
+  (after `AUTO_INACTIVE_TIME`) the first request to the API starts the check; the employee gets the WhatsApp
+  template `WA_INACTIVE_TEMPLATE_NAME` and an email to the personal and official mail, then is made Inactive.
+  Days declared Absent / Week off, holidays and weekly offs do not count.
+  * Sample WhatsApp template (variables name, days):
+    `Dear {{1}}, no daily entry was submitted in the Daily Entry Report on {{2}}. As per the office rule your login is made inactive today. Please contact HR to make it active again. - Advantage Pro`
+  * Email (subject "Daily entry not submitted: your login is made inactive"):
+    ```
+    Dear {name},
+
+    Our records show that no daily entry was submitted in the Daily Entry Report for {count} working days in a row: {days}.
+
+    As per the office rule, your login is made inactive from today ({date}). Your entries and records are kept.
+
+    Please contact HR or your Admin to make your login active again, and submit the pending daily entries.
+
+    Regards,
+    HR Team
+    Vectra Technosoft Pvt. Ltd. - Advantage Pro
+    ```
+* **MIS role.** Everything HR has except the Halfyearly Program Report (and its mails). Attendance (Daily Entry
+  Submission, Print, Time Sheet) is now inside the Admin and HR menus, not its own menu.
+* **Halfyearly Program Report.** Joining Date (also saved on the employee); **Half-yearly** (was Quarter);
+  **Commitment period** Start / End (End fills 6 months later). Certification search matches any part of the
+  name. The certification status is recorded in the saved rows (pick the faculty, then Completed / Date /
+  **Certification ID** / **Expiry Date**, Save; Edit and Delete in the row). Completed values: Yes / No / Fail /
+  No-Deferred, changeable in Dropdown Values › certificationResults (Yes is fixed). The Required column is
+  removed. **Mail to faculty** opens the mails page: Deferred Report, Certification Completed (Check
+  completed / not completed) and HR's own **Performance mail** (HR and Super Admin only; each HR keeps their own
+  template; sent to the official and personal email).
+* **External Faculty** (HR, MIS, Admin, Super Admin) has three pages: Add External Faculty, External Faculty
+  Monthly Report and External Certifications.
+  * The list shows the name with **Open** (all details, certifications, Send wishes, **Bank details**). Edit /
+    Delete are in the last column; Delete is for the Super Admin and Admin.
+  * New optional fields: Certification ID, Course Name, Address, Pincode (6 digits), Landmark.
+  * Bank details (bank name, account no, holder name, branch, IFSC, PAN, Aadhaar; all optional) are kept in
+    `external_faculty_bank`, apart from the faculty record; HR, Admin and Super Admin only (not MIS).
+  * External certifications (`external_certifications`): Current / Non-current (empty = Current until the expiry).
+  * Monthly report: Name filter, Year, Q1 (Jan–Mar) to Q4 (Oct–Dec) toggles (none = whole year), Batches only or
+    Whole record (with certifications). Columns: name, batch name, start, end, course name, course ID. CSV / Print.
+* **Daily entry.** Optional **Declare** (Absent / Week off) next to the date: Daily Entry Submission shows A / W.
+  **Faculty in**: Center / College (was College / OD) / Corporate / Work from home; the working hours report has a
+  column for each. Course Preparation has **Stored location** (starts with `\\192.168.0.129\`, add the folder or
+  type any path), shown in the reports; the Chapter / Session details box is half width. Material Type has
+  "Technical write off".
+* **Database.** `db/create_database.mongodb.js` creates every collection and index the app uses
+  (`mongosh "<MONGODB_URI>" db/create_database.mongodb.js`). `cd backend && python -m app.cleanup_removed` lists
+  the unused collections (leave_requests, master_assets, master_attendance, master_oldRegistrations, ...) and
+  old fields; add `--yes` to delete them (take a mongodump first).
+
 ### Birthdays, Yearly Holidays, Daily Entry Submission, Certification Status (v59)
 
 * **External faculty birthdays and anniversaries.**

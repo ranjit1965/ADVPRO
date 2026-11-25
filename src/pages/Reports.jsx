@@ -21,7 +21,7 @@ import { useLookups } from '../context/LookupsContext';
 import { useToast } from '../context/ToastContext';
 import * as api from '../services/api';
 import { ACTIVITY_LABEL, ACTIVITY_TYPES, FACULTY_IN_OPTIONS, NON_PERFORMANCE_TYPES, facultyInLabel } from '../utils/constants';
-import { formatDate, formatDuration, formatTime, monthLabel, toISODate } from '../utils/format';
+import { formatDate, formatDuration, formatTime, monthLabel, toISODate, personLabel } from '../utils/format';
 import { entrySummary } from '../utils/entry';
 import { downloadCsv } from '../utils/export';
 import { cn } from '../utils/cn';
@@ -94,8 +94,8 @@ export default function Reports() {
   };
   // HR, Admin and Super Admin pick anyone; faculty and staff only see their own report.
   const facultyOpts = viewAll
-    ? people.map((f) => ({ value: f.code, label: `${f.name} (${f.code})${f.role && f.role !== 'FACULTY' ? ` · ${f.role}` : ''}` }))
-    : [{ value: user.code, label: `${user.name} (${user.code})` }];
+    ? people.map((f) => ({ value: f.code, label: `${personLabel(f)}${f.role && f.role !== 'FACULTY' ? ` · ${f.role}` : ''}` }))
+    : [{ value: user.code, label: `${personLabel(user)}` }];
 
   const exportCsv = () => {
     const d = state.data;
@@ -126,7 +126,9 @@ export default function Reports() {
           { header: 'Entries', value: (r) => r.entries },
           { header: 'Class hrs', value: (r) => hrs(r.classMinutes) },
           { header: 'Center hrs', value: (r) => hrs(r.centerMinutes) },
-          { header: 'College / OD hrs', value: (r) => hrs(r.outstationMinutes) },
+          { header: 'College hrs', value: (r) => hrs(r.outstationMinutes) },
+          { header: 'Corporate hrs', value: (r) => hrs(r.corporateMinutes) },
+          { header: 'Work from home hrs', value: (r) => hrs(r.wfhMinutes) },
           { header: 'Performance hrs', value: (r) => hrs(r.performanceMinutes) },
           { header: 'Others hrs', value: (r) => hrs(r.othersMinutes) },
           { header: 'Total hrs', value: (r) => hrs(r.totalMinutes) },
@@ -268,7 +270,9 @@ function WorkingHoursView({ data, loading, month }) {
             { key: 'entries', header: 'Entries', align: 'right' },
             { key: 'classMinutes', header: 'Class', align: 'right', render: (r) => formatDuration(r.classMinutes) },
             { key: 'centerMinutes', header: 'Center', align: 'right', render: (r) => formatDuration(r.centerMinutes) },
-            { key: 'outstationMinutes', header: 'College / OD', align: 'right', render: (r) => formatDuration(r.outstationMinutes) },
+            { key: 'outstationMinutes', header: 'College', align: 'right', render: (r) => formatDuration(r.outstationMinutes) },
+            { key: 'corporateMinutes', header: 'Corporate', align: 'right', render: (r) => formatDuration(r.corporateMinutes || 0) },
+            { key: 'wfhMinutes', header: 'Work from home', align: 'right', render: (r) => formatDuration(r.wfhMinutes || 0) },
             { key: 'performanceMinutes', header: 'Performance', align: 'right', render: (r) => formatDuration(r.performanceMinutes) },
             { key: 'othersMinutes', header: 'Others', align: 'right', render: (r) => formatDuration(r.othersMinutes) },
             { key: 'totalMinutes', header: 'Total', align: 'right', render: (r) => <b className="text-ink-900">{formatDuration(r.totalMinutes)}</b> },
@@ -282,6 +286,8 @@ function WorkingHoursView({ data, loading, month }) {
               <td className="px-4 py-3 text-right tabular-nums">{formatDuration(sum('classMinutes'))}</td>
               <td className="px-4 py-3 text-right tabular-nums">{formatDuration(sum('centerMinutes'))}</td>
               <td className="px-4 py-3 text-right tabular-nums">{formatDuration(sum('outstationMinutes'))}</td>
+              <td className="px-4 py-3 text-right tabular-nums">{formatDuration(sum('corporateMinutes'))}</td>
+              <td className="px-4 py-3 text-right tabular-nums">{formatDuration(sum('wfhMinutes'))}</td>
               <td className="px-4 py-3 text-right tabular-nums">{formatDuration(sum('performanceMinutes'))}</td>
               <td className="px-4 py-3 text-right tabular-nums">{formatDuration(sum('othersMinutes'))}</td>
               <td className="px-4 py-3 text-right tabular-nums">{formatDuration(sum('totalMinutes'))}</td>

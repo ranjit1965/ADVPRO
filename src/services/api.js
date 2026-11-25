@@ -248,7 +248,8 @@ export async function deleteMasterRecords(key, ids) {
 /* ------------------------------------------------------------ HR_Report */
 // HR Policy.
 
-export const HR_ROLES = ['HR', 'MANAGER', 'ADMIN'];
+export const HR_ROLES = ['HR', 'MIS', 'MANAGER', 'ADMIN']; // v60: MIS has the HR pages (except Halfyearly Program Report)
+export const HALFYEARLY_ROLES = ['HR', 'MANAGER', 'ADMIN'];
 
 /** GET /api/hr/policy */
 export async function getHrPolicy() {
@@ -390,6 +391,14 @@ export async function saveStudentMarks(query, rows) {
   return request('/student-marks', { method: 'POST', body: { ...query, rows } });
 }
 
+/** v60: Declare dropdown of the daily entry (Absent / Week off; '' removes it). */
+export async function getDeclarations(month, facultyCode) {
+  return request('/daily-entries/declarations', { params: { month, facultyCode } });
+}
+export async function declareDay(body) {
+  return request('/daily-entries/declarations', { method: 'PUT', body });
+}
+
 /** GET /api/hr/halfyearly?employeeCode= : Halfyearly Program Report rows (employees see only their own). */
 export async function getHalfyearly({ employeeCode } = {}) {
   return request('/hr/halfyearly', { params: { employeeCode } });
@@ -426,6 +435,17 @@ export async function sendCertMails(kind, ids = []) {
 }
 
 /** DELETE /api/hr/halfyearly/{id} (HR, Admin, Super Admin) */
+/** v60: HR's own Performance mail template and send (HR and Super Admin). */
+export async function getPerformanceTemplate() {
+  return request('/hr/halfyearly/performance/template');
+}
+export async function savePerformanceTemplate(subject, body) {
+  return request('/hr/halfyearly/performance/template', { method: 'PUT', body: { subject, body } });
+}
+export async function sendPerformanceMail(body) {
+  return request('/hr/halfyearly/performance/send', { method: 'POST', body });
+}
+
 export async function deleteHalfyearly(id) {
   return request(`/hr/halfyearly/${encodeURIComponent(id)}`, { method: 'DELETE' });
 }
@@ -464,6 +484,27 @@ export async function removeHoliday(date) {
   return request(`/attendance/holidays/${date}`, { method: 'DELETE' });
 }
 
+/** v60 External Faculty: bank details (HR / Admin / Super Admin), external certifications and the quarter report. */
+export async function getExternalBank(id) {
+  return request(`/external/bank/${encodeURIComponent(id)}`);
+}
+export async function saveExternalBank(id, body) {
+  return request(`/external/bank/${encodeURIComponent(id)}`, { method: 'PUT', body });
+}
+export async function getExternalCerts(facultyId) {
+  return request('/external/certifications', { params: { facultyId: facultyId || undefined } });
+}
+export async function saveExternalCert(body) {
+  const { id, ...rest } = body;
+  return id ? request(`/external/certifications/${encodeURIComponent(id)}`, { method: 'PUT', body: rest }) : request('/external/certifications', { method: 'POST', body: rest });
+}
+export async function deleteExternalCert(id) {
+  return request(`/external/certifications/${encodeURIComponent(id)}`, { method: 'DELETE' });
+}
+export async function getExternalQuarterReport({ year, quarters = [], facultyId, scope = 'batches' }) {
+  return request('/external/report', { params: { year, quarters: quarters.join(',') || undefined, facultyId: facultyId || undefined, scope } });
+}
+
 /** GET /api/masters/externalFaculty/report?month=YYYY-MM&status=: external faculty batches running in the month. */
 export async function getExternalFacultyReport(month, status) {
   return request('/masters/externalFaculty/report', { params: { month, status: status || undefined } });
@@ -499,4 +540,19 @@ export async function getYearHolidays(year) {
 /** POST /api/attendance/holidays/import: Excel / CSV with Date (DD/MM/YYYY) and Festival name. */
 export async function importHolidays(file) {
   return request('/attendance/holidays/import', { method: 'POST', body: file, params: { name: file.name } });
+}
+
+/** PUT /api/users/{userId}/login (Super Admin): the employee's User ID and password. */
+export async function setUserLogin(userId, body) {
+  return request(`/users/${encodeURIComponent(userId)}/login`, { method: 'PUT', body });
+}
+
+/** GET /api/users/inactive/list: employees who cannot sign in now. */
+export async function getInactiveUsers() {
+  return request('/users/inactive/list');
+}
+
+/** PUT /api/users/auto-inactive/roles (Super Admin): roles the missing-entry check makes inactive. */
+export async function setAutoInactiveRoles(roles) {
+  return request('/users/auto-inactive/roles', { method: 'PUT', body: { roles } });
 }

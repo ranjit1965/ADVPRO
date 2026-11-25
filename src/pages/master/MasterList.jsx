@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, Navigate, useParams } from 'react-router-dom';
-import { Download, FileBarChart, Gift, Hash, Pencil, Plus, Trash2, X } from 'lucide-react';
+import { Award, Download, FileBarChart, FolderOpen, Gift, Hash, Pencil, Plus, Trash2, X } from 'lucide-react';
 import * as api from '../../services/api';
 import PageHeader from '../../components/ui/PageHeader';
 import Card from '../../components/ui/Card';
@@ -27,6 +27,7 @@ import { masterByKey } from '../../config/masterMenu';
 import { lookupLabel, lookupOptions } from '../../components/master/lookupOptions';
 import { formatDate, formatDateTime, formatTime } from '../../utils/format';
 import { downloadCsv } from '../../utils/export';
+import ExternalFacultyDetails from '../../components/master/ExternalFacultyDetails';
 
 const display = (f, v, lookups) => {
   if (v === undefined || v === null || v === '') return '';
@@ -107,7 +108,10 @@ export default function MasterList() {
   const { key } = useParams();
   const def = masterByKey(key);
   const { user } = useAuth();
-  const canDelete = isSuperAdmin(user); // only the Super Admin deletes records; Admin / HR view, add and edit
+  const isExt = key === 'externalFaculty';
+  // Only the Super Admin deletes records; v60: Admin also deletes External Faculty. Admin / HR view, add and edit.
+  const canDelete = isSuperAdmin(user) || (isExt && user.role === 'ADMIN');
+  const [opened, setOpened] = useState(null); // External Faculty › Open
   const { lookups, reload: reloadLookups } = useLookups();
   const toast = useToast();
   // v59: External Faculty: "Send wishes" on the birthday / anniversary itself (WhatsApp template).
@@ -175,6 +179,7 @@ export default function MasterList() {
         if (f.type === 'number' && Number.isNaN(Number(v))) errs[f.key] = 'Enter a number';
         if (f.type === 'email' && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) errs[f.key] = 'Enter a valid email';
         if (f.type === 'phone' && !/^[0-9+\- ]{6,15}$/.test(v)) errs[f.key] = 'Enter a valid number';
+        if (f.pattern && !new RegExp(f.pattern).test(String(v))) errs[f.key] = 'Not valid';
       }
     });
     setErrors(errs);
@@ -317,6 +322,22 @@ export default function MasterList() {
   const allMatching = rows.length > 0 && rows.every((r) => picked.has(r.id));
   const box = 'size-4 cursor-pointer rounded border-ink-300 accent-brand-600';
 
+  const actionsCol = {
+      key: 'actions',
+      header: <span className={isExt ? '' : 'sr-only'}>{canDelete ? 'Edit / Delete' : 'Edit'}</span>,
+      headerClassName: isExt ? 'text-right' : undefined,
+      render: (r) => (
+        <div className={`flex gap-1 whitespace-nowrap${isExt ? ' justify-end' : ''}`}>
+          <Button size="sm" variant="ghost" icon={Pencil} aria-label={`Edit ${r[def.titleField] || r.id}`} title="Edit" onClick={() => editRow(r)}>Edit</Button>
+          {canDelete && <Button size="sm" variant="ghost" className="hover:!bg-danger-50 hover:!text-danger-600" icon={Trash2} aria-label={`Delete ${r[def.titleField] || r.id}`} title="Delete" onClick={() => remove(r)}>Delete</Button>}
+          {wishes.filter((w) => w.facultyId === r.id).map((w) => (
+            <Button key={w.key} size="sm" icon={Gift} loading={sending === w.key} disabled={w.sent} title={w.sent ? 'Already sent today' : `Send ${w.label.toLowerCase()} wishes on WhatsApp`} onClick={() => sendWishes(w)}>
+              {w.sent ? `${w.label} wishes sent` : `Send ${w.label.toLowerCase()} wishes`}
+            </Button>
+          ))}
+        </div>
+      ),
+  };
   const columns = [
     canDelete && {
       key: 'select',
@@ -334,21 +355,7 @@ export default function MasterList() {
       className: 'w-10',
       render: (r) => <input type="checkbox" className={box} aria-label={`Select ${r[def.titleField] || r.id}`} checked={picked.has(r.id)} onChange={(e) => toggle([r.id], e.target.checked)} />,
     },
-    {
-      key: 'actions',
-      header: <span className="sr-only">{canDelete ? 'Edit or delete' : 'Edit'}</span>,
-      render: (r) => (
-        <div className="flex gap-1 whitespace-nowrap">
-          <Button size="sm" variant="ghost" icon={Pencil} aria-label={`Edit ${r[def.titleField] || r.id}`} title="Edit" onClick={() => editRow(r)}>Edit</Button>
-          {canDelete && <Button size="sm" variant="ghost" className="hover:!bg-danger-50 hover:!text-danger-600" icon={Trash2} aria-label={`Delete ${r[def.titleField] || r.id}`} title="Delete" onClick={() => remove(r)}>Delete</Button>}
-          {wishes.filter((w) => w.facultyId === r.id).map((w) => (
-            <Button key={w.key} size="sm" icon={Gift} loading={sending === w.key} disabled={w.sent} title={w.sent ? 'Already sent today' : `Send ${w.label.toLowerCase()} wishes on WhatsApp`} onClick={() => sendWishes(w)}>
-              {w.sent ? `${w.label} wishes sent` : `Send ${w.label.toLowerCase()} wishes`}
-            </Button>
-          ))}
-        </div>
-      ),
-    },
+    !isExt && actionsCol,
     ...def.fields.filter((f) => !f.hideInTable && !f.hidden).map((f) => ({
       key: f.key,
       header: f.label,
@@ -356,9 +363,18 @@ export default function MasterList() {
       render: (r) => {
         // tableMerge: an empty value shows the other field instead (Faculty: internal, or the external faculty).
         const m = f.tableMerge && !r[f.key] && r[f.tableMerge.key] ? display({ type: 'lookup', source: f.tableMerge.source }, r[f.tableMerge.key], lookups) : null;
+        if (isExt && f.key === def.titleField) {
+          return (
+            <span className="flex items-center gap-3">
+              <span className="font-medium text-ink-900">{display(f, r[f.key], lookups)}</span>
+              <Button size="sm" variant="secondary" icon={FolderOpen} onClick={() => setOpened(r)} aria-label={`Open ${r[f.key]}`}>Open</Button>
+            </span>
+          );
+        }
         return <span className={f.key === def.titleField ? 'font-medium text-ink-900' : ''}>{m ?? display(f, r[f.key], lookups)}</span>;
       },
     })),
+    isExt && actionsCol,
   ].filter(Boolean);
 
   return (
@@ -369,10 +385,15 @@ export default function MasterList() {
         breadcrumb={[{ label: 'Master', to: '/master' }, { label: def.label }]}
         actions={
           <>
-            {key === 'externalFaculty' && (
-              <Link to="/master/external-faculty-report">
-                <Button variant="secondary" icon={FileBarChart}>Generate report</Button>
-              </Link>
+            {isExt && (
+              <>
+                <Link to="/master/external-certifications">
+                  <Button variant="secondary" icon={Award}>External certifications</Button>
+                </Link>
+                <Link to="/master/external-faculty-report">
+                  <Button variant="secondary" icon={FileBarChart}>Monthly report</Button>
+                </Link>
+              </>
             )}
             <Button variant="secondary" icon={Download} onClick={exportCsv} disabled={!rows.length}>Export</Button>
             <Button icon={Plus} onClick={openNew}>Add {def.label}</Button>
@@ -447,6 +468,19 @@ export default function MasterList() {
           </div>
         )}
       </Modal>
+
+      {isExt && (
+        <ExternalFacultyDetails
+          record={opened && (data || []).find((r) => r.id === opened.id)}
+          fields={def.fields}
+          display={(f, v) => display(f, v, lookups)}
+          onClose={() => setOpened(null)}
+          onEdit={() => { const r = opened; setOpened(null); editRow(r); }}
+          wishes={opened ? wishes.filter((w) => w.facultyId === opened.id) : []}
+          sending={sending}
+          onWish={sendWishes}
+        />
+      )}
 
       <Modal open={!!addNew} onClose={() => setAddNew(null)} title={addNew ? `Add ${addNew.def.label}` : ''}
         footer={<><Button variant="secondary" onClick={() => setAddNew(null)}>Cancel</Button><Button loading={addNew?.saving} onClick={saveAddNew}>Save</Button></>}>
