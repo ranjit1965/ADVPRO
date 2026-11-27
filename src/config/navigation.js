@@ -20,12 +20,14 @@ import { NO_ENTRY_ROLES, WORKING_HOURS_ROLES } from '../utils/permissions';
  * `restricted: true` items were greyed out for the FACULTY role in the legacy app
  * and stay visible-but-locked here; the backend will decide this per role later.
  */
+const ADMIN_ONLY = ['ADMIN', 'MANAGER'];
 const ADMIN_PAGES = [
-  { key: 'data-upload', label: 'Data Upload', to: '/admin/data-upload' },
+  // v61: Data Upload, Batch and Batch Import: Admin and Super Admin only (not in the HR / MIS menus)
+  { key: 'data-upload', label: 'Data Upload', to: '/admin/data-upload', roles: ADMIN_ONLY },
   { key: 'admin-employees', label: 'Employees', to: '/master/employees' },
   { key: 'admin-inactive-employees', label: 'Inactive Employees', to: '/master/inactive-employees', roles: ['HR', 'MIS', 'ADMIN', 'MANAGER'] },
-  { key: 'admin-batch', label: 'Batch', to: '/master/batches' },
-  { key: 'admin-batch-import', label: 'Batch Import', to: '/master/batch-import' },
+  { key: 'admin-batch', label: 'Batch', to: '/master/batches', roles: ADMIN_ONLY },
+  { key: 'admin-batch-import', label: 'Batch Import', to: '/master/batch-import', roles: ADMIN_ONLY },
   {
     key: 'admin-external-faculty',
     label: 'External Faculty',
@@ -39,7 +41,6 @@ const ADMIN_PAGES = [
   { key: 'admin-course', label: 'Course', to: '/master/courses' },
   { key: 'admin-biometric', label: 'Biometric', to: '/master/biometric' },
   { key: 'admin-dropdown-values', label: 'Dropdown Values', to: '/master/dropdown-values' },
-  { key: 'admin-yearly-holidays', label: 'Yearly Holidays', to: '/admin/yearly-holidays', roles: ['HR', 'MIS', 'ADMIN', 'MANAGER'] },
 ];
 const HR_PAGE_ROLES = ['HR', 'MIS', 'ADMIN', 'MANAGER'];
 // v60: Attendance is inside the Admin and HR menus (no longer its own menu on the left).

@@ -111,6 +111,8 @@ export default function MasterList() {
   const isExt = key === 'externalFaculty';
   // Only the Super Admin deletes records; v60: Admin also deletes External Faculty. Admin / HR view, add and edit.
   const canDelete = isSuperAdmin(user) || (isExt && user.role === 'ADMIN');
+  // v61: batches are added and changed by Admin and the Super Admin only (others view them)
+  const canEdit = key !== 'batches' || ['ADMIN', 'MANAGER'].includes(user.role);
   const [opened, setOpened] = useState(null); // External Faculty › Open
   const { lookups, reload: reloadLookups } = useLookups();
   const toast = useToast();
@@ -328,7 +330,7 @@ export default function MasterList() {
       headerClassName: isExt ? 'text-right' : undefined,
       render: (r) => (
         <div className={`flex gap-1 whitespace-nowrap${isExt ? ' justify-end' : ''}`}>
-          <Button size="sm" variant="ghost" icon={Pencil} aria-label={`Edit ${r[def.titleField] || r.id}`} title="Edit" onClick={() => editRow(r)}>Edit</Button>
+          {canEdit && <Button size="sm" variant="ghost" icon={Pencil} aria-label={`Edit ${r[def.titleField] || r.id}`} title="Edit" onClick={() => editRow(r)}>Edit</Button>}
           {canDelete && <Button size="sm" variant="ghost" className="hover:!bg-danger-50 hover:!text-danger-600" icon={Trash2} aria-label={`Delete ${r[def.titleField] || r.id}`} title="Delete" onClick={() => remove(r)}>Delete</Button>}
           {wishes.filter((w) => w.facultyId === r.id).map((w) => (
             <Button key={w.key} size="sm" icon={Gift} loading={sending === w.key} disabled={w.sent} title={w.sent ? 'Already sent today' : `Send ${w.label.toLowerCase()} wishes on WhatsApp`} onClick={() => sendWishes(w)}>
@@ -396,11 +398,11 @@ export default function MasterList() {
               </>
             )}
             <Button variant="secondary" icon={Download} onClick={exportCsv} disabled={!rows.length}>Export</Button>
-            <Button icon={Plus} onClick={openNew}>Add {def.label}</Button>
+            {canEdit && <Button icon={Plus} onClick={openNew}>Add {def.label}</Button>}
           </>
         }
       />
-      {isBatch && requests.data?.length > 0 && (
+      {isBatch && canEdit && requests.data?.length > 0 && (
         <Card className="mb-5" title={`Batch No requests (${requests.data.length})`} description="Sent by faculty with Request Batch No in the Class entry. Create batch opens Add Batch filled in from the request; saving it marks the request Done.">
           <ul className="divide-y divide-ink-100">
             {requests.data.map((r) => (

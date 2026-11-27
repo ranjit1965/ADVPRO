@@ -133,8 +133,15 @@ def list_records(key: str, _: dict = Depends(master_roles)):
     return [clean(d) for d in collection(key).find().sort("id", 1)]
 
 
+def _can_edit(key: str, me: dict) -> None:
+    """v61: batches are added and changed by Admin and the Super Admin only."""
+    if key == "batches" and me.get("role") not in ("ADMIN", "MANAGER"):
+        raise HTTPException(403, "Only Admin and the Super Admin add or change batches.")
+
+
 @router.post("/{key}", status_code=201)
 def create_record(key: str, body: dict = Body(...), me: dict = Depends(master_roles)):
+    _can_edit(key, me)
     col, defn = collection(key), MASTERS[key]
     rec = validate(defn, body)
     check_unique(defn, col, rec)
@@ -171,6 +178,7 @@ def delete_records(key: str, body: DeleteManyIn, me: dict = Depends(master_roles
 
 @router.put("/{key}/{rec_id}")
 def update_record(key: str, rec_id: str, body: dict = Body(...), me: dict = Depends(master_roles)):
+    _can_edit(key, me)
     col, defn = collection(key), MASTERS[key]
     rec = validate(defn, body)
     check_unique(defn, col, rec, rec_id)

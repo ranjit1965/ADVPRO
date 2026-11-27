@@ -1,5 +1,7 @@
 import { useState } from 'react';
-import { CalendarPlus, X } from 'lucide-react';
+import { CalendarDays, CalendarPlus, FileSpreadsheet, X } from 'lucide-react';
+import Modal from '../ui/Modal';
+import { YearlyHolidaysContent } from '../../pages/admin/YearlyHolidays';
 import * as api from '../../services/api';
 import Button from '../ui/Button';
 import Input from '../ui/Input';
@@ -15,6 +17,7 @@ import { formatDate } from '../../utils/format';
  * close button to revoke one (HR, Admin, Super Admin).
  */
 export default function HolidayBar({ month, holidays, onChanged }) {
+  const [yearly, setYearly] = useState(false); // v61: Yearly holidays (import + year list) on the right
   const toast = useToast();
   const confirm = useConfirm();
   const [date, setDate] = useState('');
@@ -69,6 +72,14 @@ export default function HolidayBar({ month, holidays, onChanged }) {
         <DatePicker label="Holiday date" className="w-44" value={date} min={`${month}-01`} onChange={(e) => setDate(e.target.value)} error={error} />
         <Input label="Name (optional)" className="w-56" maxLength={100} placeholder="e.g. Diwali" value={name} onChange={(e) => setName(e.target.value)} />
         <Button className="mt-6" icon={CalendarPlus} loading={busy} onClick={add}>Add H for all</Button>
+        <div className="ml-auto flex flex-wrap items-center gap-2 rounded-lg border border-success-600/20 bg-success-50/60 px-3 py-2 lg:mt-1">
+          <CalendarDays className="size-5 text-success-700" aria-hidden />
+          <div className="mr-1">
+            <p className="text-[13px] font-semibold text-ink-900">Yearly holidays</p>
+            <p className="text-[11px] text-ink-500">Import the year from Excel (Date, Festival name)</p>
+          </div>
+          <Button size="sm" variant="secondary" icon={FileSpreadsheet} onClick={() => setYearly(true)}>Import / view {month.slice(0, 4)}</Button>
+        </div>
       </div>
       {holidays?.length > 0 && (
         <div className="mt-2 flex flex-wrap gap-2 text-[12px]">
@@ -83,6 +94,9 @@ export default function HolidayBar({ month, holidays, onChanged }) {
           ))}
         </div>
       )}
+      <Modal open={yearly} onClose={() => setYearly(false)} size="lg" title="Yearly holidays" description="Every date becomes H for all employees in Daily Entry Submission, its Print, the Time Sheet and the monthly report.">
+        {yearly && <YearlyHolidaysContent initialYear={Number(month.slice(0, 4))} onChanged={onChanged} />}
+      </Modal>
     </div>
   );
 }

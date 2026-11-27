@@ -18,6 +18,7 @@ import CertificationTargets from '../components/dashboard/CertificationTargets';
 import { useAsync } from '../hooks/useAsync';
 import { getDashboardSummary, HR_ROLES } from '../services/api';
 import CelebrationReminder from '../components/dashboard/CelebrationReminder';
+import WeekOffIncentive from '../components/dashboard/WeekOffIncentive';
 import { ACTIVITY_LABEL } from '../utils/constants';
 import { formatDate, formatDuration, formatTime, personLabel } from '../utils/format';
 import { entrySummary } from '../utils/entry';
@@ -143,6 +144,8 @@ export default function Dashboard() {
         <StatCard label="Total course preparation" value={hrs(data?.month?.learning)} sub={`This month · all time ${hrs(data?.allTime?.learning)}`} icon={BookOpen} tone="info" loading={loading} />
         <StatCard label="Total Others time" value={hrs(data?.month?.others)} sub={`This month · all time ${hrs(data?.allTime?.others)}`} icon={Coffee} tone="warning" loading={loading} />
       </div>
+
+      <WeekOffIncentive code={target.code} own={!other} />
 
       <div className="mt-5 grid grid-cols-1 gap-5 xl:grid-cols-3">
         <Card title="Activity mix this month" description="Hours by activity type" className="xl:col-span-2">

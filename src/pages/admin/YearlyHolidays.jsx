@@ -1,52 +1,48 @@
 import { useState } from 'react';
+import { Navigate } from 'react-router-dom';
 import { CalendarDays, X } from 'lucide-react';
 import * as api from '../../services/api';
-import PageHeader from '../../components/ui/PageHeader';
 import Card from '../../components/ui/Card';
 import Select from '../../components/ui/Select';
 import FileSaveField from '../../components/ui/FileSaveField';
 import ErrorState from '../../components/ui/ErrorState';
 import EmptyState from '../../components/ui/EmptyState';
-import HolidayBar from '../../components/attendance/HolidayBar';
-import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import { useConfirm } from '../../context/ConfirmContext';
 import { useAsync } from '../../hooks/useAsync';
 import { formatDate } from '../../utils/format';
-import { HR_ROLES } from '../../services/api';
 
 const WEEKDAY = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
-/**
- * Admin › Yearly Holidays (v59): import the year's holidays from an Excel / CSV file with two columns,
- * Date (DD/MM/YYYY) and Festival name. Each date is a holiday (H) for every employee in Daily Entry Submission,
- * its Print, the Time Sheet and the monthly report, month by month. HR / Admin add or revoke single dates here too.
- */
+/** v61: Yearly Holidays is inside Attendance › Daily Entry Submission (next to Add H); the old address opens it. */
 export default function YearlyHolidays() {
-  const { user } = useAuth();
+  return <Navigate to="/attendance/staff/entry" replace />;
+}
+
+/**
+ * Yearly holidays (v59, moved in v61): import the year's holidays from an Excel / CSV file with two columns,
+ * Date (DD/MM/YYYY) and Festival name, and the list of the year with Revoke. Each date is H for every employee in
+ * Daily Entry Submission, its Print, the Time Sheet and the monthly report. `onChanged` reloads the month sheet.
+ */
+export function YearlyHolidaysContent({ initialYear, onChanged }) {
   const toast = useToast();
   const confirm = useConfirm();
   const thisYear = new Date().getFullYear();
-  const [year, setYear] = useState(thisYear);
+  const [year, setYear] = useState(initialYear || thisYear);
   const [result, setResult] = useState(null);
   const { data, loading, error, reload } = useAsync(() => api.getYearHolidays(year), [year]);
   const years = Array.from({ length: 6 }, (_, i) => thisYear - 1 + i).map((y) => ({ value: String(y), label: String(y) }));
-
-  if (!HR_ROLES.includes(user.role)) {
-    return (
-      <>
-        <PageHeader title="Yearly Holidays" />
-        <Card><p className="text-sm text-ink-600">Only HR, Admin and the Super Admin manage the holidays.</p></Card>
-      </>
-    );
-  }
+  const changed = () => {
+    reload();
+    onChanged?.();
+  };
 
   const upload = async (file) => {
     const r = await api.importHolidays(file);
     setResult(r);
     toast.success(`${r.read} holiday(s) read: ${r.added} added, ${r.updated} updated.`);
     if (r.years?.length && !r.years.includes(String(year))) setYear(Number(r.years[0]));
-    else reload();
+    changed();
   };
 
   const remove = async (h) => {
@@ -54,7 +50,7 @@ export default function YearlyHolidays() {
     try {
       await api.removeHoliday(h.date);
       toast.success('Holiday revoked.');
-      reload();
+      changed();
     } catch (e) {
       toast.error(e.message);
     }
@@ -62,12 +58,7 @@ export default function YearlyHolidays() {
 
   return (
     <>
-      <PageHeader
-        title="Yearly Holidays"
-        breadcrumb={[{ label: 'Admin' }, { label: 'Yearly Holidays' }]}
-        description="Import the holidays of the year from an Excel file. Every date becomes H (holiday) for all employees in Daily Entry Submission, its Print and the Time Sheet."
-      />
-      <Card className="mb-5" title="Import from Excel" description="The file needs two columns: 1. Date (DD/MM/YYYY) and 2. Festival name. Any number of rows; a date already saved gets the new name.">
+      <Card className="mb-4" title="Import from Excel" description="Two columns: 1. Date (DD/MM/YYYY) and 2. Festival name. A date already saved gets the new name.">
         <FileSaveField label="Holidays file" accept=".xlsx,.xls,.csv" onSave={upload} saveLabel="Import" />
         {result && (
           <div className="mt-3 rounded-lg border border-ink-200 bg-ink-50 px-3 py-2 text-[13px] text-ink-700" role="status">
@@ -80,7 +71,6 @@ export default function YearlyHolidays() {
           </div>
         )}
       </Card>
-      <HolidayBar month={`${year}-01`} holidays={[]} onChanged={reload} />
       <Card
         bodyClassName="p-0"
         title={`Holidays in ${year}`}
@@ -93,9 +83,9 @@ export default function YearlyHolidays() {
         ) : !data?.length ? (
           <EmptyState icon={CalendarDays} title="No holidays" message={`No holidays saved for ${year}. Import the Excel file above.`} />
         ) : (
-          <div className="overflow-x-auto">
+          <div className="max-h-[50vh] overflow-auto">
             <table className="w-full text-left text-[13px]">
-              <thead className="bg-ink-50 text-[11px] font-semibold tracking-wide text-ink-600 uppercase">
+              <thead className="sticky top-0 bg-ink-50 text-[11px] font-semibold tracking-wide text-ink-600 uppercase">
                 <tr>
                   <th className="px-4 py-2">Date</th>
                   <th className="px-4 py-2">Day</th>

@@ -22,6 +22,7 @@ from ..security import manage_access, super_admin_only, is_super_admin, require_
 
 router = APIRouter(prefix="/batch-import", tags=["batch-import"])
 master_roles = manage_access  # Master or Admin menu, or HR menu for HR / Admin roles; Super Admin always
+admin_only = require_roles("ADMIN", "MANAGER")  # v61: batch import is for Admin and the Super Admin only
 SETTINGS_ID = "batchImport"
 CLOSE_AFTER_DAYS = 60  # a batch whose end date is older than this is counted as Completed
 
@@ -70,7 +71,7 @@ def get_settings(_: dict = Depends(master_roles)):
 
 
 @router.post("/upload")
-async def upload(request: Request, name: str = Query(..., min_length=1, max_length=200), me: dict = Depends(master_roles)):
+async def upload(request: Request, name: str = Query(..., min_length=1, max_length=200), me: dict = Depends(admin_only)):
     """Admin / Super Admin upload the file (raw body, .xlsx / .xls / .csv); it is read and saved to the database."""
     data = await request.body()
     try:
@@ -83,7 +84,7 @@ async def upload(request: Request, name: str = Query(..., min_length=1, max_leng
 
 
 @router.put("/map")
-def save_map(body: MapIn, me: dict = Depends(master_roles)):
+def save_map(body: MapIn, me: dict = Depends(admin_only)):
     """Links a faculty short name from the file to an employee and assigns that short name's batches."""
     key = _map_key(body.shortName)
     s = _settings()
@@ -117,7 +118,7 @@ def save_map(body: MapIn, me: dict = Depends(master_roles)):
 
 
 @router.post("/dismiss")
-def dismiss(body: DismissIn, _: dict = Depends(master_roles)):
+def dismiss(body: DismissIn, _: dict = Depends(admin_only)):
     """Removes a short name from "not matched" (e.g. a guest faculty); it is not listed again on later uploads."""
     key = _map_key(body.shortName)
     db.db.settings.update_one({"_id": SETTINGS_ID}, {"$addToSet": {"dismissed": key}}, upsert=True)

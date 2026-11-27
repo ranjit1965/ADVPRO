@@ -63,11 +63,11 @@ export const UPLOAD_TYPES = {
  */
 export default function DataUpload() {
   const { user } = useAuth();
-  if (!canManage(user)) {
+  if (!canManage(user) || !['ADMIN', 'MANAGER'].includes(user.role)) {
     return (
       <>
         <PageHeader title="Data Upload" />
-        <Card><p className="text-sm text-ink-600">Access restricted. Only HR, Admin and Super Admin can upload data.</p></Card>
+        <Card><p className="text-sm text-ink-600">Access restricted. Only Admin and the Super Admin can upload data.</p></Card>
       </>
     );
   }

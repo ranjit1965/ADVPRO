@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Database, UserX, ArrowRight, CheckCircle2, X } from 'lucide-react';
+import { useAuth } from '../../context/AuthContext';
 import * as api from '../../services/api';
 import PageHeader from '../../components/ui/PageHeader';
 import Card from '../../components/ui/Card';
@@ -23,6 +24,14 @@ const STATUS_ORDER = ['Running', 'Planned', 'Break', 'Completed'];
  * that match nobody are listed so they can be linked once; the link is remembered.
  */
 export default function BatchImport() {
+  const { user } = useAuth();
+  if (!['ADMIN', 'MANAGER'].includes(user?.role)) {
+    return <Card><p className="text-sm text-ink-600">Only Admin and the Super Admin import batches.</p></Card>;
+  }
+  return <BatchImportPage />;
+}
+
+function BatchImportPage() {
   const { lookups, reload: reloadLookups } = useLookups();
   const toast = useToast();
   const settings = useAsync(() => api.getBatchImportSettings(), []);
