@@ -391,6 +391,23 @@ export async function saveStudentMarks(query, rows) {
   return request('/student-marks', { method: 'POST', body: { ...query, rows } });
 }
 
+/** v62: MIS › Incentive › Incentive Amount. */
+export async function getIncentives(month) {
+  return request('/incentives', { params: { month } });
+}
+export async function saveIncentive(id, body) {
+  return id ? request(`/incentives/${encodeURIComponent(id)}`, { method: 'PUT', body }) : request('/incentives', { method: 'POST', body });
+}
+export async function deleteIncentive(id) {
+  return request(`/incentives/${encodeURIComponent(id)}`, { method: 'DELETE' });
+}
+export async function getIncentiveSettings() {
+  return request('/incentives/settings');
+}
+export async function saveIncentiveSettings(greenBatchValue) {
+  return request('/incentives/settings', { method: 'PUT', body: { greenBatchValue } });
+}
+
 /** v60: Declare dropdown of the daily entry (Absent / Week off; '' removes it). */
 export async function getDeclarations(month, facultyCode) {
   return request('/daily-entries/declarations', { params: { month, facultyCode } });

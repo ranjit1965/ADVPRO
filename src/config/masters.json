@@ -161,10 +161,10 @@
         },
         {
           "key": "courseName",
-          "label": "Course Name",
+          "label": "Certification Name",
           "type": "text",
           "required": false,
-          "hint": "Course this faculty handles.",
+          "hint": "Certification this faculty holds.",
           "hideInTable": true
         },
         {

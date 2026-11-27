@@ -35,6 +35,7 @@ def ensure_indexes() -> None:
     db.external_certifications.create_index("id", unique=True)  # new in v60: no older data
     db.external_certifications.create_index("facultyId")
     db.day_declarations.create_index([("code", ASCENDING), ("date", ASCENDING)])
+    db.incentives.create_index([("month", ASCENDING), ("facultyCode", ASCENDING)])  # v62
     courses.create_index("id", unique=True)
     chapters.create_index([("courseId", ASCENDING), ("no", ASCENDING)], unique=True)
     db.deleted_records.create_index("owner")

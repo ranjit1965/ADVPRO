@@ -23,6 +23,7 @@ import Biometric from './pages/master/Biometric';
 import BatchImport from './pages/master/BatchImport';
 import ExternalFacultyReport from './pages/master/ExternalFacultyReport';
 import ExternalCertifications from './pages/master/ExternalCertifications';
+import IncentiveAmount from './pages/mis/IncentiveAmount';
 import DataUpload from './pages/admin/DataUpload';
 import YearlyHolidays from './pages/admin/YearlyHolidays';
 import HrPolicy from './pages/hr/HrPolicy';
@@ -87,6 +88,7 @@ export default function App() {
               <Route path="master/deleted-employees/:userId" element={<DeletedEmployees />} />
               <Route path="master/external-faculty-report" element={<ExternalFacultyReport />} />
               <Route path="master/external-certifications" element={<ExternalCertifications />} />
+              <Route path="mis/incentive-amount" element={<IncentiveAmount />} />
               <Route path="master/:key" element={<MasterList />} />
               <Route path="admin/data-upload" element={<DataUpload />} />
               <Route path="admin/yearly-holidays" element={<YearlyHolidays />} />

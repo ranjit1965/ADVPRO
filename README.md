@@ -344,6 +344,30 @@ missed), the Dashboard and this page remind Admin / Manager until each file is u
   creating the batch (Master › Batch or Batch Import) or **Dismiss** them. Saved in `batch_requests`;
   `POST/GET /api/batch-requests`, `PATCH /api/batch-requests/{id}`.
 
+### v62: Incentive Amount (MIS), Certification Name, delete tick boxes
+
+* **MIS › Incentive › Incentive Amount** (MIS, HR, Admin, Super Admin): for a month, one row per faculty or lab
+  support person: No of students, No of referrals, No of goto next certifications, Exam completed before 45 days,
+  Amount and **Green Batch**. Green Batch opens only when No of students = Exam completed before 45 days (at least
+  1); it starts at the **Green Batch fixed value** set at the top of the page (MIS / Admin / Super Admin).
+  Otherwise only the Amount can be changed (the server checks it too). Total = Amount + Green Batch. Delete: MIS,
+  Admin, Super Admin. Saved in `incentives`; `GET/POST /api/incentives`, `PUT/DELETE /api/incentives/{id}`,
+  `GET/PUT /api/incentives/settings`.
+* External Faculty: **Course Name** is shown as **Certification Name** (stored field `courseName` unchanged).
+* The tick boxes (Select all / Delete selected) are only on Batch (records from the batch Excel file).
+* The MIS menu no longer shows Data Upload, Batch and Batch Import.
+
+### v61: Yearly holidays in Attendance, Admin-only batch pages, Week off / Incentive cards
+
+* **Yearly holidays** moved into Attendance › Daily Entry Submission: the green "Yearly holidays" box on the right
+  of Add H opens the Excel import (Date DD/MM/YYYY, Festival name) and the year's list with Revoke. The old
+  Admin › Yearly Holidays address opens Daily Entry Submission.
+* **Data Upload, Batch and Batch Import** are for Admin and the Super Admin only (menus and server). HR / MIS can
+  still view the batch list read-only.
+* **Faculty dashboard**: Week off card (taken and absent this month from the Declare dropdown; remaining "–"
+  until the week off rule is added) and Incentive card (Claim incentive form and claims with Pending / Approved /
+  Rejected / Paid). Screen only: the claim Submit opens when the incentive rules are added.
+
 ### v60: employees, inactive login, MIS role, Halfyearly, External Faculty, daily entry
 
 * **Add Employee.** No User ID or password on the form: the Super Admin gives the login with the key button

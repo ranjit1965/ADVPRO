@@ -98,7 +98,8 @@ export const NAVIGATION = [
     roles: ['MIS', 'MANAGER'],
     children: [
       { key: 'mis-hr-policy', label: 'HR Policy', to: '/hr-report/policy' },
-      ...ADMIN_PAGES.map((p) => ({ ...p, key: `mis-${p.key}`, roles: p.roles || HR_PAGE_ROLES })),
+      ...ADMIN_PAGES.filter((p) => p.roles !== ADMIN_ONLY).map((p) => ({ ...p, key: `mis-${p.key}`, roles: p.roles || HR_PAGE_ROLES })),
+      { key: 'mis-incentive', label: 'Incentive', roles: ['MIS', 'HR', 'ADMIN', 'MANAGER'], children: [{ key: 'mis-incentive-amount', label: 'Incentive Amount', to: '/mis/incentive-amount' }] },
       ATTENDANCE_GROUP('mis'),
     ],
   },

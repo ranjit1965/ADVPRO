@@ -113,6 +113,8 @@ export default function MasterList() {
   const canDelete = isSuperAdmin(user) || (isExt && user.role === 'ADMIN');
   // v61: batches are added and changed by Admin and the Super Admin only (others view them)
   const canEdit = key !== 'batches' || ['ADMIN', 'MANAGER'].includes(user.role);
+  // v62: the tick boxes (Delete selected) only on Batch, whose records come from the batch Excel file
+  const canBulk = canDelete && key === 'batches';
   const [opened, setOpened] = useState(null); // External Faculty › Open
   const { lookups, reload: reloadLookups } = useLookups();
   const toast = useToast();
@@ -341,7 +343,7 @@ export default function MasterList() {
       ),
   };
   const columns = [
-    canDelete && {
+    canBulk && {
       key: 'select',
       header: (
         <input
@@ -428,7 +430,7 @@ export default function MasterList() {
       <Card bodyClassName="p-0">
         <div className="flex flex-wrap items-end gap-3 border-b border-ink-100 p-4">
           <Input label="Search" className="w-full max-w-xs" placeholder={`Search ${def.label.toLowerCase()}…`} value={q} onChange={(e) => { setQ(e.target.value); setPage(1); }} />
-          {canDelete && pickedIds.length > 0 && (
+          {canBulk && pickedIds.length > 0 && (
             <div role="status" className="flex flex-wrap items-center gap-2 rounded-lg border border-danger-500/30 bg-danger-50 px-3 py-1.5 text-[13px]">
               <span className="font-medium text-ink-800">{pickedIds.length} selected</span>
               {!allMatching && rows.length > pageIds.length && (
@@ -444,7 +446,7 @@ export default function MasterList() {
               </Button>
             </div>
           )}
-          {canDelete && pickedIds.length === 0 && rows.length > 0 && (
+          {canBulk && pickedIds.length === 0 && rows.length > 0 && (
             <Button variant="ghost" size="sm" className="mb-1" onClick={() => toggle(rows.map((r) => r.id), true)}>
               Select all {rows.length}{q.trim() ? ' matching' : ''}
             </Button>

@@ -55,6 +55,7 @@ export const sectionForPath = (path) => {
   if (SHARED_PAGES.some((p) => path.startsWith(p))) return ['master', 'admin', 'hr', 'mis']; // HR / MIS: the page checks the role
   if (path.startsWith('/master')) return 'master';
   if (path.startsWith('/admin')) return 'admin';
+  if (path.startsWith('/mis/')) return ['mis', 'hr', 'admin']; // v62 Incentive: the page checks the role
   if (path.startsWith('/hr-report')) return ['hr', 'mis']; // v60: HR Policy is in the MIS menu too
   if (path.startsWith('/faculty') || path.startsWith('/entries')) return 'faculty';
   return null;
