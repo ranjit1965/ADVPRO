@@ -186,7 +186,7 @@ def report(
         if scope == "batches" and not by.get(fid):
             continue
         out.append({
-            "facultyId": fid, "name": f.get("name", ""), "phone": f.get("phone", ""), "email": f.get("email", ""),
+            "facultyId": fid, "name": f.get("name", ""), "phone": f.get("phone", ""), "email": f.get("email", ""), "personalEmail": f.get("personalEmail", ""),
             "certificationId": f.get("certificationId", ""), "courseName": f.get("courseName", ""), "status": f.get("status", ""),
             "batches": by.get(fid, []), "certifications": cert_by.get(fid, []) if scope == "whole" else [],
         })

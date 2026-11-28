@@ -222,7 +222,7 @@ export default function Users() {
       ),
     },
     { key: 'phone', header: 'Phone', hideOnMobile: true },
-    { key: 'email', header: 'Email', hideOnMobile: true, render: (r) => r.email || r.personalEmail || '' },
+    { key: 'email', header: 'Official / Personal email', hideOnMobile: true, render: (r) => [r.email, r.personalEmail].filter(Boolean).join(' · ') },
     { key: 'hours', header: `Hours, ${monthLabel(month)}`, align: 'right', render: (r) => (hours[r.code] ? <span className="tabular-nums">{formatDuration(hours[r.code].totalMinutes)}</span> : <span className="text-ink-400">-</span>) },
     { key: 'days', header: 'Days', align: 'right', hideOnMobile: true, render: (r) => hours[r.code]?.days ?? '-' },
     {

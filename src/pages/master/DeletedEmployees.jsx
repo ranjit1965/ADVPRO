@@ -142,7 +142,8 @@ export default function DeletedEmployees() {
                     {[
                       ['User ID', emp.userId],
                       ['Role', emp.role],
-                      ['Email', emp.email],
+                      ['Official email', emp.email],
+                      ['Personal email', emp.personalEmail],
                       ['Branch', emp.branch],
                       ['Created', emp.createdAt ? formatDateTime(emp.createdAt) : ''],
                     ].map(([k, v]) => (

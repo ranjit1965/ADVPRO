@@ -117,7 +117,7 @@ def external_faculty_report(month: str = Query(..., pattern=r"^\d{4}-(0[1-9]|1[0
     for b in db.db.master_batches.find(q, {"_id": 0}).sort([("startDate", 1), ("batchNo", 1)]):
         f = fac.get(b["externalFacultyId"], {})
         rows.append({
-            "facultyId": b["externalFacultyId"], "facultyName": f.get("name", b["externalFacultyId"]), "phone": f.get("phone", ""), "email": f.get("email", ""),
+            "facultyId": b["externalFacultyId"], "facultyName": f.get("name", b["externalFacultyId"]), "phone": f.get("phone", ""), "email": f.get("email", ""), "personalEmail": f.get("personalEmail", ""),
             "batchNo": b.get("batchNo", ""), "courseId": b.get("courseId", ""), "courseName": courses.get(b.get("courseId", ""), ""),
             "startDate": b.get("startDate", ""), "endDate": b.get("endDate", ""), "timing": b.get("timing", ""),
             "mode": b.get("mode", ""), "classMode": b.get("classMode", ""), "status": b.get("status", ""),

@@ -147,7 +147,7 @@ export default function ExternalFacultyReport() {
                       {i === 0 && (
                         <td rowSpan={list.length} className={`${td} font-medium`}>
                           {f.name}
-                          <div className="text-[11px] font-normal text-ink-500">{[f.phone, f.email].filter(Boolean).join(' · ')}</div>
+                          <div className="text-[11px] font-normal text-ink-500">{[f.phone, f.email, f.personalEmail].filter(Boolean).join(' · ')}</div>
                           {(f.certificationId || f.courseName) && <div className="text-[11px] font-normal text-ink-500">{[f.certificationId, f.courseName].filter(Boolean).join(' · ')}</div>}
                         </td>
                       )}

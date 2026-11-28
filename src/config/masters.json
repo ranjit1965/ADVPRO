@@ -146,9 +146,18 @@
         },
         {
           "key": "email",
-          "label": "Email",
+          "label": "Official Email",
           "type": "email",
           "required": true,
+          "hideInTable": true,
+          "hint": "Work or company email."
+        },
+        {
+          "key": "personalEmail",
+          "label": "Personal Email",
+          "type": "email",
+          "required": false,
+          "hint": "Optional. Own email of the faculty.",
           "hideInTable": true
         },
         {
