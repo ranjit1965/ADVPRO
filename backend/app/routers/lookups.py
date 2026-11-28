@@ -137,7 +137,10 @@ def natural_key(text) -> list:
 def faculty_list() -> list[dict]:
     """v60: inactive faculty are listed too (marked active: false), so their names still show in the
     report filters; they cannot sign in."""
-    cur = db.users.find({"role": "FACULTY"}, {"_id": 0, "code": 1, "name": 1, "employeeId": 1, "active": 1})
+    # v62: Faculty Lab Support (and any role named "lab support") is listed with the faculty everywhere.
+    lab = re.compile(r"lab[\s_-]*support", re.I)
+    roles = ["FACULTY", *[r["key"] for r in db.db.roles.find({}, {"key": 1, "label": 1}) if lab.search(r.get("key", "")) or lab.search(r.get("label", ""))]]
+    cur = db.users.find({"role": {"$in": roles}}, {"_id": 0, "code": 1, "name": 1, "employeeId": 1, "active": 1, "role": 1})
     return sorted(({**f, "active": f.get("active", True)} for f in cur), key=lambda f: (not f["active"], natural_key(f["name"])))
 
 
