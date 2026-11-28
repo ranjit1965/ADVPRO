@@ -46,6 +46,7 @@ const COLLECTIONS = {
   // HR
   halfyearly_reports: [[{ id: 1 }, { unique: true }], [{ employeeCode: 1 }]],
   incentives: [[{ month: 1, facultyCode: 1 }]], // v62 MIS › Incentive Amount
+  hr_policy_files: [[{ fileId: 1 }]], // v63 HR Policy PDF in 2 MB parts
   hr_mail_templates: [], // v60 HR's own Performance mail: {_id "<userId>|performance", subject, body}
 };
 

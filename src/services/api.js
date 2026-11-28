@@ -391,6 +391,31 @@ export async function saveStudentMarks(query, rows) {
   return request('/student-marks', { method: 'POST', body: { ...query, rows } });
 }
 
+/** v63: HR Policy PDF, sent and read in 2 MB parts (Vercel takes about 4.5 MB per request). */
+export async function uploadPolicyPdf(file, onPart) {
+  const { fileId, chunkSize, parts } = await request('/hr/policy/pdf', { method: 'POST', body: { name: file.name, size: file.size } });
+  for (let n = 0; n < parts; n += 1) {
+    await request(`/hr/policy/pdf/${fileId}/${n}`, { method: 'PUT', body: file.slice(n * chunkSize, (n + 1) * chunkSize) });
+    onPart?.(n + 1, parts);
+  }
+  return request(`/hr/policy/pdf/${fileId}/finish`, { method: 'POST' });
+}
+export async function downloadPolicyPdf(pdf, onPart) {
+  const out = new Uint8Array(pdf.size);
+  let at = 0;
+  for (let n = 0; n < pdf.parts; n += 1) {
+    const { data } = await request(`/hr/policy/pdf/${pdf.fileId}/${n}`);
+    const bin = atob(data);
+    for (let i = 0; i < bin.length; i += 1) out[at + i] = bin.charCodeAt(i);
+    at += bin.length;
+    onPart?.(n + 1);
+  }
+  return out.buffer;
+}
+export async function removePolicyPdf() {
+  return request('/hr/policy/pdf', { method: 'DELETE' });
+}
+
 /** v62: MIS › Incentive › Incentive Amount. */
 export async function getIncentives(month) {
   return request('/incentives', { params: { month } });

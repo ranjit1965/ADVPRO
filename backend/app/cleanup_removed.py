@@ -26,7 +26,7 @@ USED = {
     "migrations", "counters", "manager_otps", "notifications", "student_marks", "courses", "chapters",
     "course_requests", "batch_requests", "master_batches", "master_externalFaculty", "external_faculty_bank",
     "external_certifications", "biometric_days", "biometric_months", "biometric_unmatched", "staff_attendance",
-    "holidays", "place_contacts", "halfyearly_reports", "hr_mail_templates", "celebration_seen", "celebration_sent", "incentives",
+    "holidays", "place_contacts", "halfyearly_reports", "hr_mail_templates", "celebration_seen", "celebration_sent", "incentives", "hr_policy_files",
 }
 
 

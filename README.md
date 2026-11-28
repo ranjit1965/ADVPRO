@@ -344,6 +344,15 @@ missed), the Dashboard and this page remind Admin / Manager until each file is u
   creating the batch (Master › Batch or Batch Import) or **Dismiss** them. Saved in `batch_requests`;
   `POST/GET /api/batch-requests`, `PATCH /api/batch-requests/{id}`.
 
+### v63: HR Policy PDF
+
+* **HR › HR Policy**: HR, Admin and the Super Admin click **Upload policy PDF**. The PDF is saved in the database
+  (`hr_policy_files`, in 2 MB parts because Vercel takes about 4.5 MB per request) and every signed-in user sees it
+  page by page, top to bottom, exactly as in the file (drawn with pdf.js; nothing retyped). **Upload new PDF**
+  replaces it, **Remove PDF** brings back the typed policy text, **Download PDF** saves the file.
+* New npm package `pdfjs-dist` (run `npm install`). `POST /api/hr/policy/pdf`, `PUT /api/hr/policy/pdf/{id}/{n}`,
+  `POST /api/hr/policy/pdf/{id}/finish`, `GET /api/hr/policy/pdf/{id}/{n}`, `DELETE /api/hr/policy/pdf`.
+
 ### v62: Incentive Amount (MIS), Certification Name, delete tick boxes
 
 * **MIS › Incentive › Incentive Amount** (MIS, HR, Admin, Super Admin): for a month, one row per faculty or lab
